@@ -1,0 +1,109 @@
+import type { MonthlyExpense, Trip } from '../types';
+import { aggregateByVehicle } from '../utils/aggregate';
+import { formatNum, rupees, tripCost } from '../utils/calc';
+
+interface Props {
+  trips: Trip[];
+  expenses: MonthlyExpense[];
+}
+
+export function MonthlyReport({ trips, expenses }: Props) {
+  const totals = trips.reduce(
+    (a, t) => {
+      const c = tripCost(t);
+      a.tons += t.tons;
+      a.exp += c.expense;
+      a.rev += t.revenue;
+      return a;
+    },
+    { tons: 0, exp: 0, rev: 0 }
+  );
+  const monthlyTotal = expenses.reduce((a, e) => a + e.amount, 0);
+  const profit = totals.rev - totals.exp - monthlyTotal;
+
+  const byVehicle = aggregateByVehicle(trips, expenses);
+  const maxPerKm = Math.max(...byVehicle.map((b) => (b.km ? b.cost / b.km : 0)), 1);
+
+  const headline = [
+    { label: 'Revenue', value: rupees(totals.rev), note: `${trips.length} movements billed` },
+    { label: 'Total cost', value: rupees(totals.exp + monthlyTotal), note: 'haulage + shipment' },
+    { label: 'Profit', value: rupees(profit), note: 'before overheads', pos: profit >= 0 },
+    { label: 'Cost / ton', value: totals.tons ? rupees((totals.exp + monthlyTotal) / totals.tons) : '₹0', note: 'all-in' }
+  ];
+
+  return (
+    <section>
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap', marginBottom: 18 }}>
+        <div>
+          <div className="kicker">Manager only · September 2026</div>
+          <h1 style={{ fontSize: 34, letterSpacing: '-0.02em' }}>Monthly Report</h1>
+        </div>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button type="button" className="btn btn-secondary">Export Excel</button>
+          <button type="button" className="btn btn-primary">Print / Save PDF</button>
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 2, background: 'var(--color-divider)', border: '2px solid var(--color-divider)', marginBottom: 26 }}>
+        {headline.map((h) => (
+          <div key={h.label} style={{ background: 'var(--color-bg)', padding: 20 }}>
+            <div className="stat-label">{h.label}</div>
+            <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 34, letterSpacing: '-0.02em', lineHeight: 1, color: h.label === 'Profit' ? (h.pos ? 'var(--color-profit)' : 'var(--color-accent-700)') : undefined }}>{h.value}</div>
+            <div style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 8 }}>{h.note}</div>
+          </div>
+        ))}
+      </div>
+
+      <h2 style={{ fontSize: 20, marginBottom: 12 }}>Cost per kilometre, by vehicle</h2>
+      <div style={{ border: '2px solid var(--color-divider)', padding: 20, marginBottom: 28 }}>
+        {byVehicle.map((b) => {
+          const perKm = b.km ? b.cost / b.km : 0;
+          return (
+            <div key={b.id} style={{ display: 'grid', gridTemplateColumns: '150px minmax(0,1fr) 90px', alignItems: 'center', gap: 14, padding: '9px 0', borderBottom: '1px solid var(--color-neutral-300)' }}>
+              <div style={{ fontWeight: 600 }}>{b.id}</div>
+              <div style={{ height: 18, background: 'var(--color-neutral-200)' }}>
+                <div style={{ height: 18, background: 'var(--color-accent)', width: `${Math.round((perKm / maxPerKm) * 100)}%` }} />
+              </div>
+              <div style={{ textAlign: 'right', fontWeight: 700 }}>{rupees(perKm)}/km</div>
+            </div>
+          );
+        })}
+      </div>
+
+      <h2 style={{ fontSize: 20, marginBottom: 12 }}>Vehicle-wise ledger</h2>
+      <div className="scroll-x" style={{ border: '2px solid var(--color-divider)' }}>
+        <table className="table" style={{ minWidth: 1100 }}>
+          <thead>
+            <tr>
+              <th>Vehicle</th><th style={{ textAlign: 'right' }}>Trips</th><th style={{ textAlign: 'right' }}>KM</th>
+              <th style={{ textAlign: 'right' }}>Tons</th><th style={{ textAlign: 'right' }}>Diesel</th>
+              <th style={{ textAlign: 'right' }}>Toll</th><th style={{ textAlign: 'right' }}>Other</th>
+              <th style={{ textAlign: 'right' }}>Monthly</th><th style={{ textAlign: 'right' }}>Total cost</th>
+              <th style={{ textAlign: 'right' }}>Revenue</th><th style={{ textAlign: 'right' }}>Profit</th><th style={{ textAlign: 'right' }}>Margin</th>
+            </tr>
+          </thead>
+          <tbody>
+            {byVehicle.map((b) => (
+              <tr key={b.id}>
+                <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{b.id}</td>
+                <td style={{ textAlign: 'right' }}>{formatNum(b.trips)}</td>
+                <td style={{ textAlign: 'right' }}>{formatNum(b.km)}</td>
+                <td style={{ textAlign: 'right' }}>{formatNum(b.tons, 1)}</td>
+                <td style={{ textAlign: 'right' }}>{rupees(b.diesel)}</td>
+                <td style={{ textAlign: 'right' }}>{rupees(b.toll)}</td>
+                <td style={{ textAlign: 'right' }}>{rupees(b.other)}</td>
+                <td style={{ textAlign: 'right' }}>{rupees(b.monthly)}</td>
+                <td style={{ textAlign: 'right' }}>{rupees(b.cost)}</td>
+                <td style={{ textAlign: 'right' }}>{rupees(b.revenue)}</td>
+                <td style={{ textAlign: 'right' }}>
+                  <span style={{ color: b.profit >= 0 ? 'var(--color-profit)' : 'var(--color-accent-700)', fontWeight: 700 }}>{rupees(b.profit)}</span>
+                </td>
+                <td style={{ textAlign: 'right' }}>{b.revenue ? Math.round((b.profit / b.revenue) * 100) + '%' : '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
