@@ -10,6 +10,13 @@ faithfully recreating the design handoff in `design/handoff/`. There is no
 backend yet — see `design/handoff/SCHEMA.sql` and `design/handoff/API.md` for
 the intended Postgres schema and API contract.
 
+## Live prototype
+
+**[View the click-through prototype](https://claude.ai/code/artifact/eb0afa6d-914c-40d6-bf9f-8a0999c0f360)**
+— the same mock sign-in and all nine screens, no install required. It's
+private by default; use the page's own Share menu if you want to send it to
+someone who doesn't already have access.
+
 ## Stack
 
 Vite + React 19 + TypeScript, installable as a PWA (manifest + service
