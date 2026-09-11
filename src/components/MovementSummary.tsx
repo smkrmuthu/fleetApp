@@ -1,11 +1,11 @@
-import type { MonthlyExpense, Trip } from '../types';
-import { VEHICLES } from '../data/mockData';
+import type { MonthlyExpense, Trip, Vehicle } from '../types';
 import { aggregateByVehicle } from '../utils/aggregate';
 import { formatNum, rupees, tripCost } from '../utils/calc';
 
 interface Props {
   trips: Trip[];
   expenses: MonthlyExpense[];
+  vehicles: Vehicle[];
   vehicleFilter: string;
   driverFilter: string;
   onVehicleFilter: (v: string) => void;
@@ -13,7 +13,7 @@ interface Props {
   onResetFilters: () => void;
 }
 
-export function MovementSummary({ trips, expenses, vehicleFilter, driverFilter, onVehicleFilter, onDriverFilter, onResetFilters }: Props) {
+export function MovementSummary({ trips, expenses, vehicles, vehicleFilter, driverFilter, onVehicleFilter, onDriverFilter, onResetFilters }: Props) {
   const rows = trips.filter(
     (t) => (vehicleFilter === 'all' || t.vehicle === vehicleFilter) && (!driverFilter || t.driver.toLowerCase().includes(driverFilter.toLowerCase()))
   );
@@ -31,11 +31,11 @@ export function MovementSummary({ trips, expenses, vehicleFilter, driverFilter, 
   );
   const monthlyTotal = expenses.reduce((a, e) => a + e.amount, 0);
 
-  const byVehicle = aggregateByVehicle(rows, expenses);
+  const byVehicle = aggregateByVehicle(rows, expenses, vehicles);
 
   const stats = [
     { label: 'Movements', value: formatNum(rows.length), note: 'gated this month' },
-    { label: 'Vehicles', value: formatNum(byVehicle.filter((b) => b.trips).length), note: `active of ${VEHICLES.length}` },
+    { label: 'Vehicles', value: formatNum(byVehicle.filter((b) => b.trips).length), note: `active of ${vehicles.length}` },
     { label: 'Total km', value: formatNum(totals.km), note: 'odometer based' },
     { label: 'Total tons', value: formatNum(totals.tons, 1), note: 'loading weight' },
     { label: 'Trip expense', value: rupees(totals.exp), note: 'diesel, toll, other' },
@@ -69,7 +69,7 @@ export function MovementSummary({ trips, expenses, vehicleFilter, driverFilter, 
             <label>Vehicle</label>
             <select className="input" value={vehicleFilter} onChange={(e) => onVehicleFilter(e.target.value)}>
               <option value="all">All vehicles</option>
-              {VEHICLES.map((v) => <option key={v.id} value={v.id}>{v.id}</option>)}
+              {vehicles.map((v) => <option key={v.id} value={v.id}>{v.id}</option>)}
             </select>
           </div>
           <div className="field"><label>Driver</label><input className="input" type="text" placeholder="Driver name" value={driverFilter} onChange={(e) => onDriverFilter(e.target.value)} /></div>

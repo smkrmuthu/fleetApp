@@ -11,6 +11,15 @@ export interface Vehicle {
   model: string;
 }
 
+export interface DriverMaster {
+  name: string;
+  licence: string;
+  expiry: string;
+  expiring: boolean;
+  vehicle: string;
+  credential: string;
+}
+
 export interface Trip {
   id: string;
   loadDate: string;

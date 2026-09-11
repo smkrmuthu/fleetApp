@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import type { Trip, TripFormState } from '../types';
-import { SCAN_FIELDS, VEHICLES } from '../data/mockData';
+import type { Trip, TripFormState, Vehicle } from '../types';
+import { SCAN_FIELDS } from '../data/mockData';
 import { rupees, toNumber } from '../utils/calc';
 
 function blankForm(): TripFormState {
@@ -14,9 +14,11 @@ function blankForm(): TripFormState {
 interface Props {
   onAdd: (trip: Trip) => void;
   driverOnly: boolean;
+  vehicles: Vehicle[];
 }
 
-export function AddMovement({ onAdd, driverOnly }: Props) {
+export function AddMovement({ onAdd, driverOnly, vehicles }: Props) {
+  const showFinancials = !driverOnly;
   const [form, setForm] = useState<TripFormState>(blankForm());
   const [scanned, setScanned] = useState(false);
 
@@ -63,7 +65,7 @@ export function AddMovement({ onAdd, driverOnly }: Props) {
               <label>Vehicle *</label>
               <select className="input" value={form.vehicle} onChange={set('vehicle')}>
                 <option value="">Select vehicle</option>
-                {VEHICLES.map((v) => <option key={v.id} value={v.id}>{v.id}</option>)}
+                {vehicles.map((v) => <option key={v.id} value={v.id}>{v.id}</option>)}
               </select>
             </div>
             <div className="field"><label>Driver *</label><input className="input" type="text" placeholder="Driver name" value={form.driver} onChange={set('driver')} /></div>
@@ -85,7 +87,9 @@ export function AddMovement({ onAdd, driverOnly }: Props) {
             <div className="field"><label>Diesel price / litre (₹)</label><input className="input" type="number" value={form.price} onChange={set('price')} /></div>
             <div className="field"><label>Toll (₹)</label><input className="input" type="number" value={form.toll} onChange={set('toll')} /></div>
             <div className="field"><label>Other expense (₹)</label><input className="input" type="number" value={form.other} onChange={set('other')} /></div>
-            <div className="field"><label>Revenue (₹)</label><input className="input" type="number" value={form.revenue} onChange={set('revenue')} /></div>
+            {showFinancials && (
+              <div className="field"><label>Revenue (₹)</label><input className="input" type="number" value={form.revenue} onChange={set('revenue')} /></div>
+            )}
             <div className="field" style={{ gridColumn: 'span 2' }}><label>Remarks</label><input className="input" type="text" placeholder="Remarks" value={form.remarks} onChange={set('remarks')} /></div>
           </div>
 
@@ -103,10 +107,12 @@ export function AddMovement({ onAdd, driverOnly }: Props) {
               <div className="stat-label" style={{ marginBottom: 4 }}>Trip expense</div>
               <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 22 }}>{rupees(expense)}</div>
             </div>
-            <div>
-              <div className="stat-label" style={{ marginBottom: 4 }}>Profit</div>
-              <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 22, color: profit >= 0 ? 'var(--color-profit)' : 'var(--color-accent-700)' }}>{rupees(profit)}</div>
-            </div>
+            {showFinancials && (
+              <div>
+                <div className="stat-label" style={{ marginBottom: 4 }}>Profit</div>
+                <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 22, color: profit >= 0 ? 'var(--color-profit)' : 'var(--color-accent-700)' }}>{rupees(profit)}</div>
+              </div>
+            )}
             <div>
               <div className="stat-label" style={{ marginBottom: 4 }}>Mileage</div>
               <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 22 }}>{kmpl}</div>

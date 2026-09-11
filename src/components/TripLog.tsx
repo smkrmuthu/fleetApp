@@ -1,18 +1,19 @@
-import type { Trip } from '../types';
-import { VEHICLES } from '../data/mockData';
+import type { Trip, Vehicle } from '../types';
 import { formatNum, rupees, tripCost } from '../utils/calc';
 
 interface Props {
   trips: Trip[];
+  vehicles: Vehicle[];
   vehicleFilter: string;
   driverFilter: string;
   onVehicleFilter: (v: string) => void;
   onDriverFilter: (v: string) => void;
   onResetFilters: () => void;
   onAddMovement: () => void;
+  showFinancials: boolean;
 }
 
-export function TripLog({ trips, vehicleFilter, driverFilter, onVehicleFilter, onDriverFilter, onResetFilters, onAddMovement }: Props) {
+export function TripLog({ trips, vehicles, vehicleFilter, driverFilter, onVehicleFilter, onDriverFilter, onResetFilters, onAddMovement, showFinancials }: Props) {
   const rows = trips.filter(
     (t) => (vehicleFilter === 'all' || t.vehicle === vehicleFilter) && (!driverFilter || t.driver.toLowerCase().includes(driverFilter.toLowerCase()))
   );
@@ -39,7 +40,7 @@ export function TripLog({ trips, vehicleFilter, driverFilter, onVehicleFilter, o
             <label>Vehicle</label>
             <select className="input" value={vehicleFilter} onChange={(e) => onVehicleFilter(e.target.value)}>
               <option value="all">All vehicles</option>
-              {VEHICLES.map((v) => <option key={v.id} value={v.id}>{v.id}</option>)}
+              {vehicles.map((v) => <option key={v.id} value={v.id}>{v.id}</option>)}
             </select>
           </div>
           <div className="field"><label>Driver</label><input className="input" type="text" placeholder="Driver name" value={driverFilter} onChange={(e) => onDriverFilter(e.target.value)} /></div>
@@ -59,7 +60,9 @@ export function TripLog({ trips, vehicleFilter, driverFilter, onVehicleFilter, o
                 <th>Gated</th><th>Dir</th><th>Shipment / BL</th><th>Container</th><th>Vehicle</th><th>Driver</th><th>Route</th>
                 <th style={{ textAlign: 'right' }}>Tons</th><th style={{ textAlign: 'right' }}>KM</th><th style={{ textAlign: 'right' }}>Diesel</th>
                 <th style={{ textAlign: 'right' }}>Toll</th><th style={{ textAlign: 'right' }}>Other</th><th style={{ textAlign: 'right' }}>Expense</th>
-                <th style={{ textAlign: 'right' }}>Revenue</th><th style={{ textAlign: 'right' }}>Profit</th><th>Status</th>
+                {showFinancials && <th style={{ textAlign: 'right' }}>Revenue</th>}
+                {showFinancials && <th style={{ textAlign: 'right' }}>Profit</th>}
+                <th>Status</th>
               </tr>
             </thead>
             <tbody>
@@ -84,10 +87,12 @@ export function TripLog({ trips, vehicleFilter, driverFilter, onVehicleFilter, o
                     <td style={{ textAlign: 'right' }}>{rupees(t.toll)}</td>
                     <td style={{ textAlign: 'right' }}>{rupees(t.other)}</td>
                     <td style={{ textAlign: 'right' }}>{rupees(c.expense)}</td>
-                    <td style={{ textAlign: 'right' }}>{rupees(t.revenue)}</td>
-                    <td style={{ textAlign: 'right' }}>
-                      <span style={{ color: c.profit >= 0 ? 'var(--color-profit)' : 'var(--color-accent-700)', fontWeight: 700 }}>{rupees(c.profit)}</span>
-                    </td>
+                    {showFinancials && <td style={{ textAlign: 'right' }}>{rupees(t.revenue)}</td>}
+                    {showFinancials && (
+                      <td style={{ textAlign: 'right' }}>
+                        <span style={{ color: c.profit >= 0 ? 'var(--color-profit)' : 'var(--color-accent-700)', fontWeight: 700 }}>{rupees(c.profit)}</span>
+                      </td>
+                    )}
                     <td>
                       {t.status === 'pending'
                         ? <span className="tag tag-accent">Pending</span>

@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import type { MonthlyExpense, Role, TabId, Trip } from './types';
-import { MONTHLY_EXPENSES, ROLE_TABS, TRIPS } from './data/mockData';
+import type { DriverMaster, MonthlyExpense, Role, TabId, Trip, Vehicle } from './types';
+import { DRIVER_MASTER, MONTHLY_EXPENSES, ROLE_TABS, TRIPS, VEHICLES } from './data/mockData';
 import { SignIn } from './components/SignIn';
 import { AppShell } from './components/AppShell';
 import { MovementSummary } from './components/MovementSummary';
@@ -17,6 +17,8 @@ export function App() {
   const [tab, setTab] = useState<TabId>(ROLE_TABS['Manager'][0]);
   const [trips, setTrips] = useState<Trip[]>(TRIPS);
   const [expenses, setExpenses] = useState<MonthlyExpense[]>(MONTHLY_EXPENSES);
+  const [vehicles, setVehicles] = useState<Vehicle[]>(VEHICLES);
+  const [drivers, setDrivers] = useState<DriverMaster[]>(DRIVER_MASTER);
   const [vehicleFilter, setVehicleFilter] = useState('all');
   const [driverFilter, setDriverFilter] = useState('');
 
@@ -49,8 +51,26 @@ export function App() {
     setExpenses((prev) => [expense, ...prev]);
   }
 
+  function addVehicle(vehicle: Vehicle) {
+    setVehicles((prev) => (prev.some((v) => v.id === vehicle.id) ? prev : [...prev, vehicle]));
+  }
+
+  function removeVehicle(id: string) {
+    setVehicles((prev) => prev.filter((v) => v.id !== id));
+    if (vehicleFilter === id) setVehicleFilter('all');
+  }
+
+  function addDriver(driver: DriverMaster) {
+    setDrivers((prev) => (prev.some((d) => d.name === driver.name) ? prev : [...prev, driver]));
+  }
+
+  function removeDriver(name: string) {
+    setDrivers((prev) => prev.filter((d) => d.name !== name));
+  }
+
   // Drivers only ever see their own rows — the demo driver account is Murugan S.
   const visibleTrips = role === 'Driver' ? trips.filter((t) => t.driver === 'Murugan S') : trips;
+  const showFinancials = role !== 'Driver';
 
   if (!authed) {
     return <SignIn onSignIn={signIn} />;
@@ -62,6 +82,7 @@ export function App() {
         <MovementSummary
           trips={visibleTrips}
           expenses={expenses}
+          vehicles={vehicles}
           vehicleFilter={vehicleFilter}
           driverFilter={driverFilter}
           onVehicleFilter={setVehicleFilter}
@@ -69,21 +90,33 @@ export function App() {
           onResetFilters={resetFilters}
         />
       )}
-      {tab === 'addtrip' && <AddMovement onAdd={addTrip} driverOnly={role === 'Driver'} />}
+      {tab === 'addtrip' && <AddMovement onAdd={addTrip} driverOnly={role === 'Driver'} vehicles={vehicles} />}
       {tab === 'triplog' && (
         <TripLog
           trips={visibleTrips}
+          vehicles={vehicles}
           vehicleFilter={vehicleFilter}
           driverFilter={driverFilter}
           onVehicleFilter={setVehicleFilter}
           onDriverFilter={setDriverFilter}
           onResetFilters={resetFilters}
           onAddMovement={() => setTab('addtrip')}
+          showFinancials={showFinancials}
         />
       )}
-      {tab === 'expenses' && <MonthlyExpenses expenses={expenses} onAdd={addExpense} />}
-      {tab === 'report' && <MonthlyReport trips={trips} expenses={expenses} />}
-      {tab === 'people' && <People trips={trips} />}
+      {tab === 'expenses' && <MonthlyExpenses expenses={expenses} vehicles={vehicles} onAdd={addExpense} />}
+      {tab === 'report' && <MonthlyReport trips={trips} expenses={expenses} vehicles={vehicles} />}
+      {tab === 'people' && (
+        <People
+          trips={trips}
+          vehicles={vehicles}
+          drivers={drivers}
+          onAddVehicle={addVehicle}
+          onRemoveVehicle={removeVehicle}
+          onAddDriver={addDriver}
+          onRemoveDriver={removeDriver}
+        />
+      )}
       {tab === 'schema' && <DataModel />}
     </AppShell>
   );

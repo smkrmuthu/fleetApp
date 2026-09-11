@@ -1,5 +1,4 @@
-import { VEHICLES } from '../data/mockData';
-import type { MonthlyExpense, Trip } from '../types';
+import type { MonthlyExpense, Trip, Vehicle } from '../types';
 import { tripCost } from './calc';
 
 export interface VehicleAgg {
@@ -18,8 +17,8 @@ export interface VehicleAgg {
   profit: number;
 }
 
-export function aggregateByVehicle(trips: Trip[], expenses: MonthlyExpense[]): VehicleAgg[] {
-  return VEHICLES.map((v) => {
+export function aggregateByVehicle(trips: Trip[], expenses: MonthlyExpense[], vehicles: Vehicle[]): VehicleAgg[] {
+  return vehicles.map((v) => {
     const rows = trips.filter((t) => t.vehicle === v.id);
     const agg = rows.reduce(
       (a, t) => {

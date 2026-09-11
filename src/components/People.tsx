@@ -1,13 +1,42 @@
-import type { Trip } from '../types';
-import { DRIVER_MASTER, USER_ROWS } from '../data/mockData';
+import { useState } from 'react';
+import type { DriverMaster, Trip, Vehicle } from '../types';
+import { USER_ROWS } from '../data/mockData';
 import { formatNum, rupees, tripCost } from '../utils/calc';
 
 interface Props {
   trips: Trip[];
+  vehicles: Vehicle[];
+  drivers: DriverMaster[];
+  onAddVehicle: (v: Vehicle) => void;
+  onRemoveVehicle: (id: string) => void;
+  onAddDriver: (d: DriverMaster) => void;
+  onRemoveDriver: (name: string) => void;
 }
 
-export function People({ trips }: Props) {
-  const driverRows = DRIVER_MASTER.map((d) => {
+export function People({ trips, vehicles, drivers, onAddVehicle, onRemoveVehicle, onAddDriver, onRemoveDriver }: Props) {
+  const [newVehicle, setNewVehicle] = useState({ id: '', model: '' });
+  const [newDriver, setNewDriver] = useState({ name: '', licence: '', expiry: '', vehicle: vehicles[0]?.id ?? '' });
+
+  function addVehicle() {
+    if (!newVehicle.id.trim()) return;
+    onAddVehicle({ id: newVehicle.id.trim(), model: newVehicle.model.trim() || '—' });
+    setNewVehicle({ id: '', model: '' });
+  }
+
+  function addDriver() {
+    if (!newDriver.name.trim()) return;
+    onAddDriver({
+      name: newDriver.name.trim(),
+      licence: newDriver.licence.trim() || '—',
+      expiry: newDriver.expiry || '—',
+      expiring: false,
+      vehicle: newDriver.vehicle || '—',
+      credential: '—'
+    });
+    setNewDriver({ name: '', licence: '', expiry: '', vehicle: vehicles[0]?.id ?? '' });
+  }
+
+  const driverRows = drivers.map((d) => {
     const tr = trips.filter((t) => t.driver === d.name);
     const agg = tr.reduce(
       (a, t) => {
@@ -33,11 +62,10 @@ export function People({ trips }: Props) {
     <section>
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap', marginBottom: 18 }}>
         <div>
-          <div className="kicker">Meridian Exim · 7 accounts, 3 branches</div>
+          <div className="kicker">Meridian Exim · {USER_ROWS.length} accounts, 3 branches</div>
           <h1 style={{ fontSize: 34, letterSpacing: '-0.02em' }}>People</h1>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
-          <button type="button" className="btn btn-secondary">Add driver</button>
           <button type="button" className="btn btn-primary">Invite user</button>
         </div>
       </div>
@@ -63,14 +91,58 @@ export function People({ trips }: Props) {
         </table>
       </div>
 
+      <h2 style={{ fontSize: 20, marginBottom: 12 }}>Trucks</h2>
+      <div style={{ border: '2px solid var(--color-divider)', padding: 16, marginBottom: 16 }}>
+        <div className="filters-grid">
+          <div className="field"><label>Registration no</label><input className="input" type="text" placeholder="TN00 XX 0000" value={newVehicle.id} onChange={(e) => setNewVehicle((v) => ({ ...v, id: e.target.value }))} /></div>
+          <div className="field"><label>Model</label><input className="input" type="text" placeholder="Make and model" value={newVehicle.model} onChange={(e) => setNewVehicle((v) => ({ ...v, model: e.target.value }))} /></div>
+          <button type="button" className="btn btn-primary" style={{ justifySelf: 'start' }} onClick={addVehicle}>Add truck</button>
+        </div>
+      </div>
+      <div className="scroll-x" style={{ border: '2px solid var(--color-divider)', marginBottom: 30 }}>
+        <table className="table" style={{ minWidth: 600 }}>
+          <thead>
+            <tr><th>Vehicle</th><th>Model</th><th></th></tr>
+          </thead>
+          <tbody>
+            {vehicles.map((v) => (
+              <tr key={v.id}>
+                <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{v.id}</td>
+                <td style={{ color: 'var(--color-neutral-700)' }}>{v.model}</td>
+                <td style={{ textAlign: 'right' }}>
+                  <button type="button" className="btn btn-ghost" onClick={() => onRemoveVehicle(v.id)}>Delete truck</button>
+                </td>
+              </tr>
+            ))}
+            {vehicles.length === 0 && (
+              <tr><td colSpan={3} style={{ color: 'var(--color-neutral-700)' }}>No trucks yet.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
       <h2 style={{ fontSize: 20, marginBottom: 12 }}>Drivers</h2>
+      <div style={{ border: '2px solid var(--color-divider)', padding: 16, marginBottom: 16 }}>
+        <div className="filters-grid">
+          <div className="field"><label>Name</label><input className="input" type="text" placeholder="Driver name" value={newDriver.name} onChange={(e) => setNewDriver((d) => ({ ...d, name: e.target.value }))} /></div>
+          <div className="field"><label>Licence no</label><input className="input" type="text" placeholder="Licence no" value={newDriver.licence} onChange={(e) => setNewDriver((d) => ({ ...d, licence: e.target.value }))} /></div>
+          <div className="field"><label>Licence expiry</label><input className="input" type="date" value={newDriver.expiry} onChange={(e) => setNewDriver((d) => ({ ...d, expiry: e.target.value }))} /></div>
+          <div className="field">
+            <label>Assigned vehicle</label>
+            <select className="input" value={newDriver.vehicle} onChange={(e) => setNewDriver((d) => ({ ...d, vehicle: e.target.value }))}>
+              {vehicles.map((v) => <option key={v.id} value={v.id}>{v.id}</option>)}
+            </select>
+          </div>
+          <button type="button" className="btn btn-primary" style={{ justifySelf: 'start' }} onClick={addDriver}>Add driver</button>
+        </div>
+      </div>
       <div className="scroll-x" style={{ border: '2px solid var(--color-divider)' }}>
-        <table className="table" style={{ minWidth: 1120 }}>
+        <table className="table" style={{ minWidth: 1200 }}>
           <thead>
             <tr>
               <th>Driver</th><th>Licence no</th><th>Expiry</th><th>Assigned vehicle</th><th>Credential</th>
               <th style={{ textAlign: 'right' }}>Movements</th><th style={{ textAlign: 'right' }}>Pending</th>
-              <th style={{ textAlign: 'right' }}>KM</th><th style={{ textAlign: 'right' }}>₹/km</th><th style={{ textAlign: 'right' }}>Revenue</th>
+              <th style={{ textAlign: 'right' }}>KM</th><th style={{ textAlign: 'right' }}>₹/km</th><th style={{ textAlign: 'right' }}>Revenue</th><th></th>
             </tr>
           </thead>
           <tbody>
@@ -86,14 +158,21 @@ export function People({ trips }: Props) {
                 <td style={{ textAlign: 'right' }}>{formatNum(d.km)}</td>
                 <td style={{ textAlign: 'right' }}>{d.perKm !== null ? rupees(d.perKm) : '—'}</td>
                 <td style={{ textAlign: 'right', fontWeight: 700 }}>{rupees(d.revenue)}</td>
+                <td style={{ textAlign: 'right' }}>
+                  <button type="button" className="btn btn-ghost" onClick={() => onRemoveDriver(d.name)}>Delete driver</button>
+                </td>
               </tr>
             ))}
+            {driverRows.length === 0 && (
+              <tr><td colSpan={11} style={{ color: 'var(--color-neutral-700)' }}>No drivers yet.</td></tr>
+            )}
           </tbody>
         </table>
       </div>
       <p style={{ color: 'var(--color-neutral-700)', maxWidth: '74ch', lineHeight: 1.6, marginTop: 16 }}>
         Licences inside 60 days of expiry are flagged; the same check runs nightly and pushes a notification to the manager.
-        A driver account only ever reads its own movements — enforced in the database, not the client.
+        A driver account only ever reads its own movements — enforced in the database, not the client. Adding or removing
+        trucks and drivers is available to Office and Manager only.
       </p>
     </section>
   );

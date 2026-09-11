@@ -1,4 +1,4 @@
-import type { ExpenseCategory, MonthlyExpense, Role, TabId, Trip, Vehicle } from '../types';
+import type { DriverMaster, ExpenseCategory, MonthlyExpense, Role, TabId, Trip, Vehicle } from '../types';
 
 export const VEHICLES: Vehicle[] = [
   { id: 'TN38 AB 4412', model: 'Tata Signa 4825' },
@@ -89,7 +89,7 @@ export const USER_ROWS = [
   { name: 'Ilango R', role: 'Driver', phone: '+91 90805 44117', branch: 'Chennai HQ', seen: 'Today, 11:30', access: 'Own movements only', isManager: false }
 ];
 
-export const DRIVER_MASTER = [
+export const DRIVER_MASTER: DriverMaster[] = [
   { name: 'Murugan S', licence: 'TN38 20110004412', expiry: '14 Mar 2028', expiring: false, vehicle: 'TN38 AB 4412', credential: 'Port pass · valid' },
   { name: 'Rafiq A', licence: 'KL07 20140091877', expiry: '02 Nov 2026', expiring: true, vehicle: 'TN45 CQ 9087', credential: 'Port pass · valid' },
   { name: 'Prakash N', licence: 'KA01 20090037741', expiry: '27 Jun 2027', expiring: false, vehicle: 'KA01 MD 7731', credential: 'Hazmat endorsed' },

@@ -1,19 +1,20 @@
 import { useState } from 'react';
-import type { ExpenseFormState, MonthlyExpense } from '../types';
-import { CATEGORY_TINT, EXPENSE_CATEGORIES, VEHICLES } from '../data/mockData';
+import type { ExpenseFormState, MonthlyExpense, Vehicle } from '../types';
+import { CATEGORY_TINT, EXPENSE_CATEGORIES } from '../data/mockData';
 import { rupees, toNumber } from '../utils/calc';
 
-function blankExpense(): ExpenseFormState {
-  return { date: '2026-09-11', vehicle: VEHICLES[0].id, driver: '', category: EXPENSE_CATEGORIES[0], amount: '0', remarks: '' };
+function blankExpense(defaultVehicle: string): ExpenseFormState {
+  return { date: '2026-09-11', vehicle: defaultVehicle, driver: '', category: EXPENSE_CATEGORIES[0], amount: '0', remarks: '' };
 }
 
 interface Props {
   expenses: MonthlyExpense[];
+  vehicles: Vehicle[];
   onAdd: (e: MonthlyExpense) => void;
 }
 
-export function MonthlyExpenses({ expenses, onAdd }: Props) {
-  const [exp, setExp] = useState<ExpenseFormState>(blankExpense());
+export function MonthlyExpenses({ expenses, vehicles, onAdd }: Props) {
+  const [exp, setExp] = useState<ExpenseFormState>(() => blankExpense(vehicles[0]?.id ?? ''));
 
   const set = (k: keyof ExpenseFormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setExp((f) => ({ ...f, [k]: e.target.value } as ExpenseFormState));
@@ -43,7 +44,7 @@ export function MonthlyExpenses({ expenses, onAdd }: Props) {
           <div className="field">
             <label>Vehicle</label>
             <select className="input" value={exp.vehicle} onChange={set('vehicle')}>
-              {VEHICLES.map((v) => <option key={v.id} value={v.id}>{v.id}</option>)}
+              {vehicles.map((v) => <option key={v.id} value={v.id}>{v.id}</option>)}
             </select>
           </div>
           <div className="field"><label>Driver</label><input className="input" type="text" placeholder="Driver name" value={exp.driver} onChange={set('driver')} /></div>

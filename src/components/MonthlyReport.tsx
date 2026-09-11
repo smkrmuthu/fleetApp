@@ -1,13 +1,14 @@
-import type { MonthlyExpense, Trip } from '../types';
+import type { MonthlyExpense, Trip, Vehicle } from '../types';
 import { aggregateByVehicle } from '../utils/aggregate';
 import { formatNum, rupees, tripCost } from '../utils/calc';
 
 interface Props {
   trips: Trip[];
   expenses: MonthlyExpense[];
+  vehicles: Vehicle[];
 }
 
-export function MonthlyReport({ trips, expenses }: Props) {
+export function MonthlyReport({ trips, expenses, vehicles }: Props) {
   const totals = trips.reduce(
     (a, t) => {
       const c = tripCost(t);
@@ -21,7 +22,7 @@ export function MonthlyReport({ trips, expenses }: Props) {
   const monthlyTotal = expenses.reduce((a, e) => a + e.amount, 0);
   const profit = totals.rev - totals.exp - monthlyTotal;
 
-  const byVehicle = aggregateByVehicle(trips, expenses);
+  const byVehicle = aggregateByVehicle(trips, expenses, vehicles);
   const maxPerKm = Math.max(...byVehicle.map((b) => (b.km ? b.cost / b.km : 0)), 1);
 
   const headline = [
