@@ -12,10 +12,10 @@ the intended Postgres schema and API contract.
 
 ## Live prototype
 
-**[View the click-through prototype](https://claude.ai/code/artifact/eb0afa6d-914c-40d6-bf9f-8a0999c0f360)**
-— the same mock sign-in and all nine screens, no install required. It's
-private by default; use the page's own Share menu if you want to send it to
-someone who doesn't already have access.
+**[smkrmuthu.github.io/fleetApp](https://smkrmuthu.github.io/fleetApp/)**
+— the same mock sign-in and all nine screens, publicly viewable, no install
+required. Redeploys automatically on every push to `main` via
+[.github/workflows/deploy.yml](.github/workflows/deploy.yml).
 
 ## Stack
 
