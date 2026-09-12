@@ -1,10 +1,10 @@
-import type { DriverMaster, ExpenseCategory, MonthlyExpense, Role, TabId, Trip, Vehicle } from '../types';
+import type { DriverMaster, ExpenseCategory, MonthlyExpense, Role, TabId, Trip, UserAccount, Vehicle } from '../types';
 
 export const VEHICLES: Vehicle[] = [
-  { id: 'TN38 AB 4412', model: 'Tata Signa 4825' },
-  { id: 'TN45 CQ 9087', model: 'Ashok Leyland 3520' },
-  { id: 'KA01 MD 7731', model: 'BharatBenz 2823' },
-  { id: 'TN52 BK 2290', model: 'Eicher Pro 6028' }
+  { id: 'TN38 AB 4412', model: 'Tata Signa 4825', fcDate: '15 Mar 2025', renewalDate: '14 Mar 2027', renewalDue: false },
+  { id: 'TN45 CQ 9087', model: 'Ashok Leyland 3520', fcDate: '30 Sep 2024', renewalDate: '29 Sep 2026', renewalDue: true },
+  { id: 'KA01 MD 7731', model: 'BharatBenz 2823', fcDate: '05 Jan 2025', renewalDate: '04 Jan 2027', renewalDue: false },
+  { id: 'TN52 BK 2290', model: 'Eicher Pro 6028', fcDate: '05 Nov 2024', renewalDate: '04 Nov 2026', renewalDue: true }
 ];
 
 export const TRIPS: Trip[] = [
@@ -79,7 +79,7 @@ export const DEMO_ACCOUNTS: { name: string; role: string; key: Role }[] = [
   { name: 'A. Balan · +91 94440 61928', role: 'Manager', key: 'Manager' }
 ];
 
-export const USER_ROWS = [
+export const USER_ROWS: UserAccount[] = [
   { name: 'A. Balan', role: 'Manager', phone: '+91 94440 61928', branch: 'Chennai HQ', seen: 'Today, 09:12', access: 'All screens, month close', isManager: true },
   { name: 'Kavitha R', role: 'Documentation', phone: '+91 90031 77402', branch: 'Chennai HQ', seen: 'Today, 08:40', access: 'Movements, expenses, summary', isManager: false },
   { name: 'Suresh V', role: 'Documentation', phone: '+91 98847 30215', branch: 'Cochin', seen: 'Yesterday, 18:22', access: 'Movements, expenses, summary', isManager: false },
@@ -108,7 +108,7 @@ export const SCAN_FIELDS = [
 export const SCHEMA_ENTITIES = [
   { name: 'orgs', tag: 'tenant root', note: 'Every other table carries org_id; row-level security keys off it.', fields: [{ n: 'id', t: 'uuid pk' }, { n: 'name', t: 'text' }, { n: 'currency', t: 'char(3)' }, { n: 'fy_start_month', t: 'int' }] },
   { name: 'users', tag: 'auth', note: 'Role decides which screens and which rows are visible.', fields: [{ n: 'id', t: 'uuid pk' }, { n: 'org_id', t: 'fk orgs' }, { n: 'role', t: 'driver|office|manager' }, { n: 'phone', t: 'text unique' }, { n: 'driver_id', t: 'fk drivers' }] },
-  { name: 'vehicles', tag: 'master', note: 'Soft-deleted, never removed — old trips must still resolve.', fields: [{ n: 'id', t: 'uuid pk' }, { n: 'org_id', t: 'fk orgs' }, { n: 'reg_no', t: 'text' }, { n: 'model', t: 'text' }, { n: 'tare_kg', t: 'int' }, { n: 'active', t: 'bool' }] },
+  { name: 'vehicles', tag: 'master', note: 'Soft-deleted, never removed — old trips must still resolve. Fitness certificate renewal drives a reminder job, same as licence expiry.', fields: [{ n: 'id', t: 'uuid pk' }, { n: 'org_id', t: 'fk orgs' }, { n: 'reg_no', t: 'text' }, { n: 'model', t: 'text' }, { n: 'tare_kg', t: 'int' }, { n: 'fc_date', t: 'date' }, { n: 'fc_renewal_due', t: 'date' }, { n: 'active', t: 'bool' }] },
   { name: 'drivers', tag: 'master', note: 'Licence expiry drives a reminder job.', fields: [{ n: 'id', t: 'uuid pk' }, { n: 'org_id', t: 'fk orgs' }, { n: 'name', t: 'text' }, { n: 'licence_no', t: 'text' }, { n: 'licence_expiry', t: 'date' }] },
   { name: 'shipments', tag: 'trade root', note: 'A BL can need several movements; costs hang off the shipment, not the truck.', fields: [{ n: 'id', t: 'uuid pk' }, { n: 'org_id', t: 'fk orgs' }, { n: 'bl_no', t: 'text' }, { n: 'direction', t: 'import|export' }, { n: 'port_code', t: 'text (UN/LOCODE)' }, { n: 'consignee_id', t: 'fk parties' }, { n: 'cha_id', t: 'fk parties' }, { n: 'cleared_on', t: 'date' }, { n: 'incoterm', t: 'text' }] },
   { name: 'containers', tag: 'master', note: 'One shipment, many containers; size decides the haulage rate.', fields: [{ n: 'id', t: 'uuid pk' }, { n: 'shipment_id', t: 'fk shipments' }, { n: 'container_no', t: 'text' }, { n: 'size_type', t: '20GP|40HC|…' }, { n: 'seal_no', t: 'text' }, { n: 'gross_kg', t: 'int' }] },

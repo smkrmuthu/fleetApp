@@ -44,14 +44,18 @@ create table users (
 
 -- ── masters ────────────────────────────────────────────────────────────────
 create table vehicles (
-  id        uuid primary key default gen_random_uuid(),
-  org_id    uuid not null references orgs on delete cascade,
-  reg_no    text not null,
-  model     text,
-  tare_kg   int,
-  active    boolean not null default true,         -- soft delete; never hard delete
+  id             uuid primary key default gen_random_uuid(),
+  org_id         uuid not null references orgs on delete cascade,
+  reg_no         text not null,
+  model          text,
+  tare_kg        int,
+  fc_date        date,                             -- fitness certificate last issued/renewed
+  fc_renewal_due date,                              -- next renewal deadline
+  active         boolean not null default true,     -- soft delete; never hard delete
   unique (org_id, reg_no)
 );
+create index vehicles_fc_renewal_due on vehicles (org_id, fc_renewal_due)
+  where active and fc_renewal_due is not null;
 
 create table drivers (
   id              uuid primary key default gen_random_uuid(),

@@ -1,26 +1,36 @@
 import { useState } from 'react';
-import type { DriverMaster, Trip, Vehicle } from '../types';
-import { USER_ROWS } from '../data/mockData';
+import type { DriverMaster, Trip, UserAccount, Vehicle } from '../types';
 import { formatNum, rupees, tripCost } from '../utils/calc';
 
 interface Props {
   trips: Trip[];
   vehicles: Vehicle[];
   drivers: DriverMaster[];
+  users: UserAccount[];
   onAddVehicle: (v: Vehicle) => void;
   onRemoveVehicle: (id: string) => void;
   onAddDriver: (d: DriverMaster) => void;
   onRemoveDriver: (name: string) => void;
+  onRemoveUser: (phone: string) => void;
+  canDeleteAccounts: boolean;
 }
 
-export function People({ trips, vehicles, drivers, onAddVehicle, onRemoveVehicle, onAddDriver, onRemoveDriver }: Props) {
-  const [newVehicle, setNewVehicle] = useState({ id: '', model: '' });
+export function People({
+  trips, vehicles, drivers, users, onAddVehicle, onRemoveVehicle, onAddDriver, onRemoveDriver, onRemoveUser, canDeleteAccounts
+}: Props) {
+  const [newVehicle, setNewVehicle] = useState({ id: '', model: '', fcDate: '', renewalDate: '' });
   const [newDriver, setNewDriver] = useState({ name: '', licence: '', expiry: '', vehicle: vehicles[0]?.id ?? '' });
 
   function addVehicle() {
     if (!newVehicle.id.trim()) return;
-    onAddVehicle({ id: newVehicle.id.trim(), model: newVehicle.model.trim() || '—' });
-    setNewVehicle({ id: '', model: '' });
+    onAddVehicle({
+      id: newVehicle.id.trim(),
+      model: newVehicle.model.trim() || '—',
+      fcDate: newVehicle.fcDate || '—',
+      renewalDate: newVehicle.renewalDate || '—',
+      renewalDue: false
+    });
+    setNewVehicle({ id: '', model: '', fcDate: '', renewalDate: '' });
   }
 
   function addDriver() {
@@ -62,7 +72,7 @@ export function People({ trips, vehicles, drivers, onAddVehicle, onRemoveVehicle
     <section>
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap', marginBottom: 18 }}>
         <div>
-          <div className="kicker">Meridian Exim · {USER_ROWS.length} accounts, 3 branches</div>
+          <div className="kicker">Meridian Exim · {users.length} accounts, 3 branches</div>
           <h1 style={{ fontSize: 34, letterSpacing: '-0.02em' }}>People</h1>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
@@ -72,12 +82,15 @@ export function People({ trips, vehicles, drivers, onAddVehicle, onRemoveVehicle
 
       <h2 style={{ fontSize: 20, marginBottom: 12 }}>User accounts</h2>
       <div className="scroll-x" style={{ border: '2px solid var(--color-divider)', marginBottom: 30 }}>
-        <table className="table" style={{ minWidth: 1000 }}>
+        <table className="table" style={{ minWidth: canDeleteAccounts ? 1100 : 1000 }}>
           <thead>
-            <tr><th>Name</th><th>Role</th><th>Mobile</th><th>Branch</th><th>Can see</th><th>Last active</th></tr>
+            <tr>
+              <th>Name</th><th>Role</th><th>Mobile</th><th>Branch</th><th>Can see</th><th>Last active</th>
+              {canDeleteAccounts && <th></th>}
+            </tr>
           </thead>
           <tbody>
-            {USER_ROWS.map((u) => (
+            {users.map((u) => (
               <tr key={u.phone}>
                 <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{u.name}</td>
                 <td>{u.isManager ? <span className="tag tag-accent">{u.role}</span> : <span className="tag tag-outline">{u.role}</span>}</td>
@@ -85,6 +98,11 @@ export function People({ trips, vehicles, drivers, onAddVehicle, onRemoveVehicle
                 <td>{u.branch}</td>
                 <td style={{ color: 'var(--color-neutral-700)' }}>{u.access}</td>
                 <td style={{ whiteSpace: 'nowrap' }}>{u.seen}</td>
+                {canDeleteAccounts && (
+                  <td style={{ textAlign: 'right' }}>
+                    <button type="button" className="btn btn-ghost" onClick={() => onRemoveUser(u.phone)}>Delete account</button>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
@@ -96,26 +114,32 @@ export function People({ trips, vehicles, drivers, onAddVehicle, onRemoveVehicle
         <div className="filters-grid">
           <div className="field"><label>Registration no</label><input className="input" type="text" placeholder="TN00 XX 0000" value={newVehicle.id} onChange={(e) => setNewVehicle((v) => ({ ...v, id: e.target.value }))} /></div>
           <div className="field"><label>Model</label><input className="input" type="text" placeholder="Make and model" value={newVehicle.model} onChange={(e) => setNewVehicle((v) => ({ ...v, model: e.target.value }))} /></div>
+          <div className="field"><label>FC date</label><input className="input" type="date" value={newVehicle.fcDate} onChange={(e) => setNewVehicle((v) => ({ ...v, fcDate: e.target.value }))} /></div>
+          <div className="field"><label>Renewal date</label><input className="input" type="date" value={newVehicle.renewalDate} onChange={(e) => setNewVehicle((v) => ({ ...v, renewalDate: e.target.value }))} /></div>
           <button type="button" className="btn btn-primary" style={{ justifySelf: 'start' }} onClick={addVehicle}>Add truck</button>
         </div>
       </div>
       <div className="scroll-x" style={{ border: '2px solid var(--color-divider)', marginBottom: 30 }}>
-        <table className="table" style={{ minWidth: 600 }}>
+        <table className="table" style={{ minWidth: 800 }}>
           <thead>
-            <tr><th>Vehicle</th><th>Model</th><th></th></tr>
+            <tr><th>Vehicle</th><th>Model</th><th>FC date</th><th>Renewal date</th><th></th></tr>
           </thead>
           <tbody>
             {vehicles.map((v) => (
               <tr key={v.id}>
                 <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{v.id}</td>
                 <td style={{ color: 'var(--color-neutral-700)' }}>{v.model}</td>
+                <td style={{ whiteSpace: 'nowrap' }}>{v.fcDate}</td>
+                <td style={{ whiteSpace: 'nowrap' }}>
+                  {v.renewalDue ? <span className="tag tag-accent">{v.renewalDate}</span> : <span>{v.renewalDate}</span>}
+                </td>
                 <td style={{ textAlign: 'right' }}>
                   <button type="button" className="btn btn-ghost" onClick={() => onRemoveVehicle(v.id)}>Delete truck</button>
                 </td>
               </tr>
             ))}
             {vehicles.length === 0 && (
-              <tr><td colSpan={3} style={{ color: 'var(--color-neutral-700)' }}>No trucks yet.</td></tr>
+              <tr><td colSpan={5} style={{ color: 'var(--color-neutral-700)' }}>No trucks yet.</td></tr>
             )}
           </tbody>
         </table>
@@ -170,9 +194,10 @@ export function People({ trips, vehicles, drivers, onAddVehicle, onRemoveVehicle
         </table>
       </div>
       <p style={{ color: 'var(--color-neutral-700)', maxWidth: '74ch', lineHeight: 1.6, marginTop: 16 }}>
-        Licences inside 60 days of expiry are flagged; the same check runs nightly and pushes a notification to the manager.
-        A driver account only ever reads its own movements — enforced in the database, not the client. Adding or removing
-        trucks and drivers is available to Office and Manager only.
+        Licences and FC renewals inside 60 days are flagged; the same check runs nightly and pushes a notification to
+        the manager. A driver account only ever reads its own movements — enforced in the database, not the client.
+        Adding or removing trucks and drivers is available to Office and Manager; deleting a user account is
+        Manager only.
       </p>
     </section>
   );

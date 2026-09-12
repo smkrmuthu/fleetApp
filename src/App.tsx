@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import type { DriverMaster, MonthlyExpense, Role, TabId, Trip, Vehicle } from './types';
-import { DRIVER_MASTER, MONTHLY_EXPENSES, ROLE_TABS, TRIPS, VEHICLES } from './data/mockData';
+import type { DriverMaster, MonthlyExpense, Role, TabId, Trip, UserAccount, Vehicle } from './types';
+import { DRIVER_MASTER, MONTHLY_EXPENSES, ROLE_TABS, TRIPS, USER_ROWS, VEHICLES } from './data/mockData';
 import { SignIn } from './components/SignIn';
 import { AppShell } from './components/AppShell';
 import { MovementSummary } from './components/MovementSummary';
@@ -19,6 +19,7 @@ export function App() {
   const [expenses, setExpenses] = useState<MonthlyExpense[]>(MONTHLY_EXPENSES);
   const [vehicles, setVehicles] = useState<Vehicle[]>(VEHICLES);
   const [drivers, setDrivers] = useState<DriverMaster[]>(DRIVER_MASTER);
+  const [users, setUsers] = useState<UserAccount[]>(USER_ROWS);
   const [vehicleFilter, setVehicleFilter] = useState('all');
   const [driverFilter, setDriverFilter] = useState('');
 
@@ -68,6 +69,10 @@ export function App() {
     setDrivers((prev) => prev.filter((d) => d.name !== name));
   }
 
+  function removeUser(phone: string) {
+    setUsers((prev) => prev.filter((u) => u.phone !== phone));
+  }
+
   // Drivers only ever see their own rows — the demo driver account is Murugan S.
   const visibleTrips = role === 'Driver' ? trips.filter((t) => t.driver === 'Murugan S') : trips;
   const showFinancials = role !== 'Driver';
@@ -111,10 +116,13 @@ export function App() {
           trips={trips}
           vehicles={vehicles}
           drivers={drivers}
+          users={users}
           onAddVehicle={addVehicle}
           onRemoveVehicle={removeVehicle}
           onAddDriver={addDriver}
           onRemoveDriver={removeDriver}
+          onRemoveUser={removeUser}
+          canDeleteAccounts={role === 'Manager'}
         />
       )}
       {tab === 'schema' && <DataModel />}

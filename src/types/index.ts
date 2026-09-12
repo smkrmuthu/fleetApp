@@ -9,6 +9,9 @@ export type TripStatus = 'pending' | 'approved';
 export interface Vehicle {
   id: string;
   model: string;
+  fcDate: string;
+  renewalDate: string;
+  renewalDue: boolean;
 }
 
 export interface DriverMaster {
@@ -18,6 +21,16 @@ export interface DriverMaster {
   expiring: boolean;
   vehicle: string;
   credential: string;
+}
+
+export interface UserAccount {
+  name: string;
+  role: string;
+  phone: string;
+  branch: string;
+  access: string;
+  seen: string;
+  isManager: boolean;
 }
 
 export interface Trip {
