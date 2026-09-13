@@ -54,10 +54,16 @@ export function App() {
         message: `${trip.driver} logged ${trip.vehicle} — pending approval`,
         tab: 'triplog',
         createdAt: 'Just now',
-        read: false
+        read: false,
+        relatedTripId: trip.id
       };
       setNotifications((prev) => [notification, ...prev]);
     }
+  }
+
+  function approveTrip(tripId: string) {
+    setTrips((prev) => prev.map((t) => (t.id === tripId ? { ...t, status: 'approved' } : t)));
+    setNotifications((prev) => prev.map((n) => (n.relatedTripId === tripId ? { ...n, read: true } : n)));
   }
 
   function openNotification(n: AppNotification) {
@@ -135,6 +141,7 @@ export function App() {
           onDriverFilter={setDriverFilter}
           onResetFilters={resetFilters}
           onAddMovement={() => setTab('addtrip')}
+          onApprove={approveTrip}
           isDriver={role === 'Driver'}
         />
       )}

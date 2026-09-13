@@ -10,10 +10,11 @@ interface Props {
   onDriverFilter: (v: string) => void;
   onResetFilters: () => void;
   onAddMovement: () => void;
+  onApprove: (tripId: string) => void;
   isDriver: boolean;
 }
 
-export function TripLog({ trips, vehicles, vehicleFilter, driverFilter, onVehicleFilter, onDriverFilter, onResetFilters, onAddMovement, isDriver }: Props) {
+export function TripLog({ trips, vehicles, vehicleFilter, driverFilter, onVehicleFilter, onDriverFilter, onResetFilters, onAddMovement, onApprove, isDriver }: Props) {
   const showFinancials = !isDriver;
   const showActions = !isDriver;
   const rows = trips.filter(
@@ -99,10 +100,24 @@ export function TripLog({ trips, vehicles, vehicleFilter, driverFilter, onVehicl
                         <span style={{ color: c.profit >= 0 ? 'var(--color-profit)' : 'var(--color-accent-700)', fontWeight: 700 }}>{rupees(c.profit)}</span>
                       </td>
                     )}
-                    <td>
-                      {t.status === 'pending'
-                        ? <span className="tag tag-accent">Pending</span>
-                        : <span className="tag tag-outline">Approved</span>}
+                    <td style={{ whiteSpace: 'nowrap' }}>
+                      {t.status === 'pending' ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span className="tag tag-accent">Pending</span>
+                          {!isDriver && (
+                            <button
+                              type="button"
+                              className="btn btn-ghost"
+                              style={{ padding: '2px 8px', fontSize: 12 }}
+                              onClick={() => onApprove(t.id)}
+                            >
+                              Approve
+                            </button>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="tag tag-outline">Approved</span>
+                      )}
                     </td>
                   </tr>
                 );

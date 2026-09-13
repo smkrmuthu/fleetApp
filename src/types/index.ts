@@ -32,6 +32,7 @@ export interface AppNotification {
   tab: TabId;
   createdAt: string;
   read: boolean;
+  relatedTripId?: string;
 }
 
 export interface UserAccount {
