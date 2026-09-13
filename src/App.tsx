@@ -96,7 +96,6 @@ export function App() {
 
   // Drivers only ever see their own rows — the demo driver account is Murugan S.
   const visibleTrips = role === 'Driver' ? trips.filter((t) => t.driver === 'Murugan S') : trips;
-  const showFinancials = role !== 'Driver';
 
   if (!authed) {
     return <SignIn onSignIn={signIn} />;
@@ -136,8 +135,7 @@ export function App() {
           onDriverFilter={setDriverFilter}
           onResetFilters={resetFilters}
           onAddMovement={() => setTab('addtrip')}
-          showFinancials={showFinancials}
-          showActions={role !== 'Driver'}
+          isDriver={role === 'Driver'}
         />
       )}
       {tab === 'expenses' && <MonthlyExpenses expenses={expenses} vehicles={vehicles} onAdd={addExpense} />}

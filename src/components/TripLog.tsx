@@ -10,11 +10,12 @@ interface Props {
   onDriverFilter: (v: string) => void;
   onResetFilters: () => void;
   onAddMovement: () => void;
-  showFinancials: boolean;
-  showActions: boolean;
+  isDriver: boolean;
 }
 
-export function TripLog({ trips, vehicles, vehicleFilter, driverFilter, onVehicleFilter, onDriverFilter, onResetFilters, onAddMovement, showFinancials, showActions }: Props) {
+export function TripLog({ trips, vehicles, vehicleFilter, driverFilter, onVehicleFilter, onDriverFilter, onResetFilters, onAddMovement, isDriver }: Props) {
+  const showFinancials = !isDriver;
+  const showActions = !isDriver;
   const rows = trips.filter(
     (t) => (vehicleFilter === 'all' || t.vehicle === vehicleFilter) && (!driverFilter || t.driver.toLowerCase().includes(driverFilter.toLowerCase()))
   );
@@ -46,7 +47,9 @@ export function TripLog({ trips, vehicles, vehicleFilter, driverFilter, onVehicl
               {vehicles.map((v) => <option key={v.id} value={v.id}>{v.id}</option>)}
             </select>
           </div>
-          <div className="field"><label>Driver</label><input className="input" type="text" placeholder="Driver name" value={driverFilter} onChange={(e) => onDriverFilter(e.target.value)} /></div>
+          {!isDriver && (
+            <div className="field"><label>Driver</label><input className="input" type="text" placeholder="Driver name" value={driverFilter} onChange={(e) => onDriverFilter(e.target.value)} /></div>
+          )}
           <button type="button" className="btn btn-ghost" style={{ justifySelf: 'start' }} onClick={onResetFilters}>Reset filters</button>
         </div>
       </div>
