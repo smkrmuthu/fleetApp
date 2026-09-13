@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
-import type { Role, TabId } from '../types';
+import type { AppNotification, Role, TabId } from '../types';
 import { ROLE_NOTE, ROLE_TABS, ROLE_USER, TAB_LABELS } from '../data/mockData';
+import { NotificationBell } from './NotificationBell';
 
 interface Props {
   role: Role;
@@ -8,12 +9,17 @@ interface Props {
   onRoleChange: (r: Role) => void;
   onTabChange: (t: TabId) => void;
   onSignOut: () => void;
+  notifications: AppNotification[];
+  onOpenNotification: (n: AppNotification) => void;
+  onMarkAllNotificationsRead: () => void;
   children: ReactNode;
 }
 
 const ALL_ROLES: Role[] = ['Driver', 'Office', 'Manager'];
 
-export function AppShell({ role, tab, onRoleChange, onTabChange, onSignOut, children }: Props) {
+export function AppShell({
+  role, tab, onRoleChange, onTabChange, onSignOut, notifications, onOpenNotification, onMarkAllNotificationsRead, children
+}: Props) {
   const tabs = ROLE_TABS[role];
 
   return (
@@ -44,6 +50,9 @@ export function AppShell({ role, tab, onRoleChange, onTabChange, onSignOut, chil
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            {role !== 'Driver' && (
+              <NotificationBell notifications={notifications} onOpen={onOpenNotification} onMarkAllRead={onMarkAllNotificationsRead} />
+            )}
             <div style={{ textAlign: 'right', lineHeight: 1.25 }}>
               <div style={{ fontWeight: 600 }}>{ROLE_USER[role]}</div>
               <div style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-neutral-700)' }}>Meridian Exim · Chennai</div>

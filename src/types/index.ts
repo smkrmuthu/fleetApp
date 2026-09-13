@@ -23,6 +23,17 @@ export interface DriverMaster {
   credential: string;
 }
 
+export type NotificationKind = 'approval' | 'alert';
+
+export interface AppNotification {
+  id: string;
+  kind: NotificationKind;
+  message: string;
+  tab: TabId;
+  createdAt: string;
+  read: boolean;
+}
+
 export interface UserAccount {
   name: string;
   role: string;

@@ -1,4 +1,4 @@
-import type { DriverMaster, ExpenseCategory, MonthlyExpense, Role, TabId, Trip, UserAccount, Vehicle } from '../types';
+import type { AppNotification, DriverMaster, ExpenseCategory, MonthlyExpense, Role, TabId, Trip, UserAccount, Vehicle } from '../types';
 
 export const VEHICLES: Vehicle[] = [
   { id: 'TN38 AB 4412', model: 'Tata Signa 4825', fcDate: '15 Mar 2025', renewalDate: '14 Mar 2027', renewalDue: false },
@@ -94,6 +94,15 @@ export const DRIVER_MASTER: DriverMaster[] = [
   { name: 'Rafiq A', licence: 'KL07 20140091877', expiry: '02 Nov 2026', expiring: true, vehicle: 'TN45 CQ 9087', credential: 'Port pass · valid' },
   { name: 'Prakash N', licence: 'KA01 20090037741', expiry: '27 Jun 2027', expiring: false, vehicle: 'KA01 MD 7731', credential: 'Hazmat endorsed' },
   { name: 'Ilango R', licence: 'TN52 20160112290', expiry: '09 Oct 2026', expiring: true, vehicle: 'TN52 BK 2290', credential: 'Port pass · renew' }
+];
+
+export const NOTIFICATIONS: AppNotification[] = [
+  { id: 'n1', kind: 'approval', message: 'Ilango R logged TN52 BK 2290 — pending approval', tab: 'triplog', createdAt: '11 Sep, 12:40', read: false },
+  { id: 'n2', kind: 'approval', message: 'Prakash N logged KA01 MD 7731 — pending approval', tab: 'triplog', createdAt: '10 Sep, 10:15', read: false },
+  { id: 'n3', kind: 'alert', message: "Ilango R's licence expires 09 Oct 2026", tab: 'people', createdAt: '10 Sep, 06:00', read: false },
+  { id: 'n4', kind: 'alert', message: "Rafiq A's licence expires 02 Nov 2026", tab: 'people', createdAt: '10 Sep, 06:00', read: false },
+  { id: 'n5', kind: 'alert', message: 'TN52 BK 2290 fitness certificate renewal due 04 Nov 2026', tab: 'people', createdAt: '10 Sep, 06:00', read: false },
+  { id: 'n6', kind: 'alert', message: 'TN45 CQ 9087 fitness certificate renewal due 29 Sep 2026', tab: 'people', createdAt: '10 Sep, 06:00', read: false }
 ];
 
 export const SCAN_FIELDS = [

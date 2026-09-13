@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import type { DriverMaster, MonthlyExpense, Role, TabId, Trip, UserAccount, Vehicle } from './types';
-import { DRIVER_MASTER, MONTHLY_EXPENSES, ROLE_TABS, TRIPS, USER_ROWS, VEHICLES } from './data/mockData';
+import type { AppNotification, DriverMaster, MonthlyExpense, Role, TabId, Trip, UserAccount, Vehicle } from './types';
+import { DRIVER_MASTER, MONTHLY_EXPENSES, NOTIFICATIONS, ROLE_TABS, TRIPS, USER_ROWS, VEHICLES } from './data/mockData';
 import { SignIn } from './components/SignIn';
 import { AppShell } from './components/AppShell';
 import { MovementSummary } from './components/MovementSummary';
@@ -20,6 +20,7 @@ export function App() {
   const [vehicles, setVehicles] = useState<Vehicle[]>(VEHICLES);
   const [drivers, setDrivers] = useState<DriverMaster[]>(DRIVER_MASTER);
   const [users, setUsers] = useState<UserAccount[]>(USER_ROWS);
+  const [notifications, setNotifications] = useState<AppNotification[]>(NOTIFICATIONS);
   const [vehicleFilter, setVehicleFilter] = useState('all');
   const [driverFilter, setDriverFilter] = useState('');
 
@@ -46,6 +47,26 @@ export function App() {
   function addTrip(trip: Trip) {
     setTrips((prev) => [trip, ...prev]);
     setTab('triplog');
+    if (trip.status === 'pending') {
+      const notification: AppNotification = {
+        id: 'n' + Date.now(),
+        kind: 'approval',
+        message: `${trip.driver} logged ${trip.vehicle} — pending approval`,
+        tab: 'triplog',
+        createdAt: 'Just now',
+        read: false
+      };
+      setNotifications((prev) => [notification, ...prev]);
+    }
+  }
+
+  function openNotification(n: AppNotification) {
+    setNotifications((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)));
+    setTab(n.tab);
+  }
+
+  function markAllNotificationsRead() {
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
   }
 
   function addExpense(expense: MonthlyExpense) {
@@ -82,7 +103,16 @@ export function App() {
   }
 
   return (
-    <AppShell role={role} tab={tab} onRoleChange={changeRole} onTabChange={setTab} onSignOut={signOut}>
+    <AppShell
+      role={role}
+      tab={tab}
+      onRoleChange={changeRole}
+      onTabChange={setTab}
+      onSignOut={signOut}
+      notifications={notifications}
+      onOpenNotification={openNotification}
+      onMarkAllNotificationsRead={markAllNotificationsRead}
+    >
       {tab === 'summary' && (
         <MovementSummary
           trips={visibleTrips}
