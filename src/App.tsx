@@ -137,6 +137,7 @@ export function App() {
           onResetFilters={resetFilters}
           onAddMovement={() => setTab('addtrip')}
           showFinancials={showFinancials}
+          showActions={role !== 'Driver'}
         />
       )}
       {tab === 'expenses' && <MonthlyExpenses expenses={expenses} vehicles={vehicles} onAdd={addExpense} />}

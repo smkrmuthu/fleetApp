@@ -11,9 +11,10 @@ interface Props {
   onResetFilters: () => void;
   onAddMovement: () => void;
   showFinancials: boolean;
+  showActions: boolean;
 }
 
-export function TripLog({ trips, vehicles, vehicleFilter, driverFilter, onVehicleFilter, onDriverFilter, onResetFilters, onAddMovement, showFinancials }: Props) {
+export function TripLog({ trips, vehicles, vehicleFilter, driverFilter, onVehicleFilter, onDriverFilter, onResetFilters, onAddMovement, showFinancials, showActions }: Props) {
   const rows = trips.filter(
     (t) => (vehicleFilter === 'all' || t.vehicle === vehicleFilter) && (!driverFilter || t.driver.toLowerCase().includes(driverFilter.toLowerCase()))
   );
@@ -25,11 +26,13 @@ export function TripLog({ trips, vehicles, vehicleFilter, driverFilter, onVehicl
           <div className="kicker">{rows.length} movements · September 2026</div>
           <h1 style={{ fontSize: 34, letterSpacing: '-0.02em' }}>Trip Log</h1>
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button type="button" className="btn btn-secondary">Export Excel</button>
-          <button type="button" className="btn btn-secondary">Backup data</button>
-          <button type="button" className="btn btn-primary" onClick={onAddMovement}>Add movement</button>
-        </div>
+        {showActions && (
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button type="button" className="btn btn-secondary">Export Excel</button>
+            <button type="button" className="btn btn-secondary">Backup data</button>
+            <button type="button" className="btn btn-primary" onClick={onAddMovement}>Add movement</button>
+          </div>
+        )}
       </div>
 
       <div style={{ border: '2px solid var(--color-divider)', padding: 16, marginBottom: 20 }}>
