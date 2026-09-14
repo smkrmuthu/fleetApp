@@ -1,12 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { DriverMaster, Trip, TripDocument, TripExpenseKind, TripExpenseLine, TripFormState, Vehicle } from '../types';
 import { TRIP_EXPENSE_LABEL } from '../data/mockData';
-import { dieselLitres, rupees, toIsoDate, toNumber } from '../utils/calc';
+import { dieselLitres, rupees, todayIso, toNumber } from '../utils/calc';
 import { fetchDocumentBlobUrl, parseDisplayDate, scanReceipt, type ScannedReceipt } from '../lib/api';
-
-function todayIso(): string {
-  return toIsoDate(new Date());
-}
 
 function fileToBase64(file: File): Promise<{ base64: string; mimeType: string }> {
   return new Promise((resolve, reject) => {

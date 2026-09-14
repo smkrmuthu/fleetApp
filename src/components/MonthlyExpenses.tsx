@@ -1,20 +1,26 @@
 import { useState } from 'react';
 import type { ExpenseFormState, MonthlyExpense, Vehicle } from '../types';
 import { CATEGORY_TINT, EXPENSE_CATEGORIES } from '../data/mockData';
-import { rupees, toNumber } from '../utils/calc';
+import { dateInRange, formatDateRange, rupees, todayIso, toNumber } from '../utils/calc';
 
 function blankExpense(defaultVehicle: string): ExpenseFormState {
-  return { date: '2026-09-11', vehicle: defaultVehicle, driver: '', category: EXPENSE_CATEGORIES[0], amount: '0', remarks: '' };
+  return { date: todayIso(), vehicle: defaultVehicle, driver: '', category: EXPENSE_CATEGORIES[0], amount: '0', remarks: '' };
 }
 
 interface Props {
   expenses: MonthlyExpense[];
   vehicles: Vehicle[];
+  dateFrom: string;
+  dateTo: string;
+  onDateFrom: (v: string) => void;
+  onDateTo: (v: string) => void;
+  onResetFilters: () => void;
   onAdd: (e: MonthlyExpense) => void;
 }
 
-export function MonthlyExpenses({ expenses, vehicles, onAdd }: Props) {
+export function MonthlyExpenses({ expenses: allExpenses, vehicles, dateFrom, dateTo, onDateFrom, onDateTo, onResetFilters, onAdd }: Props) {
   const [exp, setExp] = useState<ExpenseFormState>(() => blankExpense(vehicles[0]?.id ?? ''));
+  const expenses = allExpenses.filter((e) => dateInRange(e.date, dateFrom, dateTo));
 
   const set = (k: keyof ExpenseFormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setExp((f) => ({ ...f, [k]: e.target.value } as ExpenseFormState));
@@ -34,7 +40,7 @@ export function MonthlyExpenses({ expenses, vehicles, onAdd }: Props) {
   return (
     <section>
       <div style={{ marginBottom: 18 }}>
-        <div className="kicker">Admin and documentation resource</div>
+        <div className="kicker">Admin and documentation resource · {formatDateRange(dateFrom, dateTo)}</div>
         <h1 style={{ fontSize: 34, letterSpacing: '-0.02em' }}>Monthly Expenses</h1>
       </div>
 
@@ -72,7 +78,20 @@ export function MonthlyExpenses({ expenses, vehicles, onAdd }: Props) {
         ))}
       </div>
 
+      <div style={{ border: '2px solid var(--color-divider)', padding: 16, marginBottom: 20 }}>
+        <div className="filters-grid">
+          <div className="field"><label>Date from</label><input className="input" type="date" value={dateFrom} onChange={(e) => onDateFrom(e.target.value)} /></div>
+          <div className="field"><label>Date to</label><input className="input" type="date" value={dateTo} onChange={(e) => onDateTo(e.target.value)} /></div>
+          <button type="button" className="btn btn-ghost" style={{ justifySelf: 'start' }} onClick={onResetFilters}>Reset filters</button>
+        </div>
+      </div>
+
       <h2 style={{ fontSize: 20, marginBottom: 12 }}>Monthly Expenses Log</h2>
+      {expenses.length === 0 ? (
+        <div style={{ border: '2px solid var(--color-divider)', padding: 16, color: 'var(--color-neutral-700)' }}>
+          No expenses recorded for this date range.
+        </div>
+      ) : (
       <div className="scroll-x" style={{ border: '2px solid var(--color-divider)' }}>
         <table className="table" style={{ minWidth: 860 }}>
           <thead>
@@ -99,6 +118,7 @@ export function MonthlyExpenses({ expenses, vehicles, onAdd }: Props) {
           </tbody>
         </table>
       </div>
+      )}
     </section>
   );
 }

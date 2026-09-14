@@ -12,6 +12,10 @@ export function toIsoDate(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
+export function todayIso(): string {
+  return toIsoDate(new Date());
+}
+
 export function toNumber(v: string | number | undefined | null): number {
   const n = Number(v);
   return Number.isFinite(n) ? n : 0;

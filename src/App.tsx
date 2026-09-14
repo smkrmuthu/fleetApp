@@ -339,7 +339,18 @@ export function App() {
           isDriver={role === 'Driver'}
         />
       )}
-      {tab === 'expenses' && <MonthlyExpenses expenses={expenses} vehicles={vehicles} onAdd={addExpense} />}
+      {tab === 'expenses' && (
+        <MonthlyExpenses
+          expenses={expenses}
+          vehicles={vehicles}
+          dateFrom={dateFrom}
+          dateTo={dateTo}
+          onDateFrom={setDateFrom}
+          onDateTo={setDateTo}
+          onResetFilters={resetFilters}
+          onAdd={addExpense}
+        />
+      )}
       {tab === 'report' && (
         <MonthlyReport
           trips={trips}
