@@ -25,7 +25,7 @@ export function AppShell({
 
   return (
     <>
-      <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24, padding: '14px 24px', borderBottom: '2px solid var(--color-divider)', flexWrap: 'wrap' }}>
+      <header className="app-shell-bar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24, borderBottom: '2px solid var(--color-divider)', flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 14 }}>
           <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 20, letterSpacing: '-0.02em', textTransform: 'uppercase' }}>Fleet Ledger</div>
           <div style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--color-neutral-700)' }}>Goods movement &amp; expense log</div>
@@ -85,7 +85,7 @@ export function AppShell({
 
       <main className="app-shell-main">{children}</main>
 
-      <footer style={{ borderTop: '2px solid var(--color-divider)', padding: '16px 24px', display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', fontSize: 12, color: 'var(--color-neutral-700)' }}>
+      <footer className="app-shell-bar" style={{ borderTop: '2px solid var(--color-divider)', display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', fontSize: 12, color: 'var(--color-neutral-700)' }}>
         <span>Fleet Ledger — prototype</span>
         <span>{ROLE_NOTE[role]}</span>
       </footer>

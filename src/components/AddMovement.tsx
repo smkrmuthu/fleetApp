@@ -200,7 +200,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, lockedDri
         <div className="kicker">Driver or documentation resource</div>
         <h1 style={{ fontSize: 34, letterSpacing: '-0.02em' }}>{isEditing ? 'Edit Movement' : 'Add Movement'}</h1>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,2.2fr) minmax(0,1fr)', gap: 2, background: 'var(--color-divider)', border: '2px solid var(--color-divider)' }}>
+      <div className="movement-grid" style={{ gap: 2, background: 'var(--color-divider)', border: '2px solid var(--color-divider)' }}>
         <div style={{ background: 'var(--color-bg)', padding: 20 }}>
           <div className="filters-grid" style={{ alignItems: 'stretch' }}>
             <div className="field"><label>Loading date</label><input className="input" type="date" value={form.loadDate} onChange={set('loadDate')} /></div>

@@ -24,14 +24,14 @@ export function SignIn({ onSignIn }: Props) {
   }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)' }}>
-      <div style={{ background: 'var(--color-accent)', color: '#fff', padding: '56px 48px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: '100vh' }}>
+    <div className="sign-in-grid">
+      <div className="sign-in-brand" style={{ background: 'var(--color-accent)', color: '#fff', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 24 }}>
         <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 18, letterSpacing: '0.02em', textTransform: 'uppercase' }}>Fleet Ledger</div>
         <div>
-          <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 'clamp(34px, 4.4vw, 62px)', lineHeight: 0.98, letterSpacing: '-0.03em' }}>
-            Every trip,<br />every rupee,<br />one ledger.
+          <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 'clamp(30px, 6vw, 62px)', lineHeight: 1.02, letterSpacing: '-0.03em' }}>
+            Every trip, every rupee, one ledger.
           </div>
-          <div style={{ height: 2, background: '#fff', opacity: 0.6, margin: '28px 0 20px', maxWidth: 340 }} />
+          <div style={{ height: 2, background: '#fff', opacity: 0.6, margin: '24px 0 18px', maxWidth: 340 }} />
           <div style={{ fontSize: 15, lineHeight: 1.6, maxWidth: '44ch' }}>
             Drivers log the movement and the fuel as they go, however many days it takes. Documentation posts the fixed costs. The manager closes the month — from the same numbers.
           </div>
@@ -39,7 +39,7 @@ export function SignIn({ onSignIn }: Props) {
         <div style={{ fontSize: 12, letterSpacing: '0.1em', textTransform: 'uppercase', opacity: 0.85 }}>Meridian Logistics · Chennai &amp; Cochin</div>
       </div>
 
-      <div style={{ padding: '56px 48px', display: 'flex', flexDirection: 'column', justifyContent: 'center', maxWidth: 560 }}>
+      <div className="sign-in-form-panel" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
         <h1 style={{ fontSize: 32, letterSpacing: '-0.02em', margin: '0 0 6px' }}>Sign in</h1>
         <p style={{ color: 'var(--color-neutral-700)', margin: '0 0 28px' }}>Use the mobile number registered with your branch.</p>
 

@@ -141,3 +141,32 @@ input, select, textarea { font-family: var(--font-body); }
 .scroll-x { overflow-x: auto; }
 
 .app-shell-main { padding: 24px; max-width: 1680px; margin: 0 auto; }
+.app-shell-bar { padding: 14px 24px; }
+
+/* — responsive layout helpers — */
+.sign-in-grid {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) minmax(0,1fr);
+  min-height: 100vh;
+}
+.sign-in-brand { padding: 56px 48px; min-height: 100vh; }
+.sign-in-form-panel { padding: 56px 48px; max-width: 560px; }
+
+.movement-grid {
+  display: grid;
+  grid-template-columns: minmax(0,2.2fr) minmax(0,1fr);
+}
+
+@media (max-width: 760px) {
+  .app-shell-main { padding: 14px; }
+  .app-shell-bar { padding: 10px 14px; }
+
+  .sign-in-grid { grid-template-columns: 1fr; }
+  .sign-in-brand { min-height: auto; padding: 28px 20px 24px; }
+  .sign-in-form-panel { padding: 24px 20px 36px; max-width: none; }
+
+  .movement-grid { grid-template-columns: 1fr; }
+
+  .table { font-size: 13px; }
+  .table th, .table td { padding: 6px; }
+}
