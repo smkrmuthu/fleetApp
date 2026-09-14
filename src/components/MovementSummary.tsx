@@ -39,7 +39,7 @@ export function MovementSummary({ trips, expenses, vehicles, vehicleFilter, driv
     { label: 'Total km', value: formatNum(totals.km), note: 'odometer based' },
     { label: 'Total tons', value: formatNum(totals.tons, 1), note: 'loading weight' },
     { label: 'Trip expense', value: rupees(totals.exp), note: 'diesel, toll, other' },
-    { label: 'Shipment costs', value: rupees(monthlyTotal), note: 'CFS, CHA, duty, fixed' },
+    { label: 'Fixed costs', value: rupees(monthlyTotal), note: 'permits, insurance, EMI' },
     { label: 'Avg ₹/km', value: totals.km ? rupees(totals.exp / totals.km) : '₹0', note: 'running cost' },
     { label: 'Revenue', value: rupees(totals.rev), note: 'billed to consignee' },
     { label: 'Profit', value: rupees(totals.rev - totals.exp - monthlyTotal), note: 'after monthly expenses' }

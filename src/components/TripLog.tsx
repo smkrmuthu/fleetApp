@@ -61,14 +61,15 @@ export function TripLog({ trips, vehicles, vehicleFilter, driverFilter, onVehicl
         </div>
       ) : (
         <div className="scroll-x" style={{ border: '2px solid var(--color-divider)' }}>
-          <table className="table" style={{ minWidth: 1560 }}>
+          <table className="table" style={{ minWidth: 1680 }}>
             <thead>
               <tr>
-                <th>Gated</th><th>Dir</th><th>Shipment / BL</th><th>Container</th><th>Vehicle</th><th>Driver</th><th>Route</th>
+                <th>Gated</th><th>Waybill</th><th>Item</th><th>Vehicle</th><th>Driver</th><th>Route</th>
                 <th style={{ textAlign: 'right' }}>Tons</th><th style={{ textAlign: 'right' }}>KM</th><th style={{ textAlign: 'right' }}>Diesel</th>
-                <th style={{ textAlign: 'right' }}>Toll</th><th style={{ textAlign: 'right' }}>Other</th><th style={{ textAlign: 'right' }}>Expense</th>
+                <th style={{ textAlign: 'right' }}>AdBlue</th><th style={{ textAlign: 'right' }}>Toll</th><th style={{ textAlign: 'right' }}>Other</th><th style={{ textAlign: 'right' }}>Expense</th>
                 {showFinancials && <th style={{ textAlign: 'right' }}>Revenue</th>}
                 {showFinancials && <th style={{ textAlign: 'right' }}>Profit</th>}
+                <th>Docs</th>
                 <th>Status</th>
               </tr>
             </thead>
@@ -78,21 +79,17 @@ export function TripLog({ trips, vehicles, vehicleFilter, driverFilter, onVehicl
                 return (
                   <tr key={t.id}>
                     <td style={{ whiteSpace: 'nowrap' }}>{t.loadDate} → {t.unloadDate}</td>
-                    <td>
-                      {t.direction === 'Import'
-                        ? <span className="tag tag-neutral">IMP</span>
-                        : <span className="tag tag-outline">EXP</span>}
-                    </td>
-                    <td style={{ fontFamily: 'ui-monospace, monospace', fontSize: 12, whiteSpace: 'nowrap' }}>{t.bl}</td>
-                    <td style={{ fontFamily: 'ui-monospace, monospace', fontSize: 12, whiteSpace: 'nowrap', color: 'var(--color-neutral-700)' }}>{t.container}</td>
+                    <td style={{ fontFamily: 'ui-monospace, monospace', fontSize: 12, whiteSpace: 'nowrap' }}>{t.waybillNo}</td>
+                    <td style={{ fontFamily: 'ui-monospace, monospace', fontSize: 12, whiteSpace: 'nowrap', color: 'var(--color-neutral-700)' }}>{t.itemNo}</td>
                     <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{t.vehicle}</td>
                     <td>{t.driver}</td>
                     <td style={{ color: 'var(--color-neutral-700)', whiteSpace: 'nowrap' }}>{t.from} → {t.to}</td>
                     <td style={{ textAlign: 'right' }}>{formatNum(t.tons, 1)}</td>
                     <td style={{ textAlign: 'right' }}>{formatNum(t.km)}</td>
                     <td style={{ textAlign: 'right' }}>{rupees(c.diesel)}</td>
-                    <td style={{ textAlign: 'right' }}>{rupees(t.toll)}</td>
-                    <td style={{ textAlign: 'right' }}>{rupees(t.other)}</td>
+                    <td style={{ textAlign: 'right' }}>{c.adblue ? rupees(c.adblue) : '—'}</td>
+                    <td style={{ textAlign: 'right' }}>{rupees(c.toll)}</td>
+                    <td style={{ textAlign: 'right' }}>{rupees(c.other)}</td>
                     <td style={{ textAlign: 'right' }}>{rupees(c.expense)}</td>
                     {showFinancials && <td style={{ textAlign: 'right' }}>{rupees(t.revenue)}</td>}
                     {showFinancials && (
@@ -100,6 +97,7 @@ export function TripLog({ trips, vehicles, vehicleFilter, driverFilter, onVehicl
                         <span style={{ color: c.profit >= 0 ? 'var(--color-profit)' : 'var(--color-accent-700)', fontWeight: 700 }}>{rupees(c.profit)}</span>
                       </td>
                     )}
+                    <td style={{ textAlign: 'right', color: 'var(--color-neutral-700)' }}>{t.documents.length || '—'}</td>
                     <td style={{ whiteSpace: 'nowrap' }}>
                       {t.status === 'pending' ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

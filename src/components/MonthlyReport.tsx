@@ -27,7 +27,7 @@ export function MonthlyReport({ trips, expenses, vehicles }: Props) {
 
   const headline = [
     { label: 'Revenue', value: rupees(totals.rev), note: `${trips.length} movements billed` },
-    { label: 'Total cost', value: rupees(totals.exp + monthlyTotal), note: 'haulage + shipment' },
+    { label: 'Total cost', value: rupees(totals.exp + monthlyTotal), note: 'haulage + fixed' },
     { label: 'Profit', value: rupees(profit), note: 'before overheads', pos: profit >= 0 },
     { label: 'Cost / ton', value: totals.tons ? rupees((totals.exp + monthlyTotal) / totals.tons) : '₹0', note: 'all-in' }
   ];

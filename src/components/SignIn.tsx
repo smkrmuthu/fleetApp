@@ -13,17 +13,17 @@ export function SignIn({ onSignIn }: Props) {
   return (
     <div style={{ minHeight: '100vh', display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)' }}>
       <div style={{ background: 'var(--color-accent)', color: '#fff', padding: '56px 48px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: '100vh' }}>
-        <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 18, letterSpacing: '0.02em', textTransform: 'uppercase' }}>Exim Ledger</div>
+        <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 18, letterSpacing: '0.02em', textTransform: 'uppercase' }}>Fleet Ledger</div>
         <div>
           <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 'clamp(34px, 4.4vw, 62px)', lineHeight: 0.98, letterSpacing: '-0.03em' }}>
-            Every container,<br />every rupee,<br />one ledger.
+            Every trip,<br />every rupee,<br />one ledger.
           </div>
           <div style={{ height: 2, background: '#fff', opacity: 0.6, margin: '28px 0 20px', maxWidth: 340 }} />
           <div style={{ fontSize: 15, lineHeight: 1.6, maxWidth: '44ch' }}>
-            Drivers log the movement at the port gate. Documentation posts the CFS, CHA and duty lines. The manager closes the month — from the same numbers.
+            Drivers log the movement and the fuel as they go, however many days it takes. Documentation posts the fixed costs. The manager closes the month — from the same numbers.
           </div>
         </div>
-        <div style={{ fontSize: 12, letterSpacing: '0.1em', textTransform: 'uppercase', opacity: 0.85 }}>Meridian Exim · Chennai &amp; Cochin</div>
+        <div style={{ fontSize: 12, letterSpacing: '0.1em', textTransform: 'uppercase', opacity: 0.85 }}>Meridian Logistics · Chennai &amp; Cochin</div>
       </div>
 
       <div style={{ padding: '56px 48px', display: 'flex', flexDirection: 'column', justifyContent: 'center', maxWidth: 560 }}>

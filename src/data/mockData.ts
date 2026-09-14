@@ -8,41 +8,141 @@ export const VEHICLES: Vehicle[] = [
 ];
 
 export const TRIPS: Trip[] = [
-  { id: 't1', loadDate: '02 Sep', unloadDate: '03 Sep', vehicle: 'TN38 AB 4412', driver: 'Murugan S', direction: 'Import', bl: 'MAEU-2290184', container: 'MSKU 704118-2', from: 'Chennai Port', to: 'Sriperumbudur ICD', tons: 24.5, km: 342, litres: 118, pricePerLitre: 95, toll: 1840, other: 900, revenue: 34500, status: 'approved' },
-  { id: 't2', loadDate: '03 Sep', unloadDate: '04 Sep', vehicle: 'TN45 CQ 9087', driver: 'Rafiq A', direction: 'Export', bl: 'CMDU-7741903', container: 'CMAU 338206-4', from: 'Tirupur factory', to: 'Cochin Port', tons: 18.0, km: 372, litres: 131, pricePerLitre: 94, toll: 2100, other: 1250, revenue: 31800, status: 'approved' },
-  { id: 't3', loadDate: '05 Sep', unloadDate: '05 Sep', vehicle: 'KA01 MD 7731', driver: 'Prakash N', direction: 'Import', bl: 'HLCU-5512760', container: 'HLXU 901744-8', from: 'Ennore Port', to: 'Hosur warehouse', tons: 21.2, km: 208, litres: 74, pricePerLitre: 96, toll: 980, other: 450, revenue: 19400, status: 'approved' },
-  { id: 't4', loadDate: '06 Sep', unloadDate: '08 Sep', vehicle: 'TN52 BK 2290', driver: 'Ilango R', direction: 'Export', bl: 'ONEY-3308472', container: 'TCNU 662015-3', from: 'Hosur warehouse', to: 'Cochin Port', tons: 26.0, km: 692, litres: 246, pricePerLitre: 95, toll: 3640, other: 2100, revenue: 68200, status: 'approved' },
-  { id: 't5', loadDate: '08 Sep', unloadDate: '09 Sep', vehicle: 'TN38 AB 4412', driver: 'Murugan S', direction: 'Import', bl: 'MAEU-2291736', container: 'MRKU 448190-1', from: 'Chennai Port', to: 'Vijayawada CFS', tons: 25.0, km: 456, litres: 162, pricePerLitre: 95, toll: 2380, other: 1150, revenue: 41900, status: 'approved' },
-  { id: 't6', loadDate: '09 Sep', unloadDate: '10 Sep', vehicle: 'TN45 CQ 9087', driver: 'Rafiq A', direction: 'Export', bl: 'MSCU-6604821', container: 'MSCU 512377-6', from: 'Hyderabad plant', to: 'Krishnapatnam Port', tons: 19.5, km: 574, litres: 205, pricePerLitre: 96, toll: 2960, other: 1400, revenue: 47600, status: 'approved' },
-  { id: 't7', loadDate: '10 Sep', unloadDate: '10 Sep', vehicle: 'KA01 MD 7731', driver: 'Prakash N', direction: 'Import', bl: 'HLCU-5514028', container: 'HLBU 220964-7', from: 'Ennore Port', to: 'Erode CFS', tons: 22.0, km: 98, litres: 36, pricePerLitre: 95, toll: 420, other: 260, revenue: 8600, status: 'pending' },
-  { id: 't8', loadDate: '11 Sep', unloadDate: '12 Sep', vehicle: 'TN52 BK 2290', driver: 'Ilango R', direction: 'Export', bl: 'ONEY-3309915', container: 'TGHU 774301-9', from: 'Madurai factory', to: 'Tuticorin Port', tons: 23.4, km: 268, litres: 97, pricePerLitre: 95, toll: 1180, other: 640, revenue: 24800, status: 'pending' }
+  {
+    id: 't1', loadDate: '02 Sep', unloadDate: '03 Sep', vehicle: 'TN38 AB 4412', driver: 'Murugan S',
+    waybillNo: 'EWB 2710 0345 6789', itemNo: 'ITM-4471', from: 'Chennai Yard', to: 'Sriperumbudur ICD',
+    tons: 24.5, km: 342, revenue: 34500, status: 'approved',
+    expenses: [
+      { id: 't1x1', date: '02 Sep', kind: 'diesel', litres: 118, ratePerLitre: 95, amount: 11210 },
+      { id: 't1x2', date: '02 Sep', kind: 'toll', amount: 1840 },
+      { id: 't1x3', date: '03 Sep', kind: 'other', amount: 900 }
+    ],
+    documents: ['fuel_receipt_02sep.jpg', 'waybill_27100345.pdf']
+  },
+  {
+    id: 't2', loadDate: '03 Sep', unloadDate: '04 Sep', vehicle: 'TN45 CQ 9087', driver: 'Rafiq A',
+    waybillNo: 'EWB 3312 8890 0217', itemNo: 'ITM-5502', from: 'Tirupur Factory', to: 'Cochin Yard',
+    tons: 18.0, km: 372, revenue: 31800, status: 'approved',
+    expenses: [
+      { id: 't2x1', date: '03 Sep', kind: 'diesel', litres: 131, ratePerLitre: 94, amount: 12314 },
+      { id: 't2x2', date: '03 Sep', kind: 'toll', amount: 2100 },
+      { id: 't2x3', date: '04 Sep', kind: 'other', amount: 1250 }
+    ],
+    documents: ['fuel_receipt_03sep.jpg']
+  },
+  {
+    id: 't3', loadDate: '05 Sep', unloadDate: '05 Sep', vehicle: 'KA01 MD 7731', driver: 'Prakash N',
+    waybillNo: 'EWB 1145 0032 8871', itemNo: 'ITM-2290', from: 'Ennore Yard', to: 'Hosur Warehouse',
+    tons: 21.2, km: 208, revenue: 19400, status: 'approved',
+    expenses: [
+      { id: 't3x1', date: '05 Sep', kind: 'diesel', litres: 74, ratePerLitre: 96, amount: 7104 },
+      { id: 't3x2', date: '05 Sep', kind: 'toll', amount: 980 },
+      { id: 't3x3', date: '05 Sep', kind: 'other', amount: 450 }
+    ],
+    documents: []
+  },
+  {
+    id: 't4', loadDate: '06 Sep', unloadDate: '08 Sep', vehicle: 'TN52 BK 2290', driver: 'Ilango R',
+    waybillNo: 'EWB 4420 7765 1190', itemNo: 'ITM-6610', from: 'Hosur Warehouse', to: 'Cochin Yard',
+    tons: 26.0, km: 692, revenue: 68200, status: 'approved',
+    expenses: [
+      { id: 't4x1', date: '06 Sep', kind: 'diesel', litres: 130, ratePerLitre: 95, amount: 12350 },
+      { id: 't4x2', date: '06 Sep', kind: 'toll', amount: 1840 },
+      { id: 't4x3', date: '07 Sep', kind: 'diesel', litres: 116, ratePerLitre: 95, amount: 11020 },
+      { id: 't4x4', date: '07 Sep', kind: 'adblue', litres: 8, ratePerLitre: 75, amount: 600 },
+      { id: 't4x5', date: '08 Sep', kind: 'toll', amount: 1800 },
+      { id: 't4x6', date: '08 Sep', kind: 'other', amount: 2100 }
+    ],
+    documents: ['fuel_receipt_06sep.jpg', 'fuel_receipt_07sep.jpg', 'adblue_receipt_07sep.jpg']
+  },
+  {
+    id: 't5', loadDate: '08 Sep', unloadDate: '09 Sep', vehicle: 'TN38 AB 4412', driver: 'Murugan S',
+    waybillNo: 'EWB 2299 1173 6602', itemNo: 'ITM-4488', from: 'Chennai Yard', to: 'Vijayawada Warehouse',
+    tons: 25.0, km: 456, revenue: 41900, status: 'approved',
+    expenses: [
+      { id: 't5x1', date: '08 Sep', kind: 'diesel', litres: 162, ratePerLitre: 95, amount: 15390 },
+      { id: 't5x2', date: '08 Sep', kind: 'toll', amount: 2380 },
+      { id: 't5x3', date: '09 Sep', kind: 'other', amount: 1150 }
+    ],
+    documents: ['fuel_receipt_08sep.jpg']
+  },
+  {
+    id: 't6', loadDate: '09 Sep', unloadDate: '10 Sep', vehicle: 'TN45 CQ 9087', driver: 'Rafiq A',
+    waybillNo: 'EWB 3366 0482 1907', itemNo: 'ITM-5521', from: 'Hyderabad Plant', to: 'Krishnapatnam Yard',
+    tons: 19.5, km: 574, revenue: 47600, status: 'approved',
+    expenses: [
+      { id: 't6x1', date: '09 Sep', kind: 'diesel', litres: 108, ratePerLitre: 96, amount: 10368 },
+      { id: 't6x2', date: '09 Sep', kind: 'toll', amount: 1600 },
+      { id: 't6x3', date: '10 Sep', kind: 'diesel', litres: 97, ratePerLitre: 96, amount: 9312 },
+      { id: 't6x4', date: '10 Sep', kind: 'adblue', litres: 6, ratePerLitre: 75, amount: 450 },
+      { id: 't6x5', date: '10 Sep', kind: 'toll', amount: 1360 },
+      { id: 't6x6', date: '10 Sep', kind: 'other', amount: 1400 }
+    ],
+    documents: ['fuel_receipt_09sep.jpg', 'fuel_receipt_10sep.jpg']
+  },
+  {
+    id: 't7', loadDate: '10 Sep', unloadDate: '10 Sep', vehicle: 'KA01 MD 7731', driver: 'Prakash N',
+    waybillNo: 'EWB 1198 4402 7765', itemNo: 'ITM-2295', from: 'Ennore Yard', to: 'Erode Warehouse',
+    tons: 22.0, km: 98, revenue: 8600, status: 'pending',
+    expenses: [
+      { id: 't7x1', date: '10 Sep', kind: 'diesel', litres: 36, ratePerLitre: 95, amount: 3420 },
+      { id: 't7x2', date: '10 Sep', kind: 'toll', amount: 420 },
+      { id: 't7x3', date: '10 Sep', kind: 'other', amount: 260 }
+    ],
+    documents: []
+  },
+  {
+    id: 't8', loadDate: '11 Sep', unloadDate: '12 Sep', vehicle: 'TN52 BK 2290', driver: 'Ilango R',
+    waybillNo: 'EWB 4467 7743 0199', itemNo: 'ITM-6615', from: 'Madurai Factory', to: 'Tuticorin Yard',
+    tons: 23.4, km: 268, revenue: 24800, status: 'pending',
+    expenses: [
+      { id: 't8x1', date: '11 Sep', kind: 'diesel', litres: 97, ratePerLitre: 95, amount: 9215 },
+      { id: 't8x2', date: '11 Sep', kind: 'toll', amount: 1180 },
+      { id: 't8x3', date: '12 Sep', kind: 'other', amount: 640 }
+    ],
+    documents: []
+  }
 ];
 
 export const MONTHLY_EXPENSES: MonthlyExpense[] = [
-  { id: 'e1', date: '01 Sep', vehicle: 'TN38 AB 4412', driver: 'Murugan S', category: 'CFS / port charges', amount: 28600, remarks: 'MAEU-2290184 · ground rent' },
-  { id: 'e2', date: '02 Sep', vehicle: 'TN45 CQ 9087', driver: 'Rafiq A', category: 'CHA fee', amount: 12400, remarks: 'Sept clearances' },
-  { id: 'e3', date: '04 Sep', vehicle: 'KA01 MD 7731', driver: 'Prakash N', category: 'Detention / demurrage', amount: 19800, remarks: '2 days, HLCU-5512760' },
+  { id: 'e1', date: '01 Sep', vehicle: 'TN38 AB 4412', driver: 'Murugan S', category: 'Detention / halting charges', amount: 28600, remarks: 'EWB 2710 0345 6789 · yard halt' },
+  { id: 'e2', date: '02 Sep', vehicle: 'TN45 CQ 9087', driver: 'Rafiq A', category: 'Permit / tax', amount: 12400, remarks: 'Sept transit permit' },
+  { id: 'e3', date: '04 Sep', vehicle: 'KA01 MD 7731', driver: 'Prakash N', category: 'Detention / halting charges', amount: 19800, remarks: '2 days, EWB 1145 0032 8871' },
   { id: 'e4', date: '06 Sep', vehicle: 'TN52 BK 2290', driver: 'Ilango R', category: 'Loan / lease', amount: 56200, remarks: 'EMI' },
-  { id: 'e5', date: '07 Sep', vehicle: 'TN38 AB 4412', driver: 'Murugan S', category: 'Insurance', amount: 18400, remarks: 'Marine cargo, Q3' },
+  { id: 'e5', date: '07 Sep', vehicle: 'TN38 AB 4412', driver: 'Murugan S', category: 'Insurance', amount: 18400, remarks: 'Goods-in-transit insurance, Q3' },
   { id: 'e6', date: '09 Sep', vehicle: 'TN45 CQ 9087', driver: 'Rafiq A', category: 'Maintenance', amount: 5200, remarks: 'Oil change' }
 ];
 
 export const EXPENSE_CATEGORIES: ExpenseCategory[] = [
-  'CFS / port charges', 'Customs duty', 'CHA fee', 'Detention / demurrage', 'Maintenance',
+  'Loading charges', 'Unloading charges', 'Weighbridge fee', 'Detention / halting charges', 'Maintenance',
   'Insurance', 'Tyres', 'Permit / tax', 'Loan / lease', 'Fine', 'Other'
 ];
 
 export const CATEGORY_TINT: Record<string, string> = {
-  'CFS / port charges': 'var(--color-accent-700)',
-  'Customs duty': 'var(--color-neutral-900)',
-  'CHA fee': 'var(--color-neutral-600)',
-  'Detention / demurrage': 'var(--color-accent)',
+  'Loading charges': 'var(--color-accent-700)',
+  'Unloading charges': 'var(--color-accent-500)',
+  'Weighbridge fee': 'var(--color-neutral-900)',
+  'Detention / halting charges': 'var(--color-accent)',
   'Maintenance': 'var(--color-neutral-500)',
   'Insurance': 'var(--color-neutral-800)',
   'Tyres': 'var(--color-accent-300)',
   'Permit / tax': 'var(--color-neutral-300)',
   'Loan / lease': 'var(--color-accent-400)',
   'Fine': 'var(--color-accent-600)'
+};
+
+export const TRIP_EXPENSE_TINT: Record<string, string> = {
+  diesel: 'var(--color-accent-700)',
+  adblue: 'var(--color-neutral-600)',
+  toll: 'var(--color-accent-400)',
+  other: 'var(--color-neutral-400)'
+};
+
+export const TRIP_EXPENSE_LABEL: Record<string, string> = {
+  diesel: 'Diesel',
+  adblue: 'AdBlue',
+  toll: 'Toll',
+  other: 'Other'
 };
 
 export const ROLE_TABS: Record<Role, TabId[]> = {
@@ -69,7 +169,7 @@ export const ROLE_USER: Record<Role, string> = {
 
 export const ROLE_NOTE: Record<Role, string> = {
   Driver: 'Driver view — enter trips, see your own log.',
-  Office: 'Documentation view — enter movements for any driver, post shipment costs, read the summary.',
+  Office: 'Documentation view — enter movements for any driver, post fixed costs, read the summary.',
   Manager: 'Manager view — full access including the monthly report and the data model.'
 };
 
@@ -90,10 +190,10 @@ export const USER_ROWS: UserAccount[] = [
 ];
 
 export const DRIVER_MASTER: DriverMaster[] = [
-  { name: 'Murugan S', licence: 'TN38 20110004412', expiry: '14 Mar 2028', expiring: false, vehicle: 'TN38 AB 4412', credential: 'Port pass · valid' },
-  { name: 'Rafiq A', licence: 'KL07 20140091877', expiry: '02 Nov 2026', expiring: true, vehicle: 'TN45 CQ 9087', credential: 'Port pass · valid' },
+  { name: 'Murugan S', licence: 'TN38 20110004412', expiry: '14 Mar 2028', expiring: false, vehicle: 'TN38 AB 4412', credential: 'Yard pass · valid' },
+  { name: 'Rafiq A', licence: 'KL07 20140091877', expiry: '02 Nov 2026', expiring: true, vehicle: 'TN45 CQ 9087', credential: 'Yard pass · valid' },
   { name: 'Prakash N', licence: 'KA01 20090037741', expiry: '27 Jun 2027', expiring: false, vehicle: 'KA01 MD 7731', credential: 'Hazmat endorsed' },
-  { name: 'Ilango R', licence: 'TN52 20160112290', expiry: '09 Oct 2026', expiring: true, vehicle: 'TN52 BK 2290', credential: 'Port pass · renew' }
+  { name: 'Ilango R', licence: 'TN52 20160112290', expiry: '09 Oct 2026', expiring: true, vehicle: 'TN52 BK 2290', credential: 'Yard pass · renew' }
 ];
 
 export const NOTIFICATIONS: AppNotification[] = [
@@ -115,24 +215,22 @@ export const SCAN_FIELDS = [
 ];
 
 export const SCHEMA_ENTITIES = [
-  { name: 'orgs', tag: 'tenant root', note: 'Every other table carries org_id; row-level security keys off it.', fields: [{ n: 'id', t: 'uuid pk' }, { n: 'name', t: 'text' }, { n: 'currency', t: 'char(3)' }, { n: 'fy_start_month', t: 'int' }] },
+  { name: 'orgs', tag: 'tenant root', note: 'Every other table carries org_id; row-level security keys off it. One org can be one transporter or one client company — the same schema serves either.', fields: [{ n: 'id', t: 'uuid pk' }, { n: 'name', t: 'text' }, { n: 'currency', t: 'char(3)' }, { n: 'fy_start_month', t: 'int' }] },
   { name: 'users', tag: 'auth', note: 'Role decides which screens and which rows are visible.', fields: [{ n: 'id', t: 'uuid pk' }, { n: 'org_id', t: 'fk orgs' }, { n: 'role', t: 'driver|office|manager' }, { n: 'phone', t: 'text unique' }, { n: 'driver_id', t: 'fk drivers' }] },
   { name: 'vehicles', tag: 'master', note: 'Soft-deleted, never removed — old trips must still resolve. Fitness certificate renewal drives a reminder job, same as licence expiry.', fields: [{ n: 'id', t: 'uuid pk' }, { n: 'org_id', t: 'fk orgs' }, { n: 'reg_no', t: 'text' }, { n: 'model', t: 'text' }, { n: 'tare_kg', t: 'int' }, { n: 'fc_date', t: 'date' }, { n: 'fc_renewal_due', t: 'date' }, { n: 'active', t: 'bool' }] },
   { name: 'drivers', tag: 'master', note: 'Licence expiry drives a reminder job.', fields: [{ n: 'id', t: 'uuid pk' }, { n: 'org_id', t: 'fk orgs' }, { n: 'name', t: 'text' }, { n: 'licence_no', t: 'text' }, { n: 'licence_expiry', t: 'date' }] },
-  { name: 'shipments', tag: 'trade root', note: 'A BL can need several movements; costs hang off the shipment, not the truck.', fields: [{ n: 'id', t: 'uuid pk' }, { n: 'org_id', t: 'fk orgs' }, { n: 'bl_no', t: 'text' }, { n: 'direction', t: 'import|export' }, { n: 'port_code', t: 'text (UN/LOCODE)' }, { n: 'consignee_id', t: 'fk parties' }, { n: 'cha_id', t: 'fk parties' }, { n: 'cleared_on', t: 'date' }, { n: 'incoterm', t: 'text' }] },
-  { name: 'containers', tag: 'master', note: 'One shipment, many containers; size decides the haulage rate.', fields: [{ n: 'id', t: 'uuid pk' }, { n: 'shipment_id', t: 'fk shipments' }, { n: 'container_no', t: 'text' }, { n: 'size_type', t: '20GP|40HC|…' }, { n: 'seal_no', t: 'text' }, { n: 'gross_kg', t: 'int' }] },
-  { name: 'trips', tag: 'fact · hot', note: 'Partitioned monthly on load_date; index (org_id, vehicle_id, load_date).', fields: [{ n: 'id', t: 'uuid pk' }, { n: 'org_id', t: 'fk orgs' }, { n: 'vehicle_id', t: 'fk vehicles' }, { n: 'driver_id', t: 'fk drivers' }, { n: 'shipment_id', t: 'fk shipments' }, { n: 'container_id', t: 'fk containers' }, { n: 'load_date', t: 'date' }, { n: 'unload_date', t: 'date' }, { n: 'from_loc / to_loc', t: 'text' }, { n: 'weight_kg', t: 'int' }, { n: 'odo_start / odo_end', t: 'int' }, { n: 'revenue_paise', t: 'bigint' }, { n: 'status', t: 'draft|pending|approved' }] },
-  { name: 'trip_expenses', tag: 'fact · hot', note: 'One row per cost line so diesel, toll and other stay separable.', fields: [{ n: 'id', t: 'uuid pk' }, { n: 'trip_id', t: 'fk trips' }, { n: 'kind', t: 'diesel|toll|other' }, { n: 'litres', t: 'numeric' }, { n: 'rate_paise', t: 'bigint' }, { n: 'amount_paise', t: 'bigint' }, { n: 'receipt_id', t: 'fk receipts' }] },
-  { name: 'monthly_expenses', tag: 'fact', note: 'Shipment-side and fixed costs: CFS, CHA, duty, detention, EMI. Either a vehicle or a shipment, never both required.', fields: [{ n: 'id', t: 'uuid pk' }, { n: 'org_id', t: 'fk orgs' }, { n: 'vehicle_id', t: 'fk vehicles' }, { n: 'shipment_id', t: 'fk shipments' }, { n: 'spent_on', t: 'date' }, { n: 'category', t: 'enum' }, { n: 'amount_paise', t: 'bigint' }, { n: 'remarks', t: 'text' }] },
-  { name: 'receipts', tag: 'blob + OCR', note: 'File in object storage; parsed fields kept with a confidence score.', fields: [{ n: 'id', t: 'uuid pk' }, { n: 'org_id', t: 'fk orgs' }, { n: 'storage_key', t: 'text' }, { n: 'ocr_json', t: 'jsonb' }, { n: 'confidence', t: 'numeric' }, { n: 'uploaded_by', t: 'fk users' }] },
+  { name: 'trips', tag: 'fact · hot', note: 'The whole trade record now lives directly on the trip — a plain waybill and item reference, not a shipment/container hierarchy. Partitioned monthly on load_date.', fields: [{ n: 'id', t: 'uuid pk' }, { n: 'org_id', t: 'fk orgs' }, { n: 'vehicle_id', t: 'fk vehicles' }, { n: 'driver_id', t: 'fk drivers' }, { n: 'waybill_no', t: 'text' }, { n: 'item_no', t: 'text' }, { n: 'load_date', t: 'date' }, { n: 'unload_date', t: 'date' }, { n: 'from_loc / to_loc', t: 'text' }, { n: 'weight_kg', t: 'int' }, { n: 'odo_start / odo_end', t: 'int' }, { n: 'revenue_paise', t: 'bigint' }, { n: 'status', t: 'draft|pending|approved' }] },
+  { name: 'trip_expenses', tag: 'fact · hot', note: 'One row per fuel stop or cost line, so a 3-day trip with two diesel fill-ups and an AdBlue top-up is three rows, not one flattened total.', fields: [{ n: 'id', t: 'uuid pk' }, { n: 'trip_id', t: 'fk trips' }, { n: 'spent_on', t: 'date' }, { n: 'kind', t: 'diesel|adblue|toll|other' }, { n: 'litres', t: 'numeric' }, { n: 'rate_paise', t: 'bigint' }, { n: 'amount_paise', t: 'bigint' }, { n: 'receipt_id', t: 'fk receipts' }] },
+  { name: 'trip_documents', tag: 'fact', note: 'Any supporting file a driver attaches to a trip — waybill copy, weighbridge slip — beyond the fuel receipts already linked from trip_expenses.', fields: [{ n: 'id', t: 'uuid pk' }, { n: 'trip_id', t: 'fk trips' }, { n: 'receipt_id', t: 'fk receipts' }, { n: 'doc_type', t: 'waybill|weighbridge|other' }] },
+  { name: 'monthly_expenses', tag: 'fact', note: 'Fixed vehicle-side costs: permits, insurance, EMI, halting charges — costs that belong to the truck for the month, not to one trip.', fields: [{ n: 'id', t: 'uuid pk' }, { n: 'org_id', t: 'fk orgs' }, { n: 'vehicle_id', t: 'fk vehicles' }, { n: 'spent_on', t: 'date' }, { n: 'category', t: 'enum' }, { n: 'amount_paise', t: 'bigint' }, { n: 'remarks', t: 'text' }] },
+  { name: 'receipts', tag: 'blob + OCR', note: 'File in object storage; parsed fields kept with a confidence score — fuel bills today, odometer photos next.', fields: [{ n: 'id', t: 'uuid pk' }, { n: 'org_id', t: 'fk orgs' }, { n: 'storage_key', t: 'text' }, { n: 'ocr_json', t: 'jsonb' }, { n: 'confidence', t: 'numeric' }, { n: 'uploaded_by', t: 'fk users' }] },
   { name: 'audit_log', tag: 'append only', note: "Who changed what, when — a closed month can still be explained.", fields: [{ n: 'id', t: 'bigserial pk' }, { n: 'org_id', t: 'fk orgs' }, { n: 'entity / entity_id', t: 'text / uuid' }, { n: 'action', t: 'text' }, { n: 'diff', t: 'jsonb' }, { n: 'actor_id', t: 'fk users' }, { n: 'at', t: 'timestamptz' }] }
 ];
 
 export const SCHEMA_RELATIONS = [
-  'orgs 1 ──< users · vehicles · drivers · shipments · trips · monthly_expenses',
-  'shipments 1 ──< containers 1 ──< trips (one BL, many moves)',
-  'shipments 1 ──< monthly_expenses (CFS, CHA, duty, detention)',
+  'orgs 1 ──< users · vehicles · drivers · trips · monthly_expenses',
   'vehicles 1 ──< trips ──< trip_expenses >── receipts',
+  'trips 1 ──< trip_documents >── receipts',
   'drivers 1 ──< trips (driver_id nullable for office entries)',
   'vehicles 1 ──< monthly_expenses (no trip link — fixed cost)',
   'users 1 ──< audit_log (actor_id) · receipts (uploaded_by)'
@@ -141,16 +239,18 @@ export const SCHEMA_RELATIONS = [
 export const SCHEMA_ENDPOINTS = [
   { method: 'POST', path: '/trips', desc: 'Idempotent on the client uuid — safe to retry from a phone with no signal.' },
   { method: 'GET', path: '/trips?from&to&vehicle&driver&cursor', desc: 'Keyset pagination on (load_date, id). No offset scans.' },
+  { method: 'POST', path: '/trips/:id/expenses', desc: 'Add one fuel/AdBlue/toll/other line to an open trip — called once per stop, not once per trip.' },
   { method: 'POST', path: '/receipts:upload-url', desc: 'Signed URL; the file never passes through the API. OCR runs as a queued job.' },
-  { method: 'GET', path: '/summary?month&vehicle&direction', desc: 'Reads vehicle_month, not raw trips — constant cost as the log grows.' },
-  { method: 'GET', path: '/shipments/:bl', desc: 'One BL with its containers, movements and cost lines — the landed cost of a consignment.' },
+  { method: 'POST', path: '/trips/:id/documents', desc: 'Attach an uploaded receipt as a general trip document (waybill copy, weighbridge slip).' },
+  { method: 'GET', path: '/summary?month&vehicle', desc: 'Reads vehicle_month, not raw trips — constant cost as the log grows.' },
   { method: 'POST', path: '/monthly-expenses', desc: 'Office and manager only; writes an audit_log row with the diff.' },
   { method: 'POST', path: '/months/2026-09:close', desc: 'Freezes the month; later edits become adjustments, never silent rewrites.' }
 ];
 
 export const SCHEMA_SCALING = [
-  { label: 'Partitioning', body: 'trips and trip_expenses partition by month. A query for September touches one partition; closed months can be moved to cheaper storage untouched.' },
+  { label: 'Multi-tenant by design', body: 'org_id on every table plus row-level security means one deployment can host many transport companies — or many fleets within one — without cross-tenant leakage.' },
+  { label: 'Partitioning', body: 'trips and trip_expenses partition by month. A query for September touches one partition; closed months can be moved to cheaper storage untouched. Holds at 100+ vehicles per org the same way it holds at 4.' },
   { label: 'Read path', body: 'Summary and report screens read a materialised monthly rollup per vehicle, refreshed on write. Dashboards never scan raw trips.' },
-  { label: 'Offline first', body: 'iOS and Android queue trips locally with a client-generated uuid; the API is idempotent on that id, so a retry after signal returns never duplicates a trip.' },
-  { label: 'Files', body: 'Receipts go to object storage with a signed upload URL; OCR runs as a queued job and writes back to receipts.ocr_json.' }
+  { label: 'Offline first', body: 'iOS and Android queue trips and expense lines locally with a client-generated uuid; the API is idempotent on that id, so a retry after signal returns never duplicates a trip or a fuel stop.' },
+  { label: 'Files', body: 'Receipts and documents go to object storage with a signed upload URL; OCR runs as a queued job and writes back to receipts.ocr_json — the same pipeline for fuel bills today and odometer photos next.' }
 ];

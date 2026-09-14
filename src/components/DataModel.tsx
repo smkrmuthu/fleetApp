@@ -8,8 +8,8 @@ const DDL = [
   org_id        uuid not null references orgs,
   vehicle_id    uuid not null references vehicles,
   driver_id     uuid references drivers,
-  shipment_id   uuid references shipments,
-  container_id  uuid references containers,
+  waybill_no    text,
+  item_no       text,
   load_date     date not null,
   unload_date   date,
   from_loc      text,
@@ -29,6 +29,30 @@ create index trips_org_driver_date
   on trips (org_id, driver_id, load_date desc);
 create index trips_pending
   on trips (org_id, load_date) where status = 'pending';`
+  },
+  {
+    name: 'trip_expenses — one row per stop',
+    sql: `create type trip_expense_kind as enum
+  ('diesel', 'adblue', 'toll', 'other');
+
+create table trip_expenses (
+  id            uuid primary key default gen_random_uuid(),
+  org_id        uuid not null references orgs,
+  trip_id       uuid not null references trips,
+  spent_on      date not null,
+  kind          trip_expense_kind not null,
+  litres        numeric(10,2),
+  rate_paise    bigint,
+  amount_paise  bigint not null,
+  receipt_id    uuid references receipts,
+  created_by    uuid references users,
+  created_at    timestamptz default now()
+);
+
+create index trip_expenses_trip
+  on trip_expenses (org_id, trip_id, spent_on);
+-- a 3-day trip with 2 diesel fills and an AdBlue
+-- top-up is 3 rows here, not one flattened total`
   },
   {
     name: 'rollup — what the dashboards read',
@@ -69,9 +93,11 @@ export function DataModel() {
         <div className="kicker">Postgres · one schema, three clients</div>
         <h1 style={{ fontSize: 34, letterSpacing: '-0.02em' }}>Data Model</h1>
         <p style={{ maxWidth: '70ch', color: 'var(--color-neutral-800)', lineHeight: 1.6, marginTop: 12 }}>
-          Web, iOS and Android write to the same API. A shipment (BL) is the trade root; containers and truck movements
-          hang off it, so landed cost per consignment and cost per kilometre both come from one set of rows. Money is
-          stored in paise as integers, every row carries <strong>org_id</strong>, and edits are append-only with an audit row.
+          Web, iOS and Android write to the same API. A trip carries its own waybill and item reference directly — no
+          separate shipment or container hierarchy — and a multi-day trip's fuel, AdBlue and toll stops are each their
+          own row in <strong>trip_expenses</strong>, so cost per kilometre comes from summing real stops, not one
+          flattened total. Money is stored in paise as integers, every row carries <strong>org_id</strong> so the same
+          schema serves any number of transport companies or fleets, and edits are append-only with an audit row.
         </p>
       </div>
 

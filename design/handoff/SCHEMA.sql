@@ -1,18 +1,21 @@
--- Exim Ledger — PostgreSQL base schema
+-- Fleet Ledger — PostgreSQL base schema
 -- Money is stored in paise (bigint). Never float.
 -- Every tenant-scoped table carries org_id and is protected by RLS.
 
 create extension if not exists "pgcrypto";
 
-create type user_role       as enum ('driver', 'office', 'manager');
-create type trip_status     as enum ('draft', 'pending', 'approved', 'void');
-create type trade_direction as enum ('import', 'export');
-create type expense_kind    as enum ('diesel', 'toll', 'other');
-create type cost_category   as enum (
-  'cfs_port', 'customs_duty', 'cha_fee', 'detention', 'maintenance',
-  'insurance', 'tyres', 'permit_tax', 'loan_lease', 'fine', 'other');
+create type user_role         as enum ('driver', 'office', 'manager');
+create type trip_status       as enum ('draft', 'pending', 'approved', 'void');
+create type trip_expense_kind as enum ('diesel', 'adblue', 'toll', 'other');
+create type cost_category     as enum (
+  'loading_charges', 'unloading_charges', 'weighbridge_fee', 'detention',
+  'maintenance', 'insurance', 'tyres', 'permit_tax', 'loan_lease', 'fine', 'other');
+create type trip_doc_type     as enum ('waybill', 'weighbridge', 'other');
 
 -- ── tenancy ────────────────────────────────────────────────────────────────
+-- org_id is the unit of isolation this whole schema is built around: one row
+-- here can be one transport company, or one fleet within a larger group —
+-- the same tables and RLS policies serve either without change.
 create table orgs (
   id              uuid primary key default gen_random_uuid(),
   name            text not null,
@@ -24,8 +27,7 @@ create table orgs (
 create table branches (
   id       uuid primary key default gen_random_uuid(),
   org_id   uuid not null references orgs on delete cascade,
-  name     text not null,
-  port_code text                                   -- UN/LOCODE, e.g. INMAA
+  name     text not null
 );
 
 create table users (
@@ -65,7 +67,7 @@ create table drivers (
   phone           text,
   licence_no      text,
   licence_expiry  date,
-  credential      text,                            -- port pass, hazmat endorsement
+  credential      text,                            -- yard pass, hazmat endorsement
   default_vehicle uuid references vehicles,
   active          boolean not null default true
 );
@@ -74,51 +76,17 @@ alter table users add constraint users_driver_fk
 create index drivers_expiring on drivers (org_id, licence_expiry)
   where active and licence_expiry is not null;
 
-create table parties (                             -- consignees, shippers, CHAs
-  id       uuid primary key default gen_random_uuid(),
-  org_id   uuid not null references orgs on delete cascade,
-  name     text not null,
-  kind     text not null,                          -- consignee | shipper | cha | transporter
-  gstin    text,
-  contact  jsonb not null default '{}'
-);
-
--- ── trade ──────────────────────────────────────────────────────────────────
-create table shipments (
-  id            uuid primary key default gen_random_uuid(),
-  org_id        uuid not null references orgs on delete cascade,
-  bl_no         text not null,
-  direction     trade_direction not null,
-  port_code     text,
-  consignee_id  uuid references parties,
-  cha_id        uuid references parties,
-  incoterm      text,
-  eta           date,
-  cleared_on    date,
-  closed_at     timestamptz,                       -- month close freezes the shipment
-  created_at    timestamptz not null default now(),
-  unique (org_id, bl_no)
-);
-
-create table containers (
-  id            uuid primary key default gen_random_uuid(),
-  org_id        uuid not null references orgs on delete cascade,
-  shipment_id   uuid not null references shipments on delete cascade,
-  container_no  text not null,
-  size_type     text,                              -- 20GP, 40HC, 40RF…
-  seal_no       text,
-  gross_kg      int,
-  unique (org_id, container_no, shipment_id)
-);
-
 -- ── movements (hot path, partitioned by month) ─────────────────────────────
+-- No shipment/container hierarchy: a trip carries its own waybill and item
+-- reference directly. Simpler than trade documentation, and it's what a
+-- domestic goods-movement operation actually works from.
 create table trips (
   id            uuid primary key,                  -- client-generated: offline safe
   org_id        uuid not null references orgs,
-  shipment_id   uuid references shipments,
-  container_id  uuid references containers,
   vehicle_id    uuid not null references vehicles,
   driver_id     uuid references drivers,
+  waybill_no    text,
+  item_no       text,
   load_date     date not null,
   unload_date   date,
   from_loc      text,
@@ -143,15 +111,17 @@ create table trips_2026_10 partition of trips
 
 create index trips_org_veh_date    on trips (org_id, vehicle_id, load_date desc);
 create index trips_org_driver_date on trips (org_id, driver_id,  load_date desc);
-create index trips_shipment        on trips (org_id, shipment_id);
 create index trips_pending         on trips (org_id, load_date) where status = 'pending';
 
+-- One row per fuel/AdBlue/toll stop, not one flattened total per trip — a
+-- 3-day trip with two diesel fills and an AdBlue top-up is three rows here.
 create table trip_expenses (
   id            uuid primary key default gen_random_uuid(),
   org_id        uuid not null references orgs,
   trip_id       uuid not null,
   load_date     date not null,                     -- denormalised for co-partitioning
-  kind          expense_kind not null,
+  spent_on      date not null,
+  kind          trip_expense_kind not null,
   litres        numeric(10,2),
   rate_paise    bigint,
   amount_paise  bigint not null,
@@ -165,12 +135,24 @@ create table trip_expenses_2026_09 partition of trip_expenses
 
 create index trip_expenses_trip on trip_expenses (org_id, trip_id);
 
--- ── shipment-side and fixed costs ──────────────────────────────────────────
+-- Any supporting file beyond the fuel receipts already linked from
+-- trip_expenses — a waybill copy, a weighbridge slip.
+create table trip_documents (
+  id          uuid primary key default gen_random_uuid(),
+  org_id      uuid not null references orgs,
+  trip_id     uuid not null references trips,
+  receipt_id  uuid not null,
+  doc_type    trip_doc_type not null default 'other',
+  created_by  uuid references users,
+  created_at  timestamptz not null default now()
+);
+create index trip_documents_trip on trip_documents (org_id, trip_id);
+
+-- ── fixed vehicle-side costs ───────────────────────────────────────────────
 create table monthly_expenses (
   id            uuid primary key default gen_random_uuid(),
   org_id        uuid not null references orgs,
-  vehicle_id    uuid references vehicles,
-  shipment_id   uuid references shipments,
+  vehicle_id    uuid not null references vehicles,
   driver_id     uuid references drivers,
   spent_on      date not null,
   category      cost_category not null,
@@ -178,8 +160,7 @@ create table monthly_expenses (
   remarks       text,
   receipt_id    uuid,
   created_by    uuid references users,
-  created_at    timestamptz not null default now(),
-  check (vehicle_id is not null or shipment_id is not null)
+  created_at    timestamptz not null default now()
 );
 create index monthly_expenses_month
   on monthly_expenses (org_id, spent_on desc, category);
@@ -195,6 +176,8 @@ create table receipts (
   created_at   timestamptz not null default now()
 );
 alter table trip_expenses    add constraint trip_expenses_receipt_fk
+  foreign key (receipt_id) references receipts;
+alter table trip_documents   add constraint trip_documents_receipt_fk
   foreign key (receipt_id) references receipts;
 alter table monthly_expenses add constraint monthly_expenses_receipt_fk
   foreign key (receipt_id) references receipts;
@@ -232,8 +215,8 @@ create unique index vehicle_month_key on vehicle_month (org_id, vehicle_id, mont
 -- ── isolation ──────────────────────────────────────────────────────────────
 alter table trips             enable row level security;
 alter table trip_expenses     enable row level security;
+alter table trip_documents    enable row level security;
 alter table monthly_expenses  enable row level security;
-alter table shipments         enable row level security;
 
 create policy trips_tenant on trips
   using (org_id = current_setting('app.org_id')::uuid);

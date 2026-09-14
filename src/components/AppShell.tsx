@@ -26,8 +26,8 @@ export function AppShell({
     <>
       <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24, padding: '14px 24px', borderBottom: '2px solid var(--color-divider)', flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 14 }}>
-          <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 20, letterSpacing: '-0.02em', textTransform: 'uppercase' }}>Exim Ledger</div>
-          <div style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--color-neutral-700)' }}>Container movement &amp; expense log</div>
+          <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 20, letterSpacing: '-0.02em', textTransform: 'uppercase' }}>Fleet Ledger</div>
+          <div style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--color-neutral-700)' }}>Goods movement &amp; expense log</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -55,7 +55,7 @@ export function AppShell({
             )}
             <div style={{ textAlign: 'right', lineHeight: 1.25 }}>
               <div style={{ fontWeight: 600 }}>{ROLE_USER[role]}</div>
-              <div style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-neutral-700)' }}>Meridian Exim · Chennai</div>
+              <div style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-neutral-700)' }}>Meridian Logistics · Chennai</div>
             </div>
             <button type="button" className="btn btn-ghost" onClick={onSignOut}>Sign out</button>
           </div>
@@ -85,7 +85,7 @@ export function AppShell({
       <main className="app-shell-main">{children}</main>
 
       <footer style={{ borderTop: '2px solid var(--color-divider)', padding: '16px 24px', display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', fontSize: 12, color: 'var(--color-neutral-700)' }}>
-        <span>Exim Ledger — prototype</span>
+        <span>Fleet Ledger — prototype</span>
         <span>{ROLE_NOTE[role]}</span>
       </footer>
     </>

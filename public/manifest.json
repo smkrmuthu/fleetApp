@@ -1,7 +1,7 @@
 {
-  "name": "Exim Ledger",
-  "short_name": "Exim Ledger",
-  "description": "Container movement and expense ledger for an import/export trucking operation.",
+  "name": "Fleet Ledger",
+  "short_name": "Fleet Ledger",
+  "description": "Goods movement and expense ledger for a trucking fleet.",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#f3f2f2",

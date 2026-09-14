@@ -1,14 +1,18 @@
-import { useState } from 'react';
-import type { Trip, TripFormState, Vehicle } from '../types';
-import { SCAN_FIELDS } from '../data/mockData';
-import { rupees, toNumber } from '../utils/calc';
+import { useRef, useState } from 'react';
+import type { Trip, TripExpenseKind, TripExpenseLine, TripFormState, Vehicle } from '../types';
+import { SCAN_FIELDS, TRIP_EXPENSE_LABEL } from '../data/mockData';
+import { dieselLitres, rupees, toNumber } from '../utils/calc';
 
 function blankForm(): TripFormState {
   return {
-    loadDate: '2026-09-11', unloadDate: '', vehicle: '', driver: '', direction: 'Import',
-    bl: '', container: '', from: '', to: '', tons: '', odoStart: '', odoEnd: '',
-    litres: '', price: '95', toll: '0', other: '0', revenue: '0', remarks: ''
+    loadDate: '2026-09-11', unloadDate: '', vehicle: '', driver: '',
+    waybillNo: '', itemNo: '', from: '', to: '', tons: '', odoStart: '', odoEnd: '',
+    revenue: '0', remarks: ''
   };
+}
+
+function blankLine(): { date: string; kind: TripExpenseKind; litres: string; ratePerLitre: string; amount: string } {
+  return { date: '2026-09-11', kind: 'diesel', litres: '', ratePerLitre: '95', amount: '0' };
 }
 
 interface Props {
@@ -20,34 +24,75 @@ interface Props {
 export function AddMovement({ onAdd, driverOnly, vehicles }: Props) {
   const showFinancials = !driverOnly;
   const [form, setForm] = useState<TripFormState>(blankForm());
+  const [lines, setLines] = useState<TripExpenseLine[]>([]);
+  const [newLine, setNewLine] = useState(blankLine());
+  const [documents, setDocuments] = useState<string[]>([]);
   const [scanned, setScanned] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const set = (k: keyof TripFormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setForm((f) => ({ ...f, [k]: e.target.value } as TripFormState));
 
+  const needsFuelFields = newLine.kind === 'diesel' || newLine.kind === 'adblue';
+  const computedAmount = needsFuelFields ? toNumber(newLine.litres) * toNumber(newLine.ratePerLitre) : toNumber(newLine.amount);
+
+  function addLine() {
+    const amount = needsFuelFields ? computedAmount : toNumber(newLine.amount);
+    if (!amount) return;
+    const line: TripExpenseLine = {
+      id: 'x' + Date.now(),
+      date: newLine.date,
+      kind: newLine.kind,
+      amount,
+      ...(needsFuelFields ? { litres: toNumber(newLine.litres), ratePerLitre: toNumber(newLine.ratePerLitre) } : {})
+    };
+    setLines((prev) => [...prev, line]);
+    setNewLine(blankLine());
+  }
+
+  function removeLine(id: string) {
+    setLines((prev) => prev.filter((l) => l.id !== id));
+  }
+
+  function onFilesChosen(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    setDocuments((prev) => [...prev, ...files.map((f) => f.name)]);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }
+
+  function removeDocument(name: string) {
+    setDocuments((prev) => prev.filter((d) => d !== name));
+  }
+
   const km = Math.max(0, toNumber(form.odoEnd) - toNumber(form.odoStart));
-  const expense = toNumber(form.litres) * toNumber(form.price) + toNumber(form.toll) + toNumber(form.other);
+  const expense = lines.reduce((a, l) => a + l.amount, 0);
   const profit = toNumber(form.revenue) - expense;
-  const kmpl = toNumber(form.litres) ? (km / toNumber(form.litres)).toFixed(2) + ' km/l' : '—';
+  const litres = dieselLitres(lines);
+  const kmpl = litres ? (km / litres).toFixed(2) + ' km/l' : '—';
 
   function addTrip() {
     if (!form.vehicle || !form.driver) return;
     const trip: Trip = {
       id: 't' + Date.now(),
-      loadDate: '11 Sep', unloadDate: '12 Sep', vehicle: form.vehicle, driver: form.driver, direction: form.direction,
-      bl: form.bl || '—', container: form.container || '—', from: form.from || '—', to: form.to || '—',
-      tons: toNumber(form.tons), km, litres: toNumber(form.litres), pricePerLitre: toNumber(form.price),
-      toll: toNumber(form.toll), other: toNumber(form.other), revenue: toNumber(form.revenue),
-      status: driverOnly ? 'pending' : 'approved'
+      loadDate: form.loadDate, unloadDate: form.unloadDate || form.loadDate, vehicle: form.vehicle, driver: form.driver,
+      waybillNo: form.waybillNo || '—', itemNo: form.itemNo || '—', from: form.from || '—', to: form.to || '—',
+      tons: toNumber(form.tons), km, revenue: toNumber(form.revenue),
+      status: driverOnly ? 'pending' : 'approved',
+      expenses: lines,
+      documents
     };
     onAdd(trip);
     setForm(blankForm());
+    setLines([]);
+    setDocuments([]);
     setScanned(false);
   }
 
   function applyScan() {
     setScanned(false);
-    setForm((f) => ({ ...f, vehicle: 'TN38 AB 4412', litres: '162.4', price: '95', loadDate: '2026-09-11' }));
+    setForm((f) => ({ ...f, vehicle: f.vehicle || 'TN38 AB 4412' }));
+    setLines((prev) => [...prev, { id: 'x' + Date.now(), date: '2026-09-11', kind: 'diesel', litres: 162.4, ratePerLitre: 95, amount: 15428 }]);
+    setDocuments((prev) => [...prev, 'scanned_fuel_receipt.jpg']);
   }
 
   return (
@@ -69,33 +114,103 @@ export function AddMovement({ onAdd, driverOnly, vehicles }: Props) {
               </select>
             </div>
             <div className="field"><label>Driver *</label><input className="input" type="text" placeholder="Driver name" value={form.driver} onChange={set('driver')} /></div>
-            <div className="field">
-              <label>Direction *</label>
-              <select className="input" value={form.direction} onChange={set('direction')}>
-                <option value="Import">Import</option>
-                <option value="Export">Export</option>
-              </select>
-            </div>
-            <div className="field"><label>Shipment / BL no *</label><input className="input" type="text" placeholder="MAEU-0000000" value={form.bl} onChange={set('bl')} /></div>
-            <div className="field"><label>Container no</label><input className="input" type="text" placeholder="MSKU 000000-0" value={form.container} onChange={set('container')} /></div>
-            <div className="field"><label>Loading location</label><input className="input" type="text" placeholder="Port / factory" value={form.from} onChange={set('from')} /></div>
-            <div className="field"><label>Unloading location</label><input className="input" type="text" placeholder="CFS / warehouse / port" value={form.to} onChange={set('to')} /></div>
+            <div className="field"><label>Waybill no *</label><input className="input" type="text" placeholder="EWB 0000 0000 0000" value={form.waybillNo} onChange={set('waybillNo')} /></div>
+            <div className="field"><label>Item no</label><input className="input" type="text" placeholder="ITM-0000" value={form.itemNo} onChange={set('itemNo')} /></div>
+            <div className="field"><label>Loading location</label><input className="input" type="text" placeholder="Yard / factory" value={form.from} onChange={set('from')} /></div>
+            <div className="field"><label>Unloading location</label><input className="input" type="text" placeholder="Warehouse / yard" value={form.to} onChange={set('to')} /></div>
             <div className="field"><label>Loading weight (tons)</label><input className="input" type="number" value={form.tons} onChange={set('tons')} /></div>
             <div className="field"><label>Odometer start (km)</label><input className="input" type="number" value={form.odoStart} onChange={set('odoStart')} /></div>
             <div className="field"><label>Odometer end (km)</label><input className="input" type="number" value={form.odoEnd} onChange={set('odoEnd')} /></div>
-            <div className="field"><label>Diesel litres</label><input className="input" type="number" value={form.litres} onChange={set('litres')} /></div>
-            <div className="field"><label>Diesel price / litre (₹)</label><input className="input" type="number" value={form.price} onChange={set('price')} /></div>
-            <div className="field"><label>Toll (₹)</label><input className="input" type="number" value={form.toll} onChange={set('toll')} /></div>
-            <div className="field"><label>Other expense (₹)</label><input className="input" type="number" value={form.other} onChange={set('other')} /></div>
             {showFinancials && (
               <div className="field"><label>Revenue (₹)</label><input className="input" type="number" value={form.revenue} onChange={set('revenue')} /></div>
             )}
             <div className="field" style={{ gridColumn: 'span 2' }}><label>Remarks</label><input className="input" type="text" placeholder="Remarks" value={form.remarks} onChange={set('remarks')} /></div>
           </div>
 
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, paddingTop: 20, marginTop: 20, borderTop: '2px solid var(--color-divider)' }}>
+          <div style={{ marginTop: 20, borderTop: '2px solid var(--color-divider)', paddingTop: 16 }}>
+            <div style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--color-neutral-700)', marginBottom: 12 }}>
+              Fuel &amp; expense stops — a multi-day trip can have several
+            </div>
+            <div className="filters-grid" style={{ alignItems: 'end', marginBottom: 12 }}>
+              <div className="field">
+                <label>Date</label>
+                <input className="input" type="date" value={newLine.date} onChange={(e) => setNewLine((l) => ({ ...l, date: e.target.value }))} />
+              </div>
+              <div className="field">
+                <label>Kind</label>
+                <select className="input" value={newLine.kind} onChange={(e) => setNewLine((l) => ({ ...l, kind: e.target.value as TripExpenseKind }))}>
+                  <option value="diesel">Diesel</option>
+                  <option value="adblue">AdBlue</option>
+                  <option value="toll">Toll</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              {needsFuelFields ? (
+                <>
+                  <div className="field">
+                    <label>Litres</label>
+                    <input className="input" type="number" value={newLine.litres} onChange={(e) => setNewLine((l) => ({ ...l, litres: e.target.value }))} />
+                  </div>
+                  <div className="field">
+                    <label>Rate / litre (₹)</label>
+                    <input className="input" type="number" value={newLine.ratePerLitre} onChange={(e) => setNewLine((l) => ({ ...l, ratePerLitre: e.target.value }))} />
+                  </div>
+                  <div>
+                    <div className="stat-label" style={{ marginBottom: 4 }}>Amount</div>
+                    <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 18 }}>{rupees(computedAmount)}</div>
+                  </div>
+                </>
+              ) : (
+                <div className="field">
+                  <label>Amount (₹)</label>
+                  <input className="input" type="number" value={newLine.amount} onChange={(e) => setNewLine((l) => ({ ...l, amount: e.target.value }))} />
+                </div>
+              )}
+              <button type="button" className="btn btn-secondary" style={{ justifySelf: 'start' }} onClick={addLine}>Add stop</button>
+            </div>
+
+            {lines.length > 0 && (
+              <div className="scroll-x" style={{ border: '1px solid var(--color-neutral-300)' }}>
+                <table className="table" style={{ minWidth: 480 }}>
+                  <thead>
+                    <tr><th>Date</th><th>Kind</th><th style={{ textAlign: 'right' }}>Litres</th><th style={{ textAlign: 'right' }}>Amount</th><th></th></tr>
+                  </thead>
+                  <tbody>
+                    {lines.map((l) => (
+                      <tr key={l.id}>
+                        <td style={{ whiteSpace: 'nowrap' }}>{l.date}</td>
+                        <td>{TRIP_EXPENSE_LABEL[l.kind]}</td>
+                        <td style={{ textAlign: 'right' }}>{l.litres ?? '—'}</td>
+                        <td style={{ textAlign: 'right' }}>{rupees(l.amount)}</td>
+                        <td style={{ textAlign: 'right' }}>
+                          <button type="button" className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => removeLine(l.id)}>Remove</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          <div style={{ marginTop: 16, borderTop: '2px solid var(--color-divider)', paddingTop: 16 }}>
+            <div style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--color-neutral-700)', marginBottom: 12 }}>Supporting documents</div>
+            <input ref={fileInputRef} type="file" multiple accept="image/*,.pdf" onChange={onFilesChosen} style={{ marginBottom: documents.length ? 10 : 0 }} />
+            {documents.length > 0 && (
+              <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 6 }}>
+                {documents.map((d) => (
+                  <li key={d} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, background: 'var(--color-surface)', padding: '6px 10px' }}>
+                    <span>{d}</span>
+                    <button type="button" className="btn btn-ghost" style={{ padding: '0 4px', fontSize: 12 }} onClick={() => removeDocument(d)}>Remove</button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, paddingTop: 16, marginTop: 16, borderTop: '2px solid var(--color-divider)' }}>
             <button type="button" className="btn btn-primary" onClick={addTrip}>Add movement</button>
-            <button type="button" className="btn btn-secondary" onClick={() => setForm(blankForm())}>Clear</button>
+            <button type="button" className="btn btn-secondary" onClick={() => { setForm(blankForm()); setLines([]); setDocuments([]); }}>Clear</button>
             <button type="button" className="btn btn-ghost">Save draft</button>
           </div>
           <div style={{ marginTop: 16, display: 'flex', gap: 28, flexWrap: 'wrap', borderTop: '2px solid var(--color-divider)', paddingTop: 16 }}>
@@ -124,7 +239,7 @@ export function AddMovement({ onAdd, driverOnly, vehicles }: Props) {
           <div style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--color-neutral-700)', marginBottom: 12 }}>Or scan a receipt</div>
           <div style={{ border: '2px dashed var(--color-divider)', padding: '26px 18px' }}>
             <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 17, marginBottom: 6 }}>Drop a fuel bill or toll slip</div>
-            <div style={{ color: 'var(--color-neutral-700)', marginBottom: 16 }}>JPG, PNG or PDF. Fields are read and filled in below — you confirm before saving.</div>
+            <div style={{ color: 'var(--color-neutral-700)', marginBottom: 16 }}>JPG, PNG or PDF. Fields are read and added as a new stop below — you confirm before saving.</div>
             <button type="button" className="btn btn-secondary" onClick={() => setScanned(true)}>Scan receipt</button>
           </div>
           {scanned && (
@@ -139,7 +254,7 @@ export function AddMovement({ onAdd, driverOnly, vehicles }: Props) {
                 </div>
               ))}
               <div style={{ padding: 12 }}>
-                <button type="button" className="btn btn-primary btn-block" onClick={applyScan}>Fill the form</button>
+                <button type="button" className="btn btn-primary btn-block" onClick={applyScan}>Add as a stop</button>
               </div>
             </div>
           )}

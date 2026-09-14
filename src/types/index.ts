@@ -2,8 +2,6 @@ export type Role = 'Driver' | 'Office' | 'Manager';
 
 export type TabId = 'summary' | 'addtrip' | 'triplog' | 'expenses' | 'report' | 'people' | 'schema';
 
-export type Direction = 'Import' | 'Export';
-
 export type TripStatus = 'pending' | 'approved';
 
 export interface Vehicle {
@@ -45,33 +43,43 @@ export interface UserAccount {
   isManager: boolean;
 }
 
+// A trip can run several days with several fuel/AdBlue stops along the way —
+// each stop is its own line rather than one flat total for the whole trip.
+export type TripExpenseKind = 'diesel' | 'adblue' | 'toll' | 'other';
+
+export interface TripExpenseLine {
+  id: string;
+  date: string;
+  kind: TripExpenseKind;
+  litres?: number;
+  ratePerLitre?: number;
+  amount: number;
+}
+
 export interface Trip {
   id: string;
   loadDate: string;
   unloadDate: string;
   vehicle: string;
   driver: string;
-  direction: Direction;
-  bl: string;
-  container: string;
+  waybillNo: string;
+  itemNo: string;
   from: string;
   to: string;
   tons: number;
   km: number;
-  litres: number;
-  pricePerLitre: number;
-  toll: number;
-  other: number;
   revenue: number;
   status: TripStatus;
   remarks?: string;
+  expenses: TripExpenseLine[];
+  documents: string[];
 }
 
 export type ExpenseCategory =
-  | 'CFS / port charges'
-  | 'Customs duty'
-  | 'CHA fee'
-  | 'Detention / demurrage'
+  | 'Loading charges'
+  | 'Unloading charges'
+  | 'Weighbridge fee'
+  | 'Detention / halting charges'
   | 'Maintenance'
   | 'Insurance'
   | 'Tyres'
@@ -95,18 +103,13 @@ export interface TripFormState {
   unloadDate: string;
   vehicle: string;
   driver: string;
-  direction: Direction;
-  bl: string;
-  container: string;
+  waybillNo: string;
+  itemNo: string;
   from: string;
   to: string;
   tons: string;
   odoStart: string;
   odoEnd: string;
-  litres: string;
-  price: string;
-  toll: string;
-  other: string;
   revenue: string;
   remarks: string;
 }

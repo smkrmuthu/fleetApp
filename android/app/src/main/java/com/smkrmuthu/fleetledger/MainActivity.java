@@ -1,4 +1,4 @@
-package com.smkrmuthu.eximledger;
+package com.smkrmuthu.fleetledger;
 
 import com.getcapacitor.BridgeActivity;
 

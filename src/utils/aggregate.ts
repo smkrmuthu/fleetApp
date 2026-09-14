@@ -8,6 +8,7 @@ export interface VehicleAgg {
   km: number;
   tons: number;
   diesel: number;
+  adblue: number;
   toll: number;
   other: number;
   tripExpense: number;
@@ -26,13 +27,14 @@ export function aggregateByVehicle(trips: Trip[], expenses: MonthlyExpense[], ve
         a.km += t.km;
         a.tons += t.tons;
         a.diesel += c.diesel;
-        a.toll += t.toll;
-        a.other += t.other;
+        a.adblue += c.adblue;
+        a.toll += c.toll;
+        a.other += c.other;
         a.tripExpense += c.expense;
         a.revenue += t.revenue;
         return a;
       },
-      { km: 0, tons: 0, diesel: 0, toll: 0, other: 0, tripExpense: 0, revenue: 0 }
+      { km: 0, tons: 0, diesel: 0, adblue: 0, toll: 0, other: 0, tripExpense: 0, revenue: 0 }
     );
     const monthly = expenses.filter((e) => e.vehicle === v.id).reduce((a, e) => a + e.amount, 0);
     const cost = agg.tripExpense + monthly;

@@ -1,5 +1,16 @@
 # Handoff: Exim Ledger — container movement & expense log
 
+> **Superseded (2026-09-14).** The product pivoted away from export/import trade
+> documentation to plain domestic goods movement — no shipments, containers,
+> direction, CFS/CHA/customs, just a waybill and item reference per trip, now
+> renamed **Fleet Ledger**. Trips also gained multiple fuel/AdBlue/toll stops
+> per trip (not one flat total), a document uploader, and a notification bell
+> for pending approvals and licence/FC alerts, none of which this document
+> describes. **`SCHEMA.sql` and `API.md` in this folder are kept current with
+> the actual implementation — read those first.** This file (and `styles.css`,
+> whose design tokens are unaffected) is kept only as a record of the original
+> design intent and screen-by-screen layout the visual system was built from.
+
 ## Overview
 A three-surface product (web dashboard first, then iOS and Android) for an import/export
 company that runs its own trucks. Drivers and documentation staff record container
