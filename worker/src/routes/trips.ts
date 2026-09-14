@@ -38,7 +38,16 @@ const createTripSchema = z.object({
   odoEnd: z.number().int().nonnegative().optional(),
   revenuePaise: z.number().int().nonnegative().default(0),
   remarks: z.string().optional(),
+  // Driver only: create as an open trip (no approval requested yet) rather
+  // than submitting straight away — see POST /:id/complete.
+  draft: z.boolean().optional(),
   expenses: z.array(expenseLineSchema).default([])
+});
+
+const completeSchema = z.object({
+  odoEnd: z.number().int().nonnegative(),
+  unloadDate: z.string().optional(),
+  remarks: z.string().optional()
 });
 
 // Idempotent on the client-generated id: a retry after a dropped signal
@@ -56,8 +65,12 @@ tripRoutes.post('/', async (c) => {
 
   const isDriver = auth.role === 'driver';
   const driverId = isDriver ? auth.driverId : data.driverId ?? null;
-  const status = isDriver ? 'pending' : 'approved';
+  const status = isDriver ? (data.draft ? 'draft' : 'pending') : 'approved';
   const now = nowIso();
+
+  if (data.odoEnd != null && data.odoStart != null && data.odoEnd <= data.odoStart) {
+    return c.json({ error: { code: 'validation_error', message: 'Odometer end must be greater than odometer start', field: 'odoEnd' } }, 422);
+  }
 
   const tripValues = {
     id: data.id,
@@ -74,7 +87,7 @@ tripRoutes.post('/', async (c) => {
     odoStart: data.odoStart,
     odoEnd: data.odoEnd,
     revenuePaise: data.revenuePaise,
-    status: status as 'pending' | 'approved',
+    status: status as 'draft' | 'pending' | 'approved',
     remarks: data.remarks,
     createdBy: auth.userId,
     createdAt: now,
@@ -171,6 +184,9 @@ tripRoutes.get('/:id', async (c) => {
   return c.json({ ...trip, expenses });
 });
 
+// A driver may only add stops to their own trip while it's still open
+// (draft); once it's submitted for approval the log for that trip is
+// closed. Office/manager can add a cost line to any trip at any time.
 tripRoutes.post('/:id/expenses', async (c) => {
   const auth = c.get('auth');
   const id = c.req.param('id')!;
@@ -181,6 +197,9 @@ tripRoutes.post('/:id/expenses', async (c) => {
   const db = getDb(c.env);
   const [trip] = await db.select().from(trips).where(and(eq(trips.id, id), eq(trips.orgId, auth.orgId))).limit(1);
   if (!trip) return c.json({ error: { code: 'not_found', message: 'Trip not found' } }, 404);
+  if (auth.role === 'driver' && (trip.driverId !== auth.driverId || trip.status !== 'draft')) {
+    return c.json({ error: { code: 'forbidden', message: 'Can only add to your own open movement' } }, 403);
+  }
 
   const row = { id: parsed.data.id ?? newId(), orgId: auth.orgId, tripId: id, createdBy: auth.userId, createdAt: nowIso(), ...parsed.data };
   await db.insert(tripExpenses).values(row);
@@ -188,19 +207,89 @@ tripRoutes.post('/:id/expenses', async (c) => {
   return c.json(row, 201);
 });
 
-// Office/manager only — a month-close guard (409 if the month is frozen) is
-// future work once /months/:yyyy-mm:close exists.
-tripRoutes.patch('/:id', requireRole('office', 'manager'), async (c) => {
+// Office/manager may edit any trip at any time. A driver may only edit
+// their own trip, and only while it's still open (draft) — once submitted
+// for approval it's locked from their side. A month-close guard (409 if
+// the month is frozen) is future work once /months/:yyyy-mm:close exists.
+tripRoutes.patch('/:id', async (c) => {
   const auth = c.get('auth');
   const id = c.req.param('id')!;
+  const db = getDb(c.env);
+  const [existing] = await db.select().from(trips).where(and(eq(trips.id, id), eq(trips.orgId, auth.orgId))).limit(1);
+  if (!existing) return c.json({ error: { code: 'not_found', message: 'Trip not found' } }, 404);
+  if (auth.role === 'driver' && (existing.driverId !== auth.driverId || existing.status !== 'draft')) {
+    return c.json({ error: { code: 'forbidden', message: 'Can only edit your own open movement' } }, 403);
+  }
+
   const body = await c.req.json().catch(() => null);
-  const parsed = createTripSchema.omit({ id: true, expenses: true }).partial().safeParse(body);
+  const baseSchema = createTripSchema.omit({ id: true, expenses: true, draft: true }).partial();
+  // A driver edits their own facts about the trip, never who it belongs to.
+  const schema = auth.role === 'driver' ? baseSchema.omit({ driverId: true }) : baseSchema;
+  const parsed = schema.safeParse(body);
   if (!parsed.success) return c.json({ error: { code: 'validation_error', message: parsed.error.message } }, 422);
 
-  const db = getDb(c.env);
-  const result = await db.update(trips).set({ ...parsed.data, updatedAt: nowIso() }).where(and(eq(trips.id, id), eq(trips.orgId, auth.orgId)));
-  if (result.meta.changes === 0) return c.json({ error: { code: 'not_found', message: 'Trip not found' } }, 404);
+  const odoStart = ('odoStart' in parsed.data ? parsed.data.odoStart : undefined) ?? existing.odoStart;
+  const odoEnd = ('odoEnd' in parsed.data ? parsed.data.odoEnd : undefined) ?? existing.odoEnd;
+  if (odoEnd != null && odoStart != null && odoEnd <= odoStart) {
+    return c.json({ error: { code: 'validation_error', message: 'Odometer end must be greater than odometer start', field: 'odoEnd' } }, 422);
+  }
+
+  await db.update(trips).set({ ...parsed.data, updatedAt: nowIso() }).where(eq(trips.id, id));
   await writeAudit(db, auth.orgId, 'trips', id, 'update', parsed.data, auth.userId);
+
+  const [row] = await db.select().from(trips).where(eq(trips.id, id)).limit(1);
+  return c.json(row);
+});
+
+// Finalizes an open (draft) trip: sets the closing odometer reading and
+// submits it — pending for a driver, straight to approved for office/
+// manager. This is the only way a driver's trip leaves 'draft'.
+tripRoutes.post('/:id/complete', async (c) => {
+  const auth = c.get('auth');
+  const id = c.req.param('id')!;
+  const db = getDb(c.env);
+  const [existing] = await db.select().from(trips).where(and(eq(trips.id, id), eq(trips.orgId, auth.orgId))).limit(1);
+  if (!existing) return c.json({ error: { code: 'not_found', message: 'Trip not found' } }, 404);
+  if (auth.role === 'driver' && existing.driverId !== auth.driverId) {
+    return c.json({ error: { code: 'forbidden', message: 'Not your movement' } }, 403);
+  }
+  if (existing.status !== 'draft') {
+    return c.json({ error: { code: 'invalid_state', message: 'This movement is already submitted' } }, 409);
+  }
+
+  const body = await c.req.json().catch(() => null);
+  const parsed = completeSchema.safeParse(body);
+  if (!parsed.success) return c.json({ error: { code: 'validation_error', message: parsed.error.message } }, 422);
+
+  const odoStart = existing.odoStart ?? 0;
+  if (parsed.data.odoEnd <= odoStart) {
+    return c.json({ error: { code: 'validation_error', message: 'Odometer end must be greater than odometer start', field: 'odoEnd' } }, 422);
+  }
+
+  const status = auth.role === 'driver' ? 'pending' : 'approved';
+  const now = nowIso();
+  await db.update(trips).set({
+    odoEnd: parsed.data.odoEnd,
+    unloadDate: parsed.data.unloadDate ?? existing.unloadDate,
+    remarks: parsed.data.remarks ?? existing.remarks,
+    status,
+    updatedAt: now
+  }).where(eq(trips.id, id));
+  await writeAudit(db, auth.orgId, 'trips', id, 'complete', { status }, auth.userId);
+
+  if (status === 'pending' && existing.driverId) {
+    const [driver] = await db.select().from(drivers).where(eq(drivers.id, existing.driverId)).limit(1);
+    await db.insert(notifications).values({
+      id: newId(),
+      orgId: auth.orgId,
+      kind: 'approval',
+      message: `${driver?.fullName ?? 'A driver'} completed ${existing.vehicleId} — pending approval`,
+      tab: 'triplog',
+      relatedTripId: id,
+      read: false,
+      createdAt: now
+    });
+  }
 
   const [row] = await db.select().from(trips).where(eq(trips.id, id)).limit(1);
   return c.json(row);

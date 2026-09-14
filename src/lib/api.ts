@@ -56,6 +56,13 @@ export function formatDisplayDate(iso: string | null | undefined): string {
   if (!y || !m || !d) return iso;
   return `${String(d).padStart(2, '0')} ${MONTHS[m - 1]} ${y}`;
 }
+export function parseDisplayDate(display: string): string {
+  const m = display.match(/^(\d{2}) (\w{3}) (\d{4})$/);
+  if (!m) return '';
+  const monthIdx = MONTHS.indexOf(m[2]);
+  if (monthIdx < 0) return '';
+  return `${m[3]}-${String(monthIdx + 1).padStart(2, '0')}-${m[1]}`;
+}
 function formatSeen(iso: string | null | undefined): string {
   if (!iso) return '—';
   const then = new Date(iso);
@@ -100,6 +107,9 @@ const CATEGORY_FROM_API: Record<string, ExpenseCategory> = Object.fromEntries(
 // as empty when going the other way, into a wire payload.
 function orUndefined(value: string): string | undefined {
   return value && value !== '—' ? value : undefined;
+}
+function orUndefinedOpt(value: string | undefined): string | undefined {
+  return value === undefined ? undefined : orUndefined(value);
 }
 
 const BRANCH_NAME: Record<string, string> = {
@@ -245,7 +255,8 @@ function tripFromApi(t: ApiTrip): Trip {
     id: t.id, loadDate: formatDisplayDate(t.loadDate), unloadDate: formatDisplayDate(t.unloadDate),
     vehicle: t.vehicleId, driver: t.driverId ?? '—', waybillNo: t.waybillNo ?? '—', itemNo: t.itemNo ?? '—',
     from: t.fromLoc ?? '—', to: t.toLoc ?? '—', tons: (t.weightKg ?? 0) / 1000, km: Math.max(0, (t.odoEnd ?? 0) - (t.odoStart ?? 0)),
-    revenue: paiseToRupees(t.revenuePaise), status: t.status === 'void' || t.status === 'draft' ? 'pending' : t.status,
+    odoStart: t.odoStart ?? undefined, odoEnd: t.odoEnd ?? undefined,
+    revenue: paiseToRupees(t.revenuePaise), status: t.status === 'void' ? 'approved' : t.status,
     expenses: t.expenses.map((e) => ({
       id: e.id, date: formatDisplayDate(e.spentOn), kind: e.kind, litres: e.litres ?? undefined,
       ratePerLitre: e.ratePaise != null ? paiseToRupees(e.ratePaise) : undefined, amount: paiseToRupees(e.amountPaise), details: e.details ?? undefined
@@ -267,6 +278,7 @@ export interface NewTripInput {
   id: string; vehicle: string; driver: string; waybillNo: string; itemNo: string; loadDate: string; unloadDate: string;
   from: string; to: string; tons: number; odoStart: number; odoEnd: number; revenue: number; remarks?: string;
   expenses: TripExpenseLine[];
+  draft?: boolean;
 }
 
 export async function createTrip(t: NewTripInput): Promise<Trip> {
@@ -277,7 +289,7 @@ export async function createTrip(t: NewTripInput): Promise<Trip> {
       itemNo: orUndefined(t.itemNo), loadDate: t.loadDate, unloadDate: orUndefined(t.unloadDate),
       fromLoc: orUndefined(t.from), toLoc: orUndefined(t.to), weightKg: Math.round(t.tons * 1000) || undefined,
       odoStart: t.odoStart || undefined, odoEnd: t.odoEnd || undefined, revenuePaise: rupeesToPaise(t.revenue),
-      remarks: t.remarks || undefined,
+      remarks: t.remarks || undefined, draft: t.draft || undefined,
       expenses: t.expenses.map((l) => ({
         spentOn: l.date, kind: l.kind, litres: l.litres, ratePaise: l.ratePerLitre != null ? rupeesToPaise(l.ratePerLitre) : undefined,
         amountPaise: rupeesToPaise(l.amount), details: l.details
@@ -285,6 +297,43 @@ export async function createTrip(t: NewTripInput): Promise<Trip> {
     })
   });
   return tripFromApi({ ...res, expenses: (res as any).expenses ?? [] });
+}
+
+export interface TripPatchInput {
+  vehicle?: string; waybillNo?: string; itemNo?: string; loadDate?: string; unloadDate?: string;
+  from?: string; to?: string; tons?: number; odoStart?: number; odoEnd?: number; revenue?: number; remarks?: string;
+}
+
+export async function updateTrip(id: string, patch: TripPatchInput): Promise<Trip> {
+  const res = await request<ApiTrip>(`/trips/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      vehicleId: patch.vehicle, waybillNo: orUndefinedOpt(patch.waybillNo), itemNo: orUndefinedOpt(patch.itemNo),
+      loadDate: patch.loadDate, unloadDate: orUndefinedOpt(patch.unloadDate), fromLoc: orUndefinedOpt(patch.from),
+      toLoc: orUndefinedOpt(patch.to), weightKg: patch.tons != null ? Math.round(patch.tons * 1000) : undefined,
+      odoStart: patch.odoStart, odoEnd: patch.odoEnd, revenuePaise: patch.revenue != null ? rupeesToPaise(patch.revenue) : undefined,
+      remarks: orUndefinedOpt(patch.remarks)
+    })
+  });
+  return tripFromApi({ ...res, expenses: [] });
+}
+
+export async function completeTrip(id: string, odoEnd: number, unloadDate?: string, remarks?: string): Promise<void> {
+  await request(`/trips/${encodeURIComponent(id)}/complete`, {
+    method: 'POST',
+    body: JSON.stringify({ odoEnd, unloadDate: orUndefined(unloadDate ?? ''), remarks: orUndefined(remarks ?? '') })
+  });
+}
+
+export async function addTripExpense(tripId: string, line: TripExpenseLine): Promise<void> {
+  await request(`/trips/${encodeURIComponent(tripId)}/expenses`, {
+    method: 'POST',
+    body: JSON.stringify({
+      spentOn: line.date, kind: line.kind, litres: line.litres,
+      ratePaise: line.ratePerLitre != null ? rupeesToPaise(line.ratePerLitre) : undefined,
+      amountPaise: rupeesToPaise(line.amount), details: line.details
+    })
+  });
 }
 
 export async function approveTrip(id: string): Promise<void> {

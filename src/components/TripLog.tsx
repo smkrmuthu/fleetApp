@@ -11,10 +11,11 @@ interface Props {
   onResetFilters: () => void;
   onAddMovement: () => void;
   onApprove: (tripId: string) => void;
+  onEdit: (trip: Trip) => void;
   isDriver: boolean;
 }
 
-export function TripLog({ trips, vehicles, vehicleFilter, driverFilter, onVehicleFilter, onDriverFilter, onResetFilters, onAddMovement, onApprove, isDriver }: Props) {
+export function TripLog({ trips, vehicles, vehicleFilter, driverFilter, onVehicleFilter, onDriverFilter, onResetFilters, onAddMovement, onApprove, onEdit, isDriver }: Props) {
   const showFinancials = !isDriver;
   const showActions = !isDriver;
   const rows = trips.filter(
@@ -99,7 +100,21 @@ export function TripLog({ trips, vehicles, vehicleFilter, driverFilter, onVehicl
                     )}
                     <td style={{ textAlign: 'right', color: 'var(--color-neutral-700)' }}>{t.documents.length || '—'}</td>
                     <td style={{ whiteSpace: 'nowrap' }}>
-                      {t.status === 'pending' ? (
+                      {t.status === 'draft' ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span className="tag tag-outline">Draft</span>
+                          {isDriver && (
+                            <button
+                              type="button"
+                              className="btn btn-ghost"
+                              style={{ padding: '2px 8px', fontSize: 12 }}
+                              onClick={() => onEdit(t)}
+                            >
+                              Edit
+                            </button>
+                          )}
+                        </div>
+                      ) : t.status === 'pending' ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <span className="tag tag-accent">Pending</span>
                           {!isDriver && (

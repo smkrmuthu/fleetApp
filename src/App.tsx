@@ -31,6 +31,7 @@ export function App() {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [vehicleFilter, setVehicleFilter] = useState('all');
   const [driverFilter, setDriverFilter] = useState('');
+  const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
 
   async function loadAll(currentRole: Role) {
     setLoading(true);
@@ -103,21 +104,48 @@ export function App() {
     setDriverFilter('');
   }
 
-  async function addTrip(trip: Trip) {
+  async function submitTrip(action: 'create' | 'start' | 'save' | 'complete', trip: Trip) {
     try {
-      await api.createTrip({
-        id: trip.id, vehicle: trip.vehicle, driver: trip.driver, waybillNo: trip.waybillNo, itemNo: trip.itemNo,
-        loadDate: trip.loadDate, unloadDate: trip.unloadDate, from: trip.from, to: trip.to, tons: trip.tons,
-        odoStart: trip.odoStart ?? 0, odoEnd: trip.odoEnd ?? 0, revenue: trip.revenue, remarks: trip.remarks,
-        expenses: trip.expenses
-      });
+      if (action === 'create' || action === 'start') {
+        await api.createTrip({
+          id: trip.id, vehicle: trip.vehicle, driver: trip.driver, waybillNo: trip.waybillNo, itemNo: trip.itemNo,
+          loadDate: trip.loadDate, unloadDate: trip.unloadDate, from: trip.from, to: trip.to, tons: trip.tons,
+          odoStart: trip.odoStart ?? 0, odoEnd: trip.odoEnd ?? 0, revenue: trip.revenue, remarks: trip.remarks,
+          expenses: trip.expenses, draft: action === 'start'
+        });
+      } else {
+        const originalIds = new Set((editingTrip?.expenses ?? []).map((e) => e.id));
+        const newLines = trip.expenses.filter((e) => !originalIds.has(e.id));
+        await api.updateTrip(trip.id, {
+          vehicle: trip.vehicle, waybillNo: trip.waybillNo, itemNo: trip.itemNo, loadDate: trip.loadDate,
+          unloadDate: trip.unloadDate, from: trip.from, to: trip.to, tons: trip.tons, odoStart: trip.odoStart,
+          revenue: trip.revenue, remarks: trip.remarks
+        });
+        for (const line of newLines) {
+          await api.addTripExpense(trip.id, line);
+        }
+        if (action === 'complete') {
+          await api.completeTrip(trip.id, trip.odoEnd ?? 0, trip.unloadDate, trip.remarks);
+        }
+      }
+      setEditingTrip(null);
       setTab('triplog');
       const tasks = [api.fetchTrips().then(setTrips)];
       if (role !== 'Driver') tasks.push(api.fetchNotifications().then(setNotifications));
       await Promise.all(tasks);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not add movement');
+      setError(e instanceof Error ? e.message : 'Could not save movement');
     }
+  }
+
+  function startEditingTrip(trip: Trip) {
+    setEditingTrip(trip);
+    setTab('addtrip');
+  }
+
+  function cancelEditingTrip() {
+    setEditingTrip(null);
+    setTab('triplog');
   }
 
   async function approveTrip(tripId: string) {
@@ -242,12 +270,14 @@ export function App() {
       )}
       {tab === 'addtrip' && (
         <AddMovement
-          key={role}
-          onAdd={addTrip}
+          key={role + (editingTrip?.id ?? 'new')}
+          onSubmit={submitTrip}
           driverOnly={role === 'Driver'}
           vehicles={vehicles}
           drivers={drivers}
           lockedDriverName={role === 'Driver' ? currentUserName : undefined}
+          editingTrip={editingTrip}
+          onCancelEdit={cancelEditingTrip}
         />
       )}
       {tab === 'triplog' && (
@@ -259,8 +289,9 @@ export function App() {
           onVehicleFilter={setVehicleFilter}
           onDriverFilter={setDriverFilter}
           onResetFilters={resetFilters}
-          onAddMovement={() => setTab('addtrip')}
+          onAddMovement={() => { setEditingTrip(null); setTab('addtrip'); }}
           onApprove={approveTrip}
+          onEdit={startEditingTrip}
           isDriver={role === 'Driver'}
         />
       )}
