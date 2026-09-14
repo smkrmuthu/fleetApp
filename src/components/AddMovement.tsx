@@ -104,12 +104,16 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, lockedDri
   const litres = dieselLitres(lines);
   const kmpl = litres ? (km / litres).toFixed(2) + ' km/l' : '—';
 
-  function validate(requireOdoEnd: boolean): Record<string, string> {
+  function validate(completing: boolean): Record<string, string> {
     const errs: Record<string, string> = {};
     if (!form.vehicle) errs.vehicle = 'Select a vehicle.';
     if (!form.driver) errs.driver = 'Select a driver.';
     if (!form.waybillNo.trim()) errs.waybillNo = 'Waybill number is required.';
-    if (requireOdoEnd && !form.odoEnd) errs.odoEnd = 'Odometer end is required to complete this movement.';
+    if (completing) {
+      if (!form.tons) errs.tons = 'Loading weight is required to complete this movement.';
+      if (!form.odoStart) errs.odoStart = 'Odometer start is required to complete this movement.';
+      if (!form.odoEnd) errs.odoEnd = 'Odometer end is required to complete this movement.';
+    }
     if (form.odoEnd && toNumber(form.odoEnd) <= toNumber(form.odoStart)) {
       errs.odoEnd = 'Odometer end must be greater than odometer start.';
     }
@@ -131,8 +135,8 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, lockedDri
     };
   }
 
-  function tryAction(action: SubmitAction, requireOdoEnd: boolean) {
-    const errs = validate(requireOdoEnd);
+  function tryAction(action: SubmitAction, completing: boolean) {
+    const errs = validate(completing);
     setErrors(errs);
     if (Object.keys(errs).length > 0) return;
     setConfirmAction(action);
@@ -387,7 +391,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, lockedDri
                 </>
               ) : (
                 <>
-                  <button type="button" className="btn btn-primary" onClick={() => tryAction('create', false)}>Add movement</button>
+                  <button type="button" className="btn btn-primary" onClick={() => tryAction('create', true)}>Add movement</button>
                   <button type="button" className="btn btn-ghost" onClick={resetForm}>Clear</button>
                 </>
               )}
