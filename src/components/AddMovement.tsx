@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import type { Trip, TripExpenseKind, TripExpenseLine, TripFormState, Vehicle } from '../types';
+import type { DriverMaster, Trip, TripExpenseKind, TripExpenseLine, TripFormState, Vehicle } from '../types';
 import { SCAN_FIELDS, TRIP_EXPENSE_LABEL } from '../data/mockData';
 import { dieselLitres, rupees, toNumber } from '../utils/calc';
 
@@ -23,10 +23,11 @@ interface Props {
   onAdd: (trip: Trip) => void;
   driverOnly: boolean;
   vehicles: Vehicle[];
+  drivers: DriverMaster[];
   lockedDriverName?: string;
 }
 
-export function AddMovement({ onAdd, driverOnly, vehicles, lockedDriverName }: Props) {
+export function AddMovement({ onAdd, driverOnly, vehicles, drivers, lockedDriverName }: Props) {
   const showFinancials = !driverOnly;
   const [form, setForm] = useState<TripFormState>(() => blankForm(lockedDriverName));
   const [lines, setLines] = useState<TripExpenseLine[]>([]);
@@ -124,7 +125,14 @@ export function AddMovement({ onAdd, driverOnly, vehicles, lockedDriverName }: P
             </div>
             <div className="field">
               <label>Driver *</label>
-              <input className="input" type="text" placeholder="Driver name" value={form.driver} onChange={set('driver')} disabled={!!lockedDriverName} />
+              {lockedDriverName ? (
+                <input className="input" type="text" value={form.driver} disabled />
+              ) : (
+                <select className="input" value={form.driver} onChange={set('driver')}>
+                  <option value="">Select driver</option>
+                  {drivers.map((d) => <option key={d.name} value={d.name}>{d.name}</option>)}
+                </select>
+              )}
             </div>
             <div className="field"><label>Waybill no *</label><input className="input" type="text" placeholder="EWB 0000 0000 0000" value={form.waybillNo} onChange={set('waybillNo')} /></div>
             <div className="field"><label>Item no</label><input className="input" type="text" placeholder="ITM-0000" value={form.itemNo} onChange={set('itemNo')} /></div>

@@ -136,6 +136,7 @@ export function App() {
           onAdd={addTrip}
           driverOnly={role === 'Driver'}
           vehicles={vehicles}
+          drivers={drivers}
           lockedDriverName={role === 'Driver' ? DEMO_DRIVER_NAME : undefined}
         />
       )}
