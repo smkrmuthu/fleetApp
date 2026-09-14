@@ -1,11 +1,31 @@
 import { useEffect, useRef, useState } from 'react';
 import type { DriverMaster, Trip, TripExpenseKind, TripExpenseLine, TripFormState, Vehicle } from '../types';
-import { SCAN_FIELDS, TRIP_EXPENSE_LABEL } from '../data/mockData';
+import { TRIP_EXPENSE_LABEL } from '../data/mockData';
 import { dieselLitres, rupees, toNumber } from '../utils/calc';
-import { parseDisplayDate } from '../lib/api';
+import { parseDisplayDate, scanReceipt, type ScannedReceipt } from '../lib/api';
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
+}
+
+function fileToBase64(file: File): Promise<{ base64: string; mimeType: string }> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      resolve({ base64: result.slice(result.indexOf(',') + 1), mimeType: file.type || 'image/jpeg' });
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+function normalizeReg(v: string): string {
+  return v.replace(/\s+/g, '').toUpperCase();
+}
+
+function mapFuelType(fuelType?: string): TripExpenseKind {
+  return (fuelType ?? '').toLowerCase().includes('adblue') ? 'adblue' : 'diesel';
 }
 
 function blankForm(driver = ''): TripFormState {
@@ -53,11 +73,14 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, lockedDri
   const [lines, setLines] = useState<TripExpenseLine[]>(() => editingTrip?.expenses ?? []);
   const [newLine, setNewLine] = useState(blankLine());
   const [documents, setDocuments] = useState<string[]>(() => editingTrip?.documents ?? []);
-  const [scanned, setScanned] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [scanResult, setScanResult] = useState<ScannedReceipt | null>(null);
+  const [scanErrorMsg, setScanErrorMsg] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [confirmAction, setConfirmAction] = useState<SubmitAction | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const scanFileInputRef = useRef<HTMLInputElement>(null);
   const errorBoxRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -175,11 +198,41 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, lockedDri
     setConfirmAction(null);
   }
 
-  function applyScan() {
-    setScanned(false);
-    setForm((f) => ({ ...f, vehicle: f.vehicle || 'TN38 AB 4412' }));
-    setLines((prev) => [...prev, { id: 'x' + Date.now(), date: todayIso(), kind: 'diesel', litres: 162.4, ratePerLitre: 95, amount: 15428 }]);
+  async function onScanFileChosen(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (scanFileInputRef.current) scanFileInputRef.current.value = '';
+    if (!file) return;
+    setScanning(true);
+    setScanErrorMsg('');
+    setScanResult(null);
+    try {
+      const { base64, mimeType } = await fileToBase64(file);
+      const result = await scanReceipt(base64, mimeType);
+      setScanResult(result);
+      if (!form.vehicle && result.vehicleNo) {
+        const match = vehicles.find((v) => normalizeReg(v.id) === normalizeReg(result.vehicleNo!));
+        if (match) setForm((f) => ({ ...f, vehicle: match.id }));
+      }
+    } catch (err) {
+      setScanErrorMsg(err instanceof Error ? err.message : 'Could not read the receipt — try again or enter it manually');
+    } finally {
+      setScanning(false);
+    }
+  }
+
+  function addScannedEntry() {
+    if (!scanResult) return;
+    const line: TripExpenseLine = {
+      id: 'x' + Date.now(),
+      date: scanResult.date && /^\d{4}-\d{2}-\d{2}$/.test(scanResult.date) ? scanResult.date : todayIso(),
+      kind: mapFuelType(scanResult.fuelType),
+      litres: scanResult.litres,
+      ratePerLitre: scanResult.ratePerLitre,
+      amount: scanResult.amount
+    };
+    setLines((prev) => [...prev, line]);
     setDocuments((prev) => [...prev, 'scanned_fuel_receipt.jpg']);
+    setScanResult(null);
   }
 
   return (
@@ -449,23 +502,47 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, lockedDri
         <div style={{ background: 'var(--color-bg)', padding: 20 }}>
           <div style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--color-neutral-700)', marginBottom: 12 }}>Or scan a receipt</div>
           <div style={{ border: '2px dashed var(--color-divider)', padding: '26px 18px' }}>
-            <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 17, marginBottom: 6 }}>Drop a fuel bill or toll slip</div>
-            <div style={{ color: 'var(--color-neutral-700)', marginBottom: 16 }}>JPG, PNG or PDF. Fields are read and added as a new entry below — you confirm before saving.</div>
-            <button type="button" className="btn btn-secondary" onClick={() => setScanned(true)}>Scan receipt</button>
+            <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 17, marginBottom: 6 }}>Photograph a fuel receipt</div>
+            <div style={{ color: 'var(--color-neutral-700)', marginBottom: 16 }}>JPG or PNG. Fields are read and shown below — you confirm before it's added as an entry.</div>
+            <input
+              ref={scanFileInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={onScanFileChosen}
+              style={{ display: 'none' }}
+            />
+            <button type="button" className="btn btn-secondary" disabled={scanning} onClick={() => scanFileInputRef.current?.click()}>
+              {scanning ? 'Reading receipt…' : 'Scan receipt'}
+            </button>
           </div>
-          {scanned && (
+          {scanErrorMsg && (
+            <div style={{ marginTop: 14, border: '2px solid var(--color-accent)', color: 'var(--color-accent-700)', padding: '10px 14px', fontSize: 13 }}>
+              {scanErrorMsg}
+            </div>
+          )}
+          {scanResult && (
             <div style={{ marginTop: 18, border: '2px solid var(--color-text)' }}>
               <div style={{ background: 'var(--color-text)', color: 'var(--color-bg)', padding: '8px 12px', fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
                 Parsed — confirm
               </div>
-              {SCAN_FIELDS.map((f) => (
+              {[
+                { label: 'Vendor', value: scanResult.vendor || '—' },
+                { label: 'Date', value: scanResult.date || '—' },
+                { label: 'Vehicle on bill', value: scanResult.vehicleNo || '—' },
+                { label: 'Fuel', value: scanResult.fuelType || '—' },
+                { label: 'Litres', value: scanResult.litres.toString() },
+                { label: 'Price / litre', value: rupees(scanResult.ratePerLitre) },
+                { label: 'Amount', value: rupees(scanResult.amount) }
+              ].map((f) => (
                 <div key={f.label} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '10px 12px', borderBottom: '1px solid var(--color-neutral-300)' }}>
                   <span style={{ color: 'var(--color-neutral-700)' }}>{f.label}</span>
                   <span style={{ fontWeight: 600 }}>{f.value}</span>
                 </div>
               ))}
-              <div style={{ padding: 12 }}>
-                <button type="button" className="btn btn-primary btn-block" onClick={applyScan}>Add as an entry</button>
+              <div style={{ padding: 12, display: 'flex', gap: 10 }}>
+                <button type="button" className="btn btn-primary btn-block" onClick={addScannedEntry}>Add as an entry</button>
+                <button type="button" className="btn btn-ghost" onClick={() => setScanResult(null)}>Discard</button>
               </div>
             </div>
           )}

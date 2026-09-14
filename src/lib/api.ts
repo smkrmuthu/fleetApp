@@ -344,6 +344,24 @@ export async function deleteTrip(id: string): Promise<void> {
   await request(`/trips/${encodeURIComponent(id)}`, { method: 'DELETE' });
 }
 
+// ── receipt scanning ─────────────────────────────────────────────────────
+export interface ScannedReceipt {
+  date?: string;
+  vehicleNo?: string;
+  fuelType?: string;
+  litres: number;
+  ratePerLitre: number;
+  amount: number;
+  vendor?: string;
+}
+
+export async function scanReceipt(imageBase64: string, mimeType: string): Promise<ScannedReceipt> {
+  return request<ScannedReceipt>('/receipts/scan', {
+    method: 'POST',
+    body: JSON.stringify({ imageBase64, mimeType })
+  });
+}
+
 // ── notifications ────────────────────────────────────────────────────────
 interface ApiNotification {
   id: string; kind: NotificationKind; message: string; tab: TabId; relatedTripId: string | null; read: boolean; createdAt: string;

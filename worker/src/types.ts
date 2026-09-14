@@ -2,6 +2,7 @@ export interface Env {
   DB: D1Database;
   ALLOWED_ORIGIN: string;
   JWT_SECRET: string;
+  GEMINI_API_KEY: string;
 }
 
 export type Role = 'driver' | 'office' | 'manager';
