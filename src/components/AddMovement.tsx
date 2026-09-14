@@ -253,8 +253,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, lockedDri
         <div className="kicker">Driver or documentation resource</div>
         <h1 style={{ fontSize: 34, letterSpacing: '-0.02em' }}>{isEditing ? 'Edit Movement' : 'Add Movement'}</h1>
       </div>
-      <div className="movement-grid" style={{ gap: 2, background: 'var(--color-divider)', border: '2px solid var(--color-divider)' }}>
-        <div style={{ background: 'var(--color-bg)', padding: 20 }}>
+      <div style={{ maxWidth: 780, background: 'var(--color-bg)', padding: 20, border: '2px solid var(--color-divider)' }}>
           <div className="filters-grid" style={{ alignItems: 'stretch' }}>
             <div className="field"><label>Loading date</label><input className="input" type="date" value={form.loadDate} onChange={set('loadDate')} /></div>
             <div className="field"><label>Unloading date</label><input className="input" type="date" min={form.loadDate} value={form.unloadDate} onChange={set('unloadDate')} /></div>
@@ -380,8 +379,55 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, lockedDri
                   )}
                 </>
               )}
-              <button type="button" className="btn btn-secondary" style={{ justifySelf: 'start' }} onClick={addLine}>Add entry</button>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                <button type="button" className="btn btn-secondary" onClick={addLine}>Add entry</button>
+                <span style={{ color: 'var(--color-neutral-500)', fontSize: 12 }}>or</span>
+                <input
+                  ref={scanFileInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={onScanFileChosen}
+                  style={{ display: 'none' }}
+                />
+                <button type="button" className="btn btn-secondary" disabled={scanning} onClick={() => scanFileInputRef.current?.click()}>
+                  {scanning && <span className="spinner" style={{ marginRight: 8 }} />}
+                  {scanning ? 'Reading receipt…' : 'Scan a receipt'}
+                </button>
+              </div>
             </div>
+
+            {scanErrorMsg && (
+              <div style={{ border: '2px solid var(--color-accent)', color: 'var(--color-accent-700)', padding: '10px 14px', marginBottom: 12, fontSize: 13 }}>
+                {scanErrorMsg}
+              </div>
+            )}
+
+            {scanResult && (
+              <div style={{ marginBottom: 16, border: '2px solid var(--color-text)' }}>
+                <div style={{ background: 'var(--color-text)', color: 'var(--color-bg)', padding: '8px 12px', fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+                  Parsed — confirm
+                </div>
+                {[
+                  { label: 'Vendor', value: scanResult.vendor || '—' },
+                  { label: 'Date', value: scanResult.date || '—' },
+                  { label: 'Vehicle on bill', value: scanResult.vehicleNo || '—' },
+                  { label: 'Fuel', value: scanResult.fuelType || '—' },
+                  { label: 'Litres', value: scanResult.litres.toString() },
+                  { label: 'Price / litre', value: rupees(scanResult.ratePerLitre) },
+                  { label: 'Amount', value: rupees(scanResult.amount) }
+                ].map((f) => (
+                  <div key={f.label} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '10px 12px', borderBottom: '1px solid var(--color-neutral-300)' }}>
+                    <span style={{ color: 'var(--color-neutral-700)' }}>{f.label}</span>
+                    <span style={{ fontWeight: 600 }}>{f.value}</span>
+                  </div>
+                ))}
+                <div style={{ padding: 12, display: 'flex', gap: 10 }}>
+                  <button type="button" className="btn btn-primary btn-block" onClick={addScannedEntry}>Add as an entry</button>
+                  <button type="button" className="btn btn-ghost" onClick={() => setScanResult(null)}>Discard</button>
+                </div>
+              </div>
+            )}
 
             {lines.length > 0 && (
               <div className="scroll-x" style={{ border: '1px solid var(--color-neutral-300)' }}>
@@ -497,61 +543,12 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, lockedDri
               <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 22 }}>{kmpl}</div>
             </div>
           </div>
-        </div>
 
-        <div style={{ background: 'var(--color-bg)', padding: 20 }}>
-          <div style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--color-neutral-700)', marginBottom: 12 }}>Or scan a receipt</div>
-          <div style={{ border: '2px dashed var(--color-divider)', padding: '26px 18px' }}>
-            <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 17, marginBottom: 6 }}>Photograph a fuel receipt</div>
-            <div style={{ color: 'var(--color-neutral-700)', marginBottom: 16 }}>JPG or PNG. Fields are read and shown below — you confirm before it's added as an entry.</div>
-            <input
-              ref={scanFileInputRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              onChange={onScanFileChosen}
-              style={{ display: 'none' }}
-            />
-            <button type="button" className="btn btn-secondary" disabled={scanning} onClick={() => scanFileInputRef.current?.click()}>
-              {scanning ? 'Reading receipt…' : 'Scan receipt'}
-            </button>
-          </div>
-          {scanErrorMsg && (
-            <div style={{ marginTop: 14, border: '2px solid var(--color-accent)', color: 'var(--color-accent-700)', padding: '10px 14px', fontSize: 13 }}>
-              {scanErrorMsg}
-            </div>
-          )}
-          {scanResult && (
-            <div style={{ marginTop: 18, border: '2px solid var(--color-text)' }}>
-              <div style={{ background: 'var(--color-text)', color: 'var(--color-bg)', padding: '8px 12px', fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-                Parsed — confirm
-              </div>
-              {[
-                { label: 'Vendor', value: scanResult.vendor || '—' },
-                { label: 'Date', value: scanResult.date || '—' },
-                { label: 'Vehicle on bill', value: scanResult.vehicleNo || '—' },
-                { label: 'Fuel', value: scanResult.fuelType || '—' },
-                { label: 'Litres', value: scanResult.litres.toString() },
-                { label: 'Price / litre', value: rupees(scanResult.ratePerLitre) },
-                { label: 'Amount', value: rupees(scanResult.amount) }
-              ].map((f) => (
-                <div key={f.label} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '10px 12px', borderBottom: '1px solid var(--color-neutral-300)' }}>
-                  <span style={{ color: 'var(--color-neutral-700)' }}>{f.label}</span>
-                  <span style={{ fontWeight: 600 }}>{f.value}</span>
-                </div>
-              ))}
-              <div style={{ padding: 12, display: 'flex', gap: 10 }}>
-                <button type="button" className="btn btn-primary btn-block" onClick={addScannedEntry}>Add as an entry</button>
-                <button type="button" className="btn btn-ghost" onClick={() => setScanResult(null)}>Discard</button>
-              </div>
-            </div>
-          )}
-          <div style={{ marginTop: 22, borderTop: '2px solid var(--color-divider)', paddingTop: 14, fontSize: 12, color: 'var(--color-neutral-700)', lineHeight: 1.6 }}>
+          <div style={{ marginTop: 16, borderTop: '2px solid var(--color-divider)', paddingTop: 14, fontSize: 12, color: 'var(--color-neutral-700)', lineHeight: 1.6 }}>
             {driverOnly
               ? 'Start a movement to open it, add fuel/expense entries as the trip goes, then Complete it once the closing odometer reading is in — that sends it for approval. Every edit is written to the audit trail.'
               : 'Documentation and manager entries post straight to the log as approved. Every edit is written to the audit trail.'}
           </div>
-        </div>
       </div>
     </section>
   );
