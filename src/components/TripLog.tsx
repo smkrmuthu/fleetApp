@@ -12,10 +12,11 @@ interface Props {
   onAddMovement: () => void;
   onApprove: (tripId: string) => void;
   onEdit: (trip: Trip) => void;
+  onDelete: (trip: Trip) => void;
   isDriver: boolean;
 }
 
-export function TripLog({ trips, vehicles, vehicleFilter, driverFilter, onVehicleFilter, onDriverFilter, onResetFilters, onAddMovement, onApprove, onEdit, isDriver }: Props) {
+export function TripLog({ trips, vehicles, vehicleFilter, driverFilter, onVehicleFilter, onDriverFilter, onResetFilters, onAddMovement, onApprove, onEdit, onDelete, isDriver }: Props) {
   const showFinancials = !isDriver;
   const showActions = !isDriver;
   const rows = trips.filter(
@@ -104,29 +105,25 @@ export function TripLog({ trips, vehicles, vehicleFilter, driverFilter, onVehicl
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <span className="tag tag-outline">Draft</span>
                           {isDriver && (
-                            <button
-                              type="button"
-                              className="btn btn-ghost"
-                              style={{ padding: '2px 8px', fontSize: 12 }}
-                              onClick={() => onEdit(t)}
-                            >
+                            <button type="button" className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => onEdit(t)}>
                               Edit
                             </button>
                           )}
+                          <button type="button" className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 12, color: 'var(--color-accent-700)' }} onClick={() => onDelete(t)}>
+                            Delete
+                          </button>
                         </div>
                       ) : t.status === 'pending' ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <span className="tag tag-accent">Pending</span>
                           {!isDriver && (
-                            <button
-                              type="button"
-                              className="btn btn-ghost"
-                              style={{ padding: '2px 8px', fontSize: 12 }}
-                              onClick={() => onApprove(t.id)}
-                            >
+                            <button type="button" className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => onApprove(t.id)}>
                               Approve
                             </button>
                           )}
+                          <button type="button" className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 12, color: 'var(--color-accent-700)' }} onClick={() => onDelete(t)}>
+                            Delete
+                          </button>
                         </div>
                       ) : (
                         <span className="tag tag-outline">Approved</span>

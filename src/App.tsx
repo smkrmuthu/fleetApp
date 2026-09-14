@@ -157,6 +157,19 @@ export function App() {
     }
   }
 
+  async function deleteTrip(trip: Trip) {
+    if (!window.confirm(`Delete the movement for ${trip.vehicle} (waybill ${trip.waybillNo})? This cannot be undone.`)) return;
+    try {
+      await api.deleteTrip(trip.id);
+      if (editingTrip?.id === trip.id) setEditingTrip(null);
+      const tasks = [api.fetchTrips().then(setTrips)];
+      if (role !== 'Driver') tasks.push(api.fetchNotifications().then(setNotifications));
+      await Promise.all(tasks);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not delete movement');
+    }
+  }
+
   async function openNotification(n: AppNotification) {
     try {
       await api.markNotificationRead(n.id);
@@ -292,6 +305,7 @@ export function App() {
           onAddMovement={() => { setEditingTrip(null); setTab('addtrip'); }}
           onApprove={approveTrip}
           onEdit={startEditingTrip}
+          onDelete={deleteTrip}
           isDriver={role === 'Driver'}
         />
       )}

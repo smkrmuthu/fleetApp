@@ -295,6 +295,32 @@ tripRoutes.post('/:id/complete', async (c) => {
   return c.json(row);
 });
 
+// A trip can be deleted any time before it's approved — a driver may delete
+// their own draft or pending movement, office/manager may delete any
+// draft or pending trip. Once approved it's locked; there is no undo, so
+// this is a hard delete of the trip and its expense lines.
+tripRoutes.delete('/:id', async (c) => {
+  const auth = c.get('auth');
+  const id = c.req.param('id')!;
+  const db = getDb(c.env);
+  const [existing] = await db.select().from(trips).where(and(eq(trips.id, id), eq(trips.orgId, auth.orgId))).limit(1);
+  if (!existing) return c.json({ error: { code: 'not_found', message: 'Trip not found' } }, 404);
+  if (auth.role === 'driver' && existing.driverId !== auth.driverId) {
+    return c.json({ error: { code: 'forbidden', message: 'Not your movement' } }, 403);
+  }
+  if (existing.status === 'approved') {
+    return c.json({ error: { code: 'invalid_state', message: 'An approved movement cannot be deleted' } }, 409);
+  }
+
+  await db.batch([
+    db.delete(tripExpenses).where(eq(tripExpenses.tripId, id)),
+    db.delete(notifications).where(and(eq(notifications.relatedTripId, id), eq(notifications.orgId, auth.orgId))),
+    db.delete(trips).where(eq(trips.id, id))
+  ]);
+  await writeAudit(db, auth.orgId, 'trips', id, 'delete', { status: existing.status }, auth.userId);
+  return c.json({ ok: true });
+});
+
 tripRoutes.post('/:id/approve', requireRole('office', 'manager'), async (c) => {
   const auth = c.get('auth');
   const id = c.req.param('id')!;

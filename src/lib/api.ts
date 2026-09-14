@@ -340,6 +340,10 @@ export async function approveTrip(id: string): Promise<void> {
   await request(`/trips/${encodeURIComponent(id)}/approve`, { method: 'POST' });
 }
 
+export async function deleteTrip(id: string): Promise<void> {
+  await request(`/trips/${encodeURIComponent(id)}`, { method: 'DELETE' });
+}
+
 // ── notifications ────────────────────────────────────────────────────────
 interface ApiNotification {
   id: string; kind: NotificationKind; message: string; tab: TabId; relatedTripId: string | null; read: boolean; createdAt: string;
