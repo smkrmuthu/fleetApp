@@ -11,9 +11,13 @@ function blankForm(): TripFormState {
   };
 }
 
-function blankLine(): { date: string; kind: TripExpenseKind; litres: string; ratePerLitre: string; amount: string } {
-  return { date: '2026-09-11', kind: 'diesel', litres: '', ratePerLitre: '95', amount: '0' };
+type FuelEntryMode = 'litres' | 'amount';
+
+function blankLine(): { date: string; kind: TripExpenseKind; entryMode: FuelEntryMode; litres: string; ratePerLitre: string; amount: string } {
+  return { date: '2026-09-11', kind: 'diesel', entryMode: 'litres', litres: '', ratePerLitre: '95', amount: '0' };
 }
+
+const EXPENSE_KINDS: TripExpenseKind[] = ['diesel', 'adblue', 'toll', 'other'];
 
 interface Props {
   onAdd: (trip: Trip) => void;
@@ -34,17 +38,18 @@ export function AddMovement({ onAdd, driverOnly, vehicles }: Props) {
     setForm((f) => ({ ...f, [k]: e.target.value } as TripFormState));
 
   const needsFuelFields = newLine.kind === 'diesel' || newLine.kind === 'adblue';
-  const computedAmount = needsFuelFields ? toNumber(newLine.litres) * toNumber(newLine.ratePerLitre) : toNumber(newLine.amount);
+  const byLitres = needsFuelFields && newLine.entryMode === 'litres';
+  const computedAmount = byLitres ? toNumber(newLine.litres) * toNumber(newLine.ratePerLitre) : toNumber(newLine.amount);
 
   function addLine() {
-    const amount = needsFuelFields ? computedAmount : toNumber(newLine.amount);
+    const amount = byLitres ? computedAmount : toNumber(newLine.amount);
     if (!amount) return;
     const line: TripExpenseLine = {
       id: 'x' + Date.now(),
       date: newLine.date,
       kind: newLine.kind,
       amount,
-      ...(needsFuelFields ? { litres: toNumber(newLine.litres), ratePerLitre: toNumber(newLine.ratePerLitre) } : {})
+      ...(byLitres ? { litres: toNumber(newLine.litres), ratePerLitre: toNumber(newLine.ratePerLitre) } : {})
     };
     setLines((prev) => [...prev, line]);
     setNewLine(blankLine());
@@ -131,34 +136,78 @@ export function AddMovement({ onAdd, driverOnly, vehicles }: Props) {
             <div style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--color-neutral-700)', marginBottom: 12 }}>
               Fuel &amp; expense stops — a multi-day trip can have several
             </div>
+            <div className="field" style={{ marginBottom: 14 }}>
+              <label>Kind</label>
+              <div style={{ display: 'flex', border: '2px solid var(--color-text)', width: 'fit-content' }}>
+                {EXPENSE_KINDS.map((k, i) => (
+                  <button
+                    key={k}
+                    type="button"
+                    onClick={() => setNewLine((l) => ({ ...l, kind: k }))}
+                    style={{
+                      appearance: 'none', border: 0, borderLeft: i > 0 ? '2px solid var(--color-text)' : 'none',
+                      background: newLine.kind === k ? 'var(--color-accent)' : 'transparent',
+                      color: newLine.kind === k ? '#fff' : 'var(--color-text)',
+                      fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: 12, letterSpacing: '0.06em', textTransform: 'uppercase',
+                      padding: '7px 14px', cursor: 'pointer'
+                    }}
+                  >
+                    {TRIP_EXPENSE_LABEL[k]}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {needsFuelFields && (
+              <div className="field" style={{ marginBottom: 14 }}>
+                <label>Enter by</label>
+                <div style={{ display: 'flex', border: '2px solid var(--color-divider)', width: 'fit-content' }}>
+                  {(['litres', 'amount'] as FuelEntryMode[]).map((mode, i) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => setNewLine((l) => ({ ...l, entryMode: mode }))}
+                      style={{
+                        appearance: 'none', border: 0, borderLeft: i > 0 ? '2px solid var(--color-divider)' : 'none',
+                        background: newLine.entryMode === mode ? 'var(--color-text)' : 'transparent',
+                        color: newLine.entryMode === mode ? 'var(--color-bg)' : 'var(--color-text)',
+                        fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: 12, letterSpacing: '0.04em', textTransform: 'uppercase',
+                        padding: '6px 12px', cursor: 'pointer'
+                      }}
+                    >
+                      {mode === 'litres' ? 'Litres × rate' : 'Fixed amount'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="filters-grid" style={{ alignItems: 'end', marginBottom: 12 }}>
               <div className="field">
                 <label>Date</label>
                 <input className="input" type="date" value={newLine.date} onChange={(e) => setNewLine((l) => ({ ...l, date: e.target.value }))} />
               </div>
-              <div className="field">
-                <label>Kind</label>
-                <select className="input" value={newLine.kind} onChange={(e) => setNewLine((l) => ({ ...l, kind: e.target.value as TripExpenseKind }))}>
-                  <option value="diesel">Diesel</option>
-                  <option value="adblue">AdBlue</option>
-                  <option value="toll">Toll</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
               {needsFuelFields ? (
                 <>
-                  <div className="field">
+                  <div className="field" style={{ opacity: byLitres ? 1 : 0.45 }}>
                     <label>Litres</label>
-                    <input className="input" type="number" value={newLine.litres} onChange={(e) => setNewLine((l) => ({ ...l, litres: e.target.value }))} />
+                    <input className="input" type="number" disabled={!byLitres} value={newLine.litres} onChange={(e) => setNewLine((l) => ({ ...l, litres: e.target.value }))} />
                   </div>
-                  <div className="field">
+                  <div className="field" style={{ opacity: byLitres ? 1 : 0.45 }}>
                     <label>Rate / litre (₹)</label>
-                    <input className="input" type="number" value={newLine.ratePerLitre} onChange={(e) => setNewLine((l) => ({ ...l, ratePerLitre: e.target.value }))} />
+                    <input className="input" type="number" disabled={!byLitres} value={newLine.ratePerLitre} onChange={(e) => setNewLine((l) => ({ ...l, ratePerLitre: e.target.value }))} />
                   </div>
-                  <div>
-                    <div className="stat-label" style={{ marginBottom: 4 }}>Amount</div>
-                    <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 18 }}>{rupees(computedAmount)}</div>
-                  </div>
+                  {byLitres ? (
+                    <div>
+                      <div className="stat-label" style={{ marginBottom: 4 }}>Amount</div>
+                      <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 18 }}>{rupees(computedAmount)}</div>
+                    </div>
+                  ) : (
+                    <div className="field">
+                      <label>Amount (₹)</label>
+                      <input className="input" type="number" placeholder="3000" value={newLine.amount} onChange={(e) => setNewLine((l) => ({ ...l, amount: e.target.value }))} />
+                    </div>
+                  )}
                 </>
               ) : (
                 <div className="field">
