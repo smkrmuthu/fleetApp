@@ -74,6 +74,7 @@ export function People({
         <div>
           <div className="kicker">Meridian Logistics · {users.length} accounts, 3 branches</div>
           <h1 style={{ fontSize: 34, letterSpacing: '-0.02em' }}>People</h1>
+          <p style={{ color: 'var(--color-neutral-700)', marginTop: 6, fontSize: 13 }}>Manage the fleet's trucks, drivers and user accounts.</p>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
           <button type="button" className="btn btn-primary">Invite user</button>

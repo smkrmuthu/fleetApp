@@ -290,6 +290,9 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, lockedDri
       <div style={{ marginBottom: 18 }}>
         <div className="kicker">Driver or documentation resource</div>
         <h1 style={{ fontSize: 34, letterSpacing: '-0.02em' }}>{isEditing ? 'Edit Movement' : 'Add Movement'}</h1>
+        <p style={{ color: 'var(--color-neutral-700)', marginTop: 6, fontSize: 13 }}>
+          {isEditing ? 'Update an open movement, add entries to it, or mark it complete.' : 'Start a new movement, or scan/enter its fuel and expense entries as you go.'}
+        </p>
       </div>
       <div className="movement-grid">
         <div style={{ background: 'var(--color-bg)', padding: 20, border: '2px solid var(--color-divider)' }}>

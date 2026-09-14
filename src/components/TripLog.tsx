@@ -35,6 +35,7 @@ export function TripLog({ trips, vehicles, vehicleFilter, driverFilter, dateFrom
         <div>
           <div className="kicker">{rows.length} movements · {formatDateRange(dateFrom, dateTo)}</div>
           <h1 style={{ fontSize: 34, letterSpacing: '-0.02em' }}>Trip Log</h1>
+          <p style={{ color: 'var(--color-neutral-700)', marginTop: 6, fontSize: 13 }}>Every movement in one place — approve pending ones, edit or delete drafts.</p>
         </div>
         {showActions && (
           <div style={{ display: 'flex', gap: 10 }}>

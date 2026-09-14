@@ -47,6 +47,7 @@ export function MonthlyReport({ trips: allTrips, expenses: allExpenses, vehicles
         <div>
           <div className="kicker">Manager only · {rangeLabel}</div>
           <h1 style={{ fontSize: 34, letterSpacing: '-0.02em' }}>Monthly Report</h1>
+          <p style={{ color: 'var(--color-neutral-700)', marginTop: 6, fontSize: 13 }}>The full financial picture — revenue, cost, profit and per-vehicle economics.</p>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
           <button type="button" className="btn btn-secondary">Export Excel</button>

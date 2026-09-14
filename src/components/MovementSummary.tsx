@@ -61,6 +61,7 @@ export function MovementSummary({ trips, expenses, vehicles, vehicleFilter, driv
         <div>
           <div className="kicker">{rangeLabel}</div>
           <h1 style={{ fontSize: 34, letterSpacing: '-0.02em' }}>Movement Summary</h1>
+          <p style={{ color: 'var(--color-neutral-700)', marginTop: 6, fontSize: 13 }}>Fleet-wide totals — movements, distance, cost and profit — for the selected period.</p>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
           <button type="button" className="btn btn-secondary">Export Excel</button>

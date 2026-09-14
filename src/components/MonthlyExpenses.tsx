@@ -42,6 +42,7 @@ export function MonthlyExpenses({ expenses: allExpenses, vehicles, dateFrom, dat
       <div style={{ marginBottom: 18 }}>
         <div className="kicker">Admin and documentation resource · {formatDateRange(dateFrom, dateTo)}</div>
         <h1 style={{ fontSize: 34, letterSpacing: '-0.02em' }}>Monthly Expenses</h1>
+        <p style={{ color: 'var(--color-neutral-700)', marginTop: 6, fontSize: 13 }}>Record fixed costs — permits, insurance, EMIs — that aren't tied to a single trip.</p>
       </div>
 
       <div style={{ border: '2px solid var(--color-divider)', padding: 20, marginBottom: 24 }}>
