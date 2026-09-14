@@ -293,7 +293,8 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, lockedDri
         <div className="kicker">Driver or documentation resource</div>
         <h1 style={{ fontSize: 34, letterSpacing: '-0.02em' }}>{isEditing ? 'Edit Movement' : 'Add Movement'}</h1>
       </div>
-      <div style={{ maxWidth: 780, background: 'var(--color-bg)', padding: 20, border: '2px solid var(--color-divider)' }}>
+      <div className="movement-grid">
+        <div style={{ background: 'var(--color-bg)', padding: 20, border: '2px solid var(--color-divider)' }}>
           <div className="filters-grid" style={{ alignItems: 'stretch' }}>
             <div className="field"><label>Loading date</label><input className="input" type="date" value={form.loadDate} onChange={set('loadDate')} /></div>
             <div className="field"><label>Unloading date</label><input className="input" type="date" min={form.loadDate} value={form.unloadDate} onChange={set('unloadDate')} /></div>
@@ -325,7 +326,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, lockedDri
             {showFinancials && (
               <div className="field"><label>Revenue (₹)</label><input className="input" type="number" step="any" inputMode="decimal" value={form.revenue} onChange={set('revenue')} /></div>
             )}
-            <div className="field" style={{ gridColumn: 'span 2' }}><label>Remarks</label><input className="input" type="text" placeholder="Remarks" value={form.remarks} onChange={set('remarks')} /></div>
+            <div className="field field-span-2"><label>Remarks</label><input className="input" type="text" placeholder="Remarks" value={form.remarks} onChange={set('remarks')} /></div>
           </div>
 
           <div style={{ marginTop: 20, borderTop: '2px solid var(--color-divider)', paddingTop: 16 }}>
@@ -568,7 +569,10 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, lockedDri
             </div>
           )}
 
-          <div style={{ marginTop: 16, display: 'flex', gap: 28, flexWrap: 'wrap', borderTop: '2px solid var(--color-divider)', paddingTop: 16 }}>
+        </div>
+
+        <div className="movement-sidebar">
+          <div style={{ background: 'var(--color-bg)', padding: 20, border: '2px solid var(--color-divider)', display: 'grid', gap: 18 }}>
             <div>
               <div className="stat-label" style={{ marginBottom: 4 }}>Distance</div>
               <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 22 }}>{km.toLocaleString('en-IN')} km</div>
@@ -587,13 +591,13 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, lockedDri
               <div className="stat-label" style={{ marginBottom: 4 }}>Mileage</div>
               <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 22 }}>{kmpl}</div>
             </div>
+            <div style={{ borderTop: '2px solid var(--color-divider)', paddingTop: 14, fontSize: 12, color: 'var(--color-neutral-700)', lineHeight: 1.6 }}>
+              {driverOnly
+                ? 'Start a movement to open it, add fuel/expense entries as the trip goes, then Complete it once the closing odometer reading is in — that sends it for approval. Every edit is written to the audit trail.'
+                : 'Documentation and manager entries post straight to the log as approved. Every edit is written to the audit trail.'}
+            </div>
           </div>
-
-          <div style={{ marginTop: 16, borderTop: '2px solid var(--color-divider)', paddingTop: 14, fontSize: 12, color: 'var(--color-neutral-700)', lineHeight: 1.6 }}>
-            {driverOnly
-              ? 'Start a movement to open it, add fuel/expense entries as the trip goes, then Complete it once the closing odometer reading is in — that sends it for approval. Every edit is written to the audit trail.'
-              : 'Documentation and manager entries post straight to the log as approved. Every edit is written to the audit trail.'}
-          </div>
+        </div>
       </div>
     </section>
   );

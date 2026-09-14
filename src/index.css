@@ -137,6 +137,7 @@ input, select, textarea { font-family: var(--font-body); }
   gap: 14px;
   align-items: end;
 }
+.field-span-2 { grid-column: span 2; }
 
 .scroll-x { overflow-x: auto; }
 
@@ -159,6 +160,14 @@ input, select, textarea { font-family: var(--font-body); }
   border-radius: 50%; animation: spin 0.6s linear infinite;
 }
 
+.movement-grid {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) 260px;
+  gap: 20px;
+  align-items: start;
+}
+.movement-sidebar { position: sticky; top: 20px; }
+
 @media (max-width: 760px) {
   .app-shell-main { padding: 14px; }
   .app-shell-bar { padding: 10px 14px; }
@@ -166,6 +175,15 @@ input, select, textarea { font-family: var(--font-body); }
   .sign-in-grid { grid-template-columns: 1fr; }
   .sign-in-brand { min-height: auto; padding: 28px 20px 24px; }
   .sign-in-form-panel { padding: 24px 20px 36px; max-width: none; }
+
+  .movement-grid { grid-template-columns: minmax(0,1fr); }
+  .movement-sidebar { position: static; }
+  /* nested inside movement-grid's flexible track, auto-fit's column count
+     can resolve against a stale available width — pin it explicitly */
+  .movement-grid .filters-grid { grid-template-columns: minmax(0,1fr); }
+  /* a field spanning 2 columns forces an implicit 2nd column into
+     existence even when the grid itself is down to one */
+  .field-span-2 { grid-column: span 1; }
 
   .table { font-size: 13px; }
   .table th, .table td { padding: 6px; }
