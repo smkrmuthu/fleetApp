@@ -1,107 +1,10 @@
-import type { AppNotification, DriverMaster, ExpenseCategory, MonthlyExpense, Role, TabId, Trip, UserAccount, Vehicle } from '../types';
+import type { AppNotification, DriverMaster, ExpenseCategory, MonthlyExpense, Role, TabId, UserAccount, Vehicle } from '../types';
 
 export const VEHICLES: Vehicle[] = [
   { id: 'TN38 AB 4412', model: 'Tata Signa 4825', fcDate: '15 Mar 2025', renewalDate: '14 Mar 2027', renewalDue: false },
   { id: 'TN45 CQ 9087', model: 'Ashok Leyland 3520', fcDate: '30 Sep 2024', renewalDate: '29 Sep 2026', renewalDue: true },
   { id: 'KA01 MD 7731', model: 'BharatBenz 2823', fcDate: '05 Jan 2025', renewalDate: '04 Jan 2027', renewalDue: false },
   { id: 'TN52 BK 2290', model: 'Eicher Pro 6028', fcDate: '05 Nov 2024', renewalDate: '04 Nov 2026', renewalDue: true }
-];
-
-export const TRIPS: Trip[] = [
-  {
-    id: 't1', loadDate: '02 Sep', unloadDate: '03 Sep', vehicle: 'TN38 AB 4412', driver: 'Murugan S',
-    waybillNo: 'EWB 2710 0345 6789', itemNo: 'ITM-4471', from: 'Chennai Yard', to: 'Sriperumbudur ICD',
-    tons: 24.5, km: 342, revenue: 34500, status: 'approved',
-    expenses: [
-      { id: 't1x1', date: '02 Sep', kind: 'diesel', litres: 118, ratePerLitre: 95, amount: 11210 },
-      { id: 't1x2', date: '02 Sep', kind: 'toll', amount: 1840 },
-      { id: 't1x3', date: '03 Sep', kind: 'other', amount: 900 }
-    ],
-    documents: ['fuel_receipt_02sep.jpg', 'waybill_27100345.pdf']
-  },
-  {
-    id: 't2', loadDate: '03 Sep', unloadDate: '04 Sep', vehicle: 'TN45 CQ 9087', driver: 'Rafiq A',
-    waybillNo: 'EWB 3312 8890 0217', itemNo: 'ITM-5502', from: 'Tirupur Factory', to: 'Cochin Yard',
-    tons: 18.0, km: 372, revenue: 31800, status: 'approved',
-    expenses: [
-      { id: 't2x1', date: '03 Sep', kind: 'diesel', litres: 131, ratePerLitre: 94, amount: 12314 },
-      { id: 't2x2', date: '03 Sep', kind: 'toll', amount: 2100 },
-      { id: 't2x3', date: '04 Sep', kind: 'other', amount: 1250 }
-    ],
-    documents: ['fuel_receipt_03sep.jpg']
-  },
-  {
-    id: 't3', loadDate: '05 Sep', unloadDate: '05 Sep', vehicle: 'KA01 MD 7731', driver: 'Prakash N',
-    waybillNo: 'EWB 1145 0032 8871', itemNo: 'ITM-2290', from: 'Ennore Yard', to: 'Hosur Warehouse',
-    tons: 21.2, km: 208, revenue: 19400, status: 'approved',
-    expenses: [
-      { id: 't3x1', date: '05 Sep', kind: 'diesel', litres: 74, ratePerLitre: 96, amount: 7104 },
-      { id: 't3x2', date: '05 Sep', kind: 'toll', amount: 980 },
-      { id: 't3x3', date: '05 Sep', kind: 'other', amount: 450 }
-    ],
-    documents: []
-  },
-  {
-    id: 't4', loadDate: '06 Sep', unloadDate: '08 Sep', vehicle: 'TN52 BK 2290', driver: 'Ilango R',
-    waybillNo: 'EWB 4420 7765 1190', itemNo: 'ITM-6610', from: 'Hosur Warehouse', to: 'Cochin Yard',
-    tons: 26.0, km: 692, revenue: 68200, status: 'approved',
-    expenses: [
-      { id: 't4x1', date: '06 Sep', kind: 'diesel', litres: 130, ratePerLitre: 95, amount: 12350 },
-      { id: 't4x2', date: '06 Sep', kind: 'toll', amount: 1840 },
-      { id: 't4x3', date: '07 Sep', kind: 'diesel', litres: 116, ratePerLitre: 95, amount: 11020 },
-      { id: 't4x4', date: '07 Sep', kind: 'adblue', litres: 8, ratePerLitre: 75, amount: 600 },
-      { id: 't4x5', date: '08 Sep', kind: 'toll', amount: 1800 },
-      { id: 't4x6', date: '08 Sep', kind: 'other', amount: 2100 }
-    ],
-    documents: ['fuel_receipt_06sep.jpg', 'fuel_receipt_07sep.jpg', 'adblue_receipt_07sep.jpg']
-  },
-  {
-    id: 't5', loadDate: '08 Sep', unloadDate: '09 Sep', vehicle: 'TN38 AB 4412', driver: 'Murugan S',
-    waybillNo: 'EWB 2299 1173 6602', itemNo: 'ITM-4488', from: 'Chennai Yard', to: 'Vijayawada Warehouse',
-    tons: 25.0, km: 456, revenue: 41900, status: 'approved',
-    expenses: [
-      { id: 't5x1', date: '08 Sep', kind: 'diesel', litres: 162, ratePerLitre: 95, amount: 15390 },
-      { id: 't5x2', date: '08 Sep', kind: 'toll', amount: 2380 },
-      { id: 't5x3', date: '09 Sep', kind: 'other', amount: 1150 }
-    ],
-    documents: ['fuel_receipt_08sep.jpg']
-  },
-  {
-    id: 't6', loadDate: '09 Sep', unloadDate: '10 Sep', vehicle: 'TN45 CQ 9087', driver: 'Rafiq A',
-    waybillNo: 'EWB 3366 0482 1907', itemNo: 'ITM-5521', from: 'Hyderabad Plant', to: 'Krishnapatnam Yard',
-    tons: 19.5, km: 574, revenue: 47600, status: 'approved',
-    expenses: [
-      { id: 't6x1', date: '09 Sep', kind: 'diesel', litres: 108, ratePerLitre: 96, amount: 10368 },
-      { id: 't6x2', date: '09 Sep', kind: 'toll', amount: 1600 },
-      { id: 't6x3', date: '10 Sep', kind: 'diesel', litres: 97, ratePerLitre: 96, amount: 9312 },
-      { id: 't6x4', date: '10 Sep', kind: 'adblue', litres: 6, ratePerLitre: 75, amount: 450 },
-      { id: 't6x5', date: '10 Sep', kind: 'toll', amount: 1360 },
-      { id: 't6x6', date: '10 Sep', kind: 'other', amount: 1400 }
-    ],
-    documents: ['fuel_receipt_09sep.jpg', 'fuel_receipt_10sep.jpg']
-  },
-  {
-    id: 't7', loadDate: '10 Sep', unloadDate: '10 Sep', vehicle: 'KA01 MD 7731', driver: 'Prakash N',
-    waybillNo: 'EWB 1198 4402 7765', itemNo: 'ITM-2295', from: 'Ennore Yard', to: 'Erode Warehouse',
-    tons: 22.0, km: 98, revenue: 8600, status: 'pending',
-    expenses: [
-      { id: 't7x1', date: '10 Sep', kind: 'diesel', litres: 36, ratePerLitre: 95, amount: 3420 },
-      { id: 't7x2', date: '10 Sep', kind: 'toll', amount: 420 },
-      { id: 't7x3', date: '10 Sep', kind: 'other', amount: 260 }
-    ],
-    documents: []
-  },
-  {
-    id: 't8', loadDate: '11 Sep', unloadDate: '12 Sep', vehicle: 'TN52 BK 2290', driver: 'Ilango R',
-    waybillNo: 'EWB 4467 7743 0199', itemNo: 'ITM-6615', from: 'Madurai Factory', to: 'Tuticorin Yard',
-    tons: 23.4, km: 268, revenue: 24800, status: 'pending',
-    expenses: [
-      { id: 't8x1', date: '11 Sep', kind: 'diesel', litres: 97, ratePerLitre: 95, amount: 9215 },
-      { id: 't8x2', date: '11 Sep', kind: 'toll', amount: 1180 },
-      { id: 't8x3', date: '12 Sep', kind: 'other', amount: 640 }
-    ],
-    documents: []
-  }
 ];
 
 export const MONTHLY_EXPENSES: MonthlyExpense[] = [

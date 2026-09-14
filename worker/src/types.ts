@@ -1,5 +1,6 @@
 export interface Env {
   DB: D1Database;
+  DOCS: R2Bucket;
   ALLOWED_ORIGIN: string;
   JWT_SECRET: string;
   GEMINI_API_KEY: string;

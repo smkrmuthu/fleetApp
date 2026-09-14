@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import type { DriverMaster, Trip, TripExpenseKind, TripExpenseLine, TripFormState, Vehicle } from '../types';
+import type { DriverMaster, Trip, TripDocument, TripExpenseKind, TripExpenseLine, TripFormState, Vehicle } from '../types';
 import { TRIP_EXPENSE_LABEL } from '../data/mockData';
 import { dieselLitres, rupees, toNumber } from '../utils/calc';
-import { parseDisplayDate, scanReceipt, type ScannedReceipt } from '../lib/api';
+import { fetchDocumentBlobUrl, parseDisplayDate, scanReceipt, type ScannedReceipt } from '../lib/api';
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
@@ -72,10 +72,12 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, lockedDri
   const [form, setForm] = useState<TripFormState>(() => (editingTrip ? formFromTrip(editingTrip) : blankForm(lockedDriverName)));
   const [lines, setLines] = useState<TripExpenseLine[]>(() => editingTrip?.expenses ?? []);
   const [newLine, setNewLine] = useState(blankLine());
-  const [documents, setDocuments] = useState<string[]>(() => editingTrip?.documents ?? []);
+  const [documents, setDocuments] = useState<TripDocument[]>(() => editingTrip?.documents ?? []);
   const [scanning, setScanning] = useState(false);
   const [scanResult, setScanResult] = useState<ScannedReceipt | null>(null);
+  const [scanFile, setScanFile] = useState<{ base64: string; mimeType: string; filename: string } | null>(null);
   const [scanErrorMsg, setScanErrorMsg] = useState('');
+  const [viewingDoc, setViewingDoc] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [confirmAction, setConfirmAction] = useState<SubmitAction | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -122,14 +124,42 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, lockedDri
     setLines((prev) => prev.filter((l) => l.id !== id));
   }
 
-  function onFilesChosen(e: React.ChangeEvent<HTMLInputElement>) {
+  async function onFilesChosen(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
-    setDocuments((prev) => [...prev, ...files.map((f) => f.name)]);
     if (fileInputRef.current) fileInputRef.current.value = '';
+    for (const file of files) {
+      try {
+        const { base64, mimeType } = await fileToBase64(file);
+        setDocuments((prev) => [...prev, { id: 'x' + Date.now() + Math.random().toString(36).slice(2), filename: file.name, mimeType, base64 }]);
+      } catch {
+        // a file that failed to read locally is simply skipped
+      }
+    }
   }
 
-  function removeDocument(name: string) {
-    setDocuments((prev) => prev.filter((d) => d !== name));
+  function removeDocument(id: string) {
+    setDocuments((prev) => prev.filter((d) => d.id !== id));
+  }
+
+  async function viewDocument(doc: TripDocument) {
+    if (doc.base64) {
+      const byteChars = atob(doc.base64);
+      const bytes = new Uint8Array(byteChars.length);
+      for (let i = 0; i < byteChars.length; i++) bytes[i] = byteChars.charCodeAt(i);
+      const url = URL.createObjectURL(new Blob([bytes], { type: doc.mimeType || 'application/octet-stream' }));
+      window.open(url, '_blank');
+      return;
+    }
+    if (!editingTrip) return;
+    setViewingDoc(doc.id);
+    try {
+      const url = await fetchDocumentBlobUrl(editingTrip.id, doc.id);
+      window.open(url, '_blank');
+    } catch {
+      setScanErrorMsg('Could not open that file — try again.');
+    } finally {
+      setViewingDoc(null);
+    }
   }
 
   const km = Math.max(0, toNumber(form.odoEnd) - toNumber(form.odoStart));
@@ -205,10 +235,12 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, lockedDri
     setScanning(true);
     setScanErrorMsg('');
     setScanResult(null);
+    setScanFile(null);
     try {
       const { base64, mimeType } = await fileToBase64(file);
       const result = await scanReceipt(base64, mimeType);
       setScanResult(result);
+      setScanFile({ base64, mimeType, filename: file.name });
       if (!form.vehicle && result.vehicleNo) {
         const match = vehicles.find((v) => normalizeReg(v.id) === normalizeReg(result.vehicleNo!));
         if (match) setForm((f) => ({ ...f, vehicle: match.id }));
@@ -218,6 +250,11 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, lockedDri
     } finally {
       setScanning(false);
     }
+  }
+
+  function discardScan() {
+    setScanResult(null);
+    setScanFile(null);
   }
 
   function addScannedEntry() {
@@ -231,8 +268,11 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, lockedDri
       amount: scanResult.amount
     };
     setLines((prev) => [...prev, line]);
-    setDocuments((prev) => [...prev, 'scanned_fuel_receipt.jpg']);
+    if (scanFile) {
+      setDocuments((prev) => [...prev, { id: 'x' + Date.now() + Math.random().toString(36).slice(2), filename: scanFile.filename, mimeType: scanFile.mimeType, base64: scanFile.base64 }]);
+    }
     setScanResult(null);
+    setScanFile(null);
   }
 
   return (
@@ -424,7 +464,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, lockedDri
                 ))}
                 <div style={{ padding: 12, display: 'flex', gap: 10 }}>
                   <button type="button" className="btn btn-primary btn-block" onClick={addScannedEntry}>Add as an entry</button>
-                  <button type="button" className="btn btn-ghost" onClick={() => setScanResult(null)}>Discard</button>
+                  <button type="button" className="btn btn-ghost" onClick={discardScan}>Discard</button>
                 </div>
               </div>
             )}
@@ -460,9 +500,14 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, lockedDri
             {documents.length > 0 && (
               <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 6 }}>
                 {documents.map((d) => (
-                  <li key={d} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, background: 'var(--color-surface)', padding: '6px 10px' }}>
-                    <span>{d}</span>
-                    <button type="button" className="btn btn-ghost" style={{ padding: '0 4px', fontSize: 12 }} onClick={() => removeDocument(d)}>Remove</button>
+                  <li key={d.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, fontSize: 13, background: 'var(--color-surface)', padding: '6px 10px' }}>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.filename}</span>
+                    <span style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                      <button type="button" className="btn btn-ghost" style={{ padding: '0 4px', fontSize: 12 }} disabled={viewingDoc === d.id} onClick={() => viewDocument(d)}>
+                        {viewingDoc === d.id ? 'Opening…' : 'View'}
+                      </button>
+                      <button type="button" className="btn btn-ghost" style={{ padding: '0 4px', fontSize: 12 }} onClick={() => removeDocument(d.id)}>Remove</button>
+                    </span>
                   </li>
                 ))}
               </ul>

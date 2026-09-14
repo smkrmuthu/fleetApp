@@ -1,6 +1,6 @@
 import type {
   AppNotification, DriverMaster, ExpenseCategory, MonthlyExpense, NotificationKind,
-  Role, TabId, Trip, TripExpenseKind, TripExpenseLine, UserAccount, Vehicle
+  Role, TabId, Trip, TripDocument, TripExpenseKind, TripExpenseLine, UserAccount, Vehicle
 } from '../types';
 
 const API_BASE = 'https://fleet-ledger-api.smkrmuthu.workers.dev/v1';
@@ -243,11 +243,15 @@ export async function createMonthlyExpense(e: { vehicle: string; driver: string;
 interface ApiTripExpense {
   id: string; spentOn: string; kind: TripExpenseKind; litres: number | null; ratePaise: number | null; amountPaise: number; details: string | null;
 }
+interface ApiTripDocument {
+  id: string; filename: string; mimeType: string | null;
+}
 interface ApiTrip {
   id: string; vehicleId: string; driverId: string | null; waybillNo: string | null; itemNo: string | null;
   loadDate: string; unloadDate: string | null; fromLoc: string | null; toLoc: string | null; weightKg: number | null;
   odoStart: number | null; odoEnd: number | null; revenuePaise: number; status: 'draft' | 'pending' | 'approved' | 'void';
   expenses: ApiTripExpense[];
+  documents?: ApiTripDocument[];
 }
 
 function tripFromApi(t: ApiTrip): Trip {
@@ -261,7 +265,7 @@ function tripFromApi(t: ApiTrip): Trip {
       id: e.id, date: formatDisplayDate(e.spentOn), kind: e.kind, litres: e.litres ?? undefined,
       ratePerLitre: e.ratePaise != null ? paiseToRupees(e.ratePaise) : undefined, amount: paiseToRupees(e.amountPaise), details: e.details ?? undefined
     })),
-    documents: [] // documents aren't persisted server-side yet — see worker/README.md
+    documents: (t.documents ?? []).map((d) => ({ id: d.id, filename: d.filename, mimeType: d.mimeType ?? undefined }))
   };
 }
 
@@ -278,6 +282,7 @@ export interface NewTripInput {
   id: string; vehicle: string; driver: string; waybillNo: string; itemNo: string; loadDate: string; unloadDate: string;
   from: string; to: string; tons: number; odoStart: number; odoEnd: number; revenue: number; remarks?: string;
   expenses: TripExpenseLine[];
+  documents?: TripDocument[];
   draft?: boolean;
 }
 
@@ -293,10 +298,11 @@ export async function createTrip(t: NewTripInput): Promise<Trip> {
       expenses: t.expenses.map((l) => ({
         spentOn: l.date, kind: l.kind, litres: l.litres, ratePaise: l.ratePerLitre != null ? rupeesToPaise(l.ratePerLitre) : undefined,
         amountPaise: rupeesToPaise(l.amount), details: l.details
-      }))
+      })),
+      documents: (t.documents ?? []).filter((d) => d.base64).map((d) => ({ filename: d.filename, mimeType: d.mimeType || 'application/octet-stream', base64: d.base64 }))
     })
   });
-  return tripFromApi({ ...res, expenses: (res as any).expenses ?? [] });
+  return tripFromApi({ ...res, expenses: (res as any).expenses ?? [], documents: (res as any).documents ?? [] });
 }
 
 export interface TripPatchInput {
@@ -342,6 +348,28 @@ export async function approveTrip(id: string): Promise<void> {
 
 export async function deleteTrip(id: string): Promise<void> {
   await request(`/trips/${encodeURIComponent(id)}`, { method: 'DELETE' });
+}
+
+export async function uploadTripDocument(tripId: string, doc: TripDocument): Promise<TripDocument> {
+  const res = await request<{ id: string; filename: string; mimeType: string | null }>(`/trips/${encodeURIComponent(tripId)}/documents`, {
+    method: 'POST',
+    body: JSON.stringify({ filename: doc.filename, mimeType: doc.mimeType || 'application/octet-stream', base64: doc.base64 })
+  });
+  return { id: res.id, filename: res.filename, mimeType: res.mimeType ?? undefined };
+}
+
+export async function deleteTripDocument(tripId: string, docId: string): Promise<void> {
+  await request(`/trips/${encodeURIComponent(tripId)}/documents/${encodeURIComponent(docId)}`, { method: 'DELETE' });
+}
+
+export async function fetchDocumentBlobUrl(tripId: string, docId: string): Promise<string> {
+  const token = getToken();
+  const res = await fetch(`${API_BASE}/trips/${encodeURIComponent(tripId)}/documents/${encodeURIComponent(docId)}/file`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {}
+  });
+  if (!res.ok) throw new ApiError('Could not load the file', res.status);
+  const blob = await res.blob();
+  return URL.createObjectURL(blob);
 }
 
 // ── receipt scanning ─────────────────────────────────────────────────────

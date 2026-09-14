@@ -111,11 +111,14 @@ export function App() {
           id: trip.id, vehicle: trip.vehicle, driver: trip.driver, waybillNo: trip.waybillNo, itemNo: trip.itemNo,
           loadDate: trip.loadDate, unloadDate: trip.unloadDate, from: trip.from, to: trip.to, tons: trip.tons,
           odoStart: trip.odoStart ?? 0, odoEnd: trip.odoEnd ?? 0, revenue: trip.revenue, remarks: trip.remarks,
-          expenses: trip.expenses, draft: action === 'start'
+          expenses: trip.expenses, documents: trip.documents, draft: action === 'start'
         });
       } else {
         const originalIds = new Set((editingTrip?.expenses ?? []).map((e) => e.id));
         const newLines = trip.expenses.filter((e) => !originalIds.has(e.id));
+        const originalDocIds = new Set((editingTrip?.documents ?? []).map((d) => d.id));
+        const newDocs = trip.documents.filter((d) => !originalDocIds.has(d.id));
+        const removedDocs = (editingTrip?.documents ?? []).filter((d) => !trip.documents.some((td) => td.id === d.id));
         await api.updateTrip(trip.id, {
           vehicle: trip.vehicle, waybillNo: trip.waybillNo, itemNo: trip.itemNo, loadDate: trip.loadDate,
           unloadDate: trip.unloadDate, from: trip.from, to: trip.to, tons: trip.tons, odoStart: trip.odoStart,
@@ -123,6 +126,12 @@ export function App() {
         });
         for (const line of newLines) {
           await api.addTripExpense(trip.id, line);
+        }
+        for (const doc of newDocs) {
+          await api.uploadTripDocument(trip.id, doc);
+        }
+        for (const doc of removedDocs) {
+          await api.deleteTripDocument(trip.id, doc.id);
         }
         if (action === 'complete') {
           await api.completeTrip(trip.id, trip.odoEnd ?? 0, trip.unloadDate, trip.remarks);

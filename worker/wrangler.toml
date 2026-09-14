@@ -13,6 +13,10 @@ binding = "DB"
 database_name = "fleet-ledger-db"
 database_id = "63109d18-28d1-4331-911d-a34ee5e3f48c"
 
+[[r2_buckets]]
+binding = "DOCS"
+bucket_name = "fleet-ledger-docs"
+
 # JWT_SECRET is NOT set here — it's a secret, set once via:
 #   npx wrangler secret put JWT_SECRET
 # (run from this worker/ directory, after `wrangler login`)
