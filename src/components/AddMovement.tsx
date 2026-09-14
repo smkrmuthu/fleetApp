@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { DriverMaster, Trip, TripExpenseKind, TripExpenseLine, TripFormState, Vehicle } from '../types';
 import { SCAN_FIELDS, TRIP_EXPENSE_LABEL } from '../data/mockData';
 import { dieselLitres, rupees, toNumber } from '../utils/calc';
@@ -56,7 +56,18 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, lockedDri
   const [scanned, setScanned] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [confirmAction, setConfirmAction] = useState<SubmitAction | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const errorBoxRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const count = Object.keys(errors).length;
+    if (count === 0) return;
+    setToast(`${count} field${count === 1 ? '' : 's'} need${count === 1 ? 's' : ''} attention`);
+    errorBoxRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const timer = setTimeout(() => setToast(null), 3500);
+    return () => clearTimeout(timer);
+  }, [errors]);
 
   const set = (k: keyof TripFormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setForm((f) => ({ ...f, [k]: e.target.value } as TripFormState));
@@ -173,6 +184,18 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, lockedDri
 
   return (
     <section>
+      {toast && (
+        <div
+          role="alert"
+          style={{
+            position: 'fixed', top: 18, left: '50%', transform: 'translateX(-50%)', zIndex: 100,
+            background: 'var(--color-accent)', color: '#fff', padding: '10px 22px', fontSize: 13, fontWeight: 700,
+            letterSpacing: '0.02em', boxShadow: '0 6px 20px rgba(0,0,0,0.25)'
+          }}
+        >
+          {toast}
+        </div>
+      )}
       <div style={{ marginBottom: 18 }}>
         <div className="kicker">Driver or documentation resource</div>
         <h1 style={{ fontSize: 34, letterSpacing: '-0.02em' }}>{isEditing ? 'Edit Movement' : 'Add Movement'}</h1>
@@ -348,7 +371,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, lockedDri
           </div>
 
           {Object.keys(errors).length > 0 && (
-            <div style={{ border: '2px solid var(--color-accent)', color: 'var(--color-accent-700)', padding: '10px 14px', marginTop: 16, fontSize: 13, display: 'grid', gap: 4 }}>
+            <div ref={errorBoxRef} style={{ border: '2px solid var(--color-accent)', color: 'var(--color-accent-700)', padding: '10px 14px', marginTop: 16, fontSize: 13, display: 'grid', gap: 4 }}>
               {Object.values(errors).map((msg) => <div key={msg}>{msg}</div>)}
             </div>
           )}
