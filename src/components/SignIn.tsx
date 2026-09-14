@@ -33,7 +33,7 @@ export function SignIn({ onSignIn }: Props) {
           </div>
           <div style={{ height: 2, background: '#fff', opacity: 0.6, margin: '24px 0 18px', maxWidth: 340 }} />
           <div style={{ fontSize: 15, lineHeight: 1.6, maxWidth: '44ch' }}>
-            Drivers log the movement and the fuel as they go, however many days it takes. Documentation posts the fixed costs. The manager closes the month — from the same numbers.
+            Track every trip, fuel stop, and expense across your fleet — from the road to the ledger, in one place for your whole team.
           </div>
         </div>
         <div style={{ fontSize: 12, letterSpacing: '0.1em', textTransform: 'uppercase', opacity: 0.85 }}>Meridian Logistics · Chennai &amp; Cochin</div>
