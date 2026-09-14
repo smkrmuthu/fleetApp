@@ -117,6 +117,9 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, lockedDri
     if (form.odoEnd && toNumber(form.odoEnd) <= toNumber(form.odoStart)) {
       errs.odoEnd = 'Odometer end must be greater than odometer start.';
     }
+    if (form.unloadDate && form.unloadDate < form.loadDate) {
+      errs.unloadDate = 'Unloading date cannot be before the loading date.';
+    }
     return errs;
   }
 
@@ -178,7 +181,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, lockedDri
         <div style={{ background: 'var(--color-bg)', padding: 20 }}>
           <div className="filters-grid" style={{ alignItems: 'stretch' }}>
             <div className="field"><label>Loading date</label><input className="input" type="date" value={form.loadDate} onChange={set('loadDate')} /></div>
-            <div className="field"><label>Unloading date</label><input className="input" type="date" value={form.unloadDate} onChange={set('unloadDate')} /></div>
+            <div className="field"><label>Unloading date</label><input className="input" type="date" min={form.loadDate} value={form.unloadDate} onChange={set('unloadDate')} /></div>
             <div className="field">
               <label>Vehicle *</label>
               <select className="input" value={form.vehicle} onChange={set('vehicle')}>
