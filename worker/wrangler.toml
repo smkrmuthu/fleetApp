@@ -1,0 +1,18 @@
+name = "fleet-ledger-api"
+main = "src/index.ts"
+compatibility_date = "2026-01-01"
+
+# Comma-separated list of origins allowed to call this API — the frontend is
+# deployed to GitHub Pages and (via Capacitor) the iOS and Android apps, which
+# serve their bundled web content from fixed origins regardless of device.
+[vars]
+ALLOWED_ORIGIN = "https://smkrmuthu.github.io,capacitor://localhost,https://localhost,http://localhost:5180"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "fleet-ledger-db"
+database_id = "63109d18-28d1-4331-911d-a34ee5e3f48c"
+
+# JWT_SECRET is NOT set here — it's a secret, set once via:
+#   npx wrangler secret put JWT_SECRET
+# (run from this worker/ directory, after `wrangler login`)

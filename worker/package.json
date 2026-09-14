@@ -1,0 +1,26 @@
+{
+  "name": "fleet-ledger-api",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate:local": "wrangler d1 migrations apply fleet-ledger-db --local",
+    "db:migrate:remote": "wrangler d1 migrations apply fleet-ledger-db --remote",
+    "db:seed:local": "wrangler d1 execute fleet-ledger-db --local --file=./seed.sql",
+    "db:seed:remote": "wrangler d1 execute fleet-ledger-db --remote --file=./seed.sql"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.44.6",
+    "hono": "^4.9.10",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260904.1",
+    "drizzle-kit": "^0.31.6",
+    "typescript": "^5.7.3",
+    "wrangler": "^4.129.0"
+  }
+}
