@@ -296,6 +296,7 @@ export function App() {
           trips={trips}
           expenses={expenses}
           vehicles={vehicles}
+          drivers={drivers}
           vehicleFilter={vehicleFilter}
           driverFilter={driverFilter}
           dateFrom={dateFrom}
@@ -323,6 +324,7 @@ export function App() {
         <TripLog
           trips={trips}
           vehicles={vehicles}
+          drivers={drivers}
           vehicleFilter={vehicleFilter}
           driverFilter={driverFilter}
           dateFrom={dateFrom}

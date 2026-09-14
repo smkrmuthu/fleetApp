@@ -1,9 +1,10 @@
-import type { Trip, Vehicle } from '../types';
+import type { DriverMaster, Trip, Vehicle } from '../types';
 import { dateInRange, formatDateRange, formatNum, rupees, tripCost } from '../utils/calc';
 
 interface Props {
   trips: Trip[];
   vehicles: Vehicle[];
+  drivers: DriverMaster[];
   vehicleFilter: string;
   driverFilter: string;
   dateFrom: string;
@@ -20,12 +21,12 @@ interface Props {
   isDriver: boolean;
 }
 
-export function TripLog({ trips, vehicles, vehicleFilter, driverFilter, dateFrom, dateTo, onVehicleFilter, onDriverFilter, onDateFrom, onDateTo, onResetFilters, onAddMovement, onApprove, onEdit, onDelete, isDriver }: Props) {
+export function TripLog({ trips, vehicles, drivers, vehicleFilter, driverFilter, dateFrom, dateTo, onVehicleFilter, onDriverFilter, onDateFrom, onDateTo, onResetFilters, onAddMovement, onApprove, onEdit, onDelete, isDriver }: Props) {
   const showFinancials = !isDriver;
   const showActions = !isDriver;
   const rows = trips.filter(
     (t) => (vehicleFilter === 'all' || t.vehicle === vehicleFilter) &&
-      (!driverFilter || t.driver.toLowerCase().includes(driverFilter.toLowerCase())) &&
+      (!driverFilter || t.driver === driverFilter) &&
       dateInRange(t.loadDate, dateFrom, dateTo)
   );
 
@@ -58,7 +59,13 @@ export function TripLog({ trips, vehicles, vehicleFilter, driverFilter, dateFrom
             </select>
           </div>
           {!isDriver && (
-            <div className="field"><label>Driver</label><input className="input" type="text" placeholder="Driver name" value={driverFilter} onChange={(e) => onDriverFilter(e.target.value)} /></div>
+            <div className="field">
+              <label>Driver</label>
+              <select className="input" value={driverFilter} onChange={(e) => onDriverFilter(e.target.value)}>
+                <option value="">All drivers</option>
+                {drivers.map((d) => <option key={d.name} value={d.name}>{d.name}</option>)}
+              </select>
+            </div>
           )}
           <button type="button" className="btn btn-ghost" style={{ justifySelf: 'start' }} onClick={onResetFilters}>Reset filters</button>
         </div>

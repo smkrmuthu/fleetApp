@@ -592,11 +592,6 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, lockedDri
               <div className="stat-label" style={{ marginBottom: 4 }}>Mileage</div>
               <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 22 }}>{kmpl}</div>
             </div>
-            <div style={{ borderTop: '2px solid var(--color-divider)', paddingTop: 14, fontSize: 12, color: 'var(--color-neutral-700)', lineHeight: 1.6 }}>
-              {driverOnly
-                ? 'Start a movement to open it, add fuel/expense entries as the trip goes, then Complete it once the closing odometer reading is in — that sends it for approval. Every edit is written to the audit trail.'
-                : 'Documentation and manager entries post straight to the log as approved. Every edit is written to the audit trail.'}
-            </div>
           </div>
         </div>
       </div>

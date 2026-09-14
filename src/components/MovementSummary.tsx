@@ -1,4 +1,4 @@
-import type { MonthlyExpense, Trip, Vehicle } from '../types';
+import type { DriverMaster, MonthlyExpense, Trip, Vehicle } from '../types';
 import { aggregateByVehicle } from '../utils/aggregate';
 import { dateInRange, formatDateRange, formatNum, rupees, tripCost } from '../utils/calc';
 
@@ -6,6 +6,7 @@ interface Props {
   trips: Trip[];
   expenses: MonthlyExpense[];
   vehicles: Vehicle[];
+  drivers: DriverMaster[];
   vehicleFilter: string;
   driverFilter: string;
   dateFrom: string;
@@ -17,10 +18,10 @@ interface Props {
   onResetFilters: () => void;
 }
 
-export function MovementSummary({ trips, expenses, vehicles, vehicleFilter, driverFilter, dateFrom, dateTo, onVehicleFilter, onDriverFilter, onDateFrom, onDateTo, onResetFilters }: Props) {
+export function MovementSummary({ trips, expenses, vehicles, drivers, vehicleFilter, driverFilter, dateFrom, dateTo, onVehicleFilter, onDriverFilter, onDateFrom, onDateTo, onResetFilters }: Props) {
   const rows = trips.filter(
     (t) => (vehicleFilter === 'all' || t.vehicle === vehicleFilter) &&
-      (!driverFilter || t.driver.toLowerCase().includes(driverFilter.toLowerCase())) &&
+      (!driverFilter || t.driver === driverFilter) &&
       dateInRange(t.loadDate, dateFrom, dateTo)
   );
   const expenseRows = expenses.filter((e) => dateInRange(e.date, dateFrom, dateTo));
@@ -81,7 +82,13 @@ export function MovementSummary({ trips, expenses, vehicles, vehicleFilter, driv
               {vehicles.map((v) => <option key={v.id} value={v.id}>{v.id}</option>)}
             </select>
           </div>
-          <div className="field"><label>Driver</label><input className="input" type="text" placeholder="Driver name" value={driverFilter} onChange={(e) => onDriverFilter(e.target.value)} /></div>
+          <div className="field">
+            <label>Driver</label>
+            <select className="input" value={driverFilter} onChange={(e) => onDriverFilter(e.target.value)}>
+              <option value="">All drivers</option>
+              {drivers.map((d) => <option key={d.name} value={d.name}>{d.name}</option>)}
+            </select>
+          </div>
           <button type="button" className="btn btn-ghost" style={{ justifySelf: 'start' }} onClick={onResetFilters}>Reset filters</button>
         </div>
       </div>
