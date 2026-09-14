@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { ExpenseFormState, MonthlyExpense, Vehicle } from '../types';
+import type { DriverMaster, ExpenseFormState, MonthlyExpense, Vehicle } from '../types';
 import { CATEGORY_TINT, EXPENSE_CATEGORIES } from '../data/mockData';
 import { dateInRange, formatDateRange, rupees, todayIso, toNumber } from '../utils/calc';
 
@@ -10,6 +10,7 @@ function blankExpense(defaultVehicle: string): ExpenseFormState {
 interface Props {
   expenses: MonthlyExpense[];
   vehicles: Vehicle[];
+  drivers: DriverMaster[];
   dateFrom: string;
   dateTo: string;
   onDateFrom: (v: string) => void;
@@ -18,7 +19,7 @@ interface Props {
   onAdd: (e: MonthlyExpense) => void;
 }
 
-export function MonthlyExpenses({ expenses: allExpenses, vehicles, dateFrom, dateTo, onDateFrom, onDateTo, onResetFilters, onAdd }: Props) {
+export function MonthlyExpenses({ expenses: allExpenses, vehicles, drivers, dateFrom, dateTo, onDateFrom, onDateTo, onResetFilters, onAdd }: Props) {
   const [exp, setExp] = useState<ExpenseFormState>(() => blankExpense(vehicles[0]?.id ?? ''));
   const expenses = allExpenses.filter((e) => dateInRange(e.date, dateFrom, dateTo));
 
@@ -54,7 +55,13 @@ export function MonthlyExpenses({ expenses: allExpenses, vehicles, dateFrom, dat
               {vehicles.map((v) => <option key={v.id} value={v.id}>{v.id}</option>)}
             </select>
           </div>
-          <div className="field"><label>Driver</label><input className="input" type="text" placeholder="Driver name" value={exp.driver} onChange={set('driver')} /></div>
+          <div className="field">
+            <label>Driver</label>
+            <select className="input" value={exp.driver} onChange={set('driver')}>
+              <option value="">No driver</option>
+              {drivers.map((d) => <option key={d.name} value={d.name}>{d.name}</option>)}
+            </select>
+          </div>
           <div className="field">
             <label>Description</label>
             <select className="input" value={exp.category} onChange={set('category')}>

@@ -345,6 +345,7 @@ export function App() {
         <MonthlyExpenses
           expenses={expenses}
           vehicles={vehicles}
+          drivers={drivers}
           dateFrom={dateFrom}
           dateTo={dateTo}
           onDateFrom={setDateFrom}

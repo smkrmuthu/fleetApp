@@ -332,7 +332,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, lockedDri
 
           <div style={{ marginTop: 20, borderTop: '2px solid var(--color-divider)', paddingTop: 16 }}>
             <div style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--color-neutral-700)', marginBottom: 12 }}>
-              Fuel &amp; expense entries — a multi-day trip can have several
+              Fuel &amp; expense entries
             </div>
             <div className="field" style={{ marginBottom: 14 }}>
               <label>Kind</label>
