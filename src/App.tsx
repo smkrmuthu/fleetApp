@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { AppNotification, DriverMaster, MonthlyExpense, Role, TabId, Trip, UserAccount, Vehicle } from './types';
 import { DEMO_ACCOUNTS, ROLE_TABS } from './data/mockData';
+import { toIsoDate } from './utils/calc';
 import * as api from './lib/api';
 import { SignIn } from './components/SignIn';
 import { AppShell } from './components/AppShell';
@@ -13,6 +14,13 @@ import { People } from './components/People';
 import { DataModel } from './components/DataModel';
 
 type PersonUser = UserAccount & { id: string };
+
+function currentMonthRange(): { from: string; to: string } {
+  const now = new Date();
+  const from = toIsoDate(new Date(now.getFullYear(), now.getMonth(), 1));
+  const to = toIsoDate(new Date(now.getFullYear(), now.getMonth() + 1, 0));
+  return { from, to };
+}
 
 export function App() {
   const [authed, setAuthed] = useState(false);
@@ -31,6 +39,8 @@ export function App() {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [vehicleFilter, setVehicleFilter] = useState('all');
   const [driverFilter, setDriverFilter] = useState('');
+  const [dateFrom, setDateFrom] = useState(() => currentMonthRange().from);
+  const [dateTo, setDateTo] = useState(() => currentMonthRange().to);
   const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
 
   async function loadAll(currentRole: Role) {
@@ -102,6 +112,9 @@ export function App() {
   function resetFilters() {
     setVehicleFilter('all');
     setDriverFilter('');
+    const { from, to } = currentMonthRange();
+    setDateFrom(from);
+    setDateTo(to);
   }
 
   async function submitTrip(action: 'create' | 'start' | 'save' | 'complete', trip: Trip) {
@@ -285,8 +298,12 @@ export function App() {
           vehicles={vehicles}
           vehicleFilter={vehicleFilter}
           driverFilter={driverFilter}
+          dateFrom={dateFrom}
+          dateTo={dateTo}
           onVehicleFilter={setVehicleFilter}
           onDriverFilter={setDriverFilter}
+          onDateFrom={setDateFrom}
+          onDateTo={setDateTo}
           onResetFilters={resetFilters}
         />
       )}
@@ -308,8 +325,12 @@ export function App() {
           vehicles={vehicles}
           vehicleFilter={vehicleFilter}
           driverFilter={driverFilter}
+          dateFrom={dateFrom}
+          dateTo={dateTo}
           onVehicleFilter={setVehicleFilter}
           onDriverFilter={setDriverFilter}
+          onDateFrom={setDateFrom}
+          onDateTo={setDateTo}
           onResetFilters={resetFilters}
           onAddMovement={() => { setEditingTrip(null); setTab('addtrip'); }}
           onApprove={approveTrip}
@@ -319,7 +340,18 @@ export function App() {
         />
       )}
       {tab === 'expenses' && <MonthlyExpenses expenses={expenses} vehicles={vehicles} onAdd={addExpense} />}
-      {tab === 'report' && <MonthlyReport trips={trips} expenses={expenses} vehicles={vehicles} />}
+      {tab === 'report' && (
+        <MonthlyReport
+          trips={trips}
+          expenses={expenses}
+          vehicles={vehicles}
+          dateFrom={dateFrom}
+          dateTo={dateTo}
+          onDateFrom={setDateFrom}
+          onDateTo={setDateTo}
+          onResetFilters={resetFilters}
+        />
+      )}
       {tab === 'people' && (
         <People
           trips={trips}

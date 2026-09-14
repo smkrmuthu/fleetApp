@@ -1,14 +1,23 @@
 import type { MonthlyExpense, Trip, Vehicle } from '../types';
 import { aggregateByVehicle } from '../utils/aggregate';
-import { formatNum, rupees, tripCost } from '../utils/calc';
+import { dateInRange, formatDateRange, formatNum, rupees, tripCost } from '../utils/calc';
 
 interface Props {
   trips: Trip[];
   expenses: MonthlyExpense[];
   vehicles: Vehicle[];
+  dateFrom: string;
+  dateTo: string;
+  onDateFrom: (v: string) => void;
+  onDateTo: (v: string) => void;
+  onResetFilters: () => void;
 }
 
-export function MonthlyReport({ trips, expenses, vehicles }: Props) {
+export function MonthlyReport({ trips: allTrips, expenses: allExpenses, vehicles, dateFrom, dateTo, onDateFrom, onDateTo, onResetFilters }: Props) {
+  const trips = allTrips.filter((t) => dateInRange(t.loadDate, dateFrom, dateTo));
+  const expenses = allExpenses.filter((e) => dateInRange(e.date, dateFrom, dateTo));
+  const rangeLabel = formatDateRange(dateFrom, dateTo);
+
   const totals = trips.reduce(
     (a, t) => {
       const c = tripCost(t);
@@ -36,12 +45,20 @@ export function MonthlyReport({ trips, expenses, vehicles }: Props) {
     <section>
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap', marginBottom: 18 }}>
         <div>
-          <div className="kicker">Manager only · September 2026</div>
+          <div className="kicker">Manager only · {rangeLabel}</div>
           <h1 style={{ fontSize: 34, letterSpacing: '-0.02em' }}>Monthly Report</h1>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
           <button type="button" className="btn btn-secondary">Export Excel</button>
           <button type="button" className="btn btn-primary">Print / Save PDF</button>
+        </div>
+      </div>
+
+      <div style={{ border: '2px solid var(--color-divider)', padding: 16, marginBottom: 20 }}>
+        <div className="filters-grid">
+          <div className="field"><label>Loading date from</label><input className="input" type="date" value={dateFrom} onChange={(e) => onDateFrom(e.target.value)} /></div>
+          <div className="field"><label>Loading date to</label><input className="input" type="date" value={dateTo} onChange={(e) => onDateTo(e.target.value)} /></div>
+          <button type="button" className="btn btn-ghost" style={{ justifySelf: 'start' }} onClick={onResetFilters}>Reset filters</button>
         </div>
       </div>
 

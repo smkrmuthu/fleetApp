@@ -1,6 +1,6 @@
 import type { MonthlyExpense, Trip, Vehicle } from '../types';
 import { aggregateByVehicle } from '../utils/aggregate';
-import { formatNum, rupees, tripCost } from '../utils/calc';
+import { dateInRange, formatDateRange, formatNum, rupees, tripCost } from '../utils/calc';
 
 interface Props {
   trips: Trip[];
@@ -8,15 +8,22 @@ interface Props {
   vehicles: Vehicle[];
   vehicleFilter: string;
   driverFilter: string;
+  dateFrom: string;
+  dateTo: string;
   onVehicleFilter: (v: string) => void;
   onDriverFilter: (v: string) => void;
+  onDateFrom: (v: string) => void;
+  onDateTo: (v: string) => void;
   onResetFilters: () => void;
 }
 
-export function MovementSummary({ trips, expenses, vehicles, vehicleFilter, driverFilter, onVehicleFilter, onDriverFilter, onResetFilters }: Props) {
+export function MovementSummary({ trips, expenses, vehicles, vehicleFilter, driverFilter, dateFrom, dateTo, onVehicleFilter, onDriverFilter, onDateFrom, onDateTo, onResetFilters }: Props) {
   const rows = trips.filter(
-    (t) => (vehicleFilter === 'all' || t.vehicle === vehicleFilter) && (!driverFilter || t.driver.toLowerCase().includes(driverFilter.toLowerCase()))
+    (t) => (vehicleFilter === 'all' || t.vehicle === vehicleFilter) &&
+      (!driverFilter || t.driver.toLowerCase().includes(driverFilter.toLowerCase())) &&
+      dateInRange(t.loadDate, dateFrom, dateTo)
   );
+  const expenseRows = expenses.filter((e) => dateInRange(e.date, dateFrom, dateTo));
 
   const totals = rows.reduce(
     (a, t) => {
@@ -29,9 +36,9 @@ export function MovementSummary({ trips, expenses, vehicles, vehicleFilter, driv
     },
     { km: 0, tons: 0, exp: 0, rev: 0 }
   );
-  const monthlyTotal = expenses.reduce((a, e) => a + e.amount, 0);
+  const monthlyTotal = expenseRows.reduce((a, e) => a + e.amount, 0);
 
-  const byVehicle = aggregateByVehicle(rows, expenses, vehicles);
+  const byVehicle = aggregateByVehicle(rows, expenseRows, vehicles);
 
   const stats = [
     { label: 'Movements', value: formatNum(rows.length), note: 'gated this month' },
@@ -45,13 +52,14 @@ export function MovementSummary({ trips, expenses, vehicles, vehicleFilter, driv
     { label: 'Profit', value: rupees(totals.rev - totals.exp - monthlyTotal), note: 'after monthly expenses' }
   ];
 
-  const filterNote = vehicleFilter === 'all' ? 'All vehicles, September 2026' : `${vehicleFilter}, September 2026`;
+  const rangeLabel = formatDateRange(dateFrom, dateTo);
+  const filterNote = vehicleFilter === 'all' ? `All vehicles, ${rangeLabel}` : `${vehicleFilter}, ${rangeLabel}`;
 
   return (
     <section>
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap', marginBottom: 18 }}>
         <div>
-          <div className="kicker">September 2026 · month to date</div>
+          <div className="kicker">{rangeLabel}</div>
           <h1 style={{ fontSize: 34, letterSpacing: '-0.02em' }}>Movement Summary</h1>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
@@ -63,8 +71,8 @@ export function MovementSummary({ trips, expenses, vehicles, vehicleFilter, driv
       <div style={{ border: '2px solid var(--color-divider)', padding: 16, marginBottom: 20 }}>
         <div style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--color-neutral-700)', marginBottom: 12 }}>Filters</div>
         <div className="filters-grid">
-          <div className="field"><label>Loading date from</label><input className="input" type="date" defaultValue="2026-09-01" readOnly /></div>
-          <div className="field"><label>Loading date to</label><input className="input" type="date" defaultValue="2026-09-30" readOnly /></div>
+          <div className="field"><label>Loading date from</label><input className="input" type="date" value={dateFrom} onChange={(e) => onDateFrom(e.target.value)} /></div>
+          <div className="field"><label>Loading date to</label><input className="input" type="date" value={dateTo} onChange={(e) => onDateTo(e.target.value)} /></div>
           <div className="field">
             <label>Vehicle</label>
             <select className="input" value={vehicleFilter} onChange={(e) => onVehicleFilter(e.target.value)}>

@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import type { DriverMaster, Trip, TripDocument, TripExpenseKind, TripExpenseLine, TripFormState, Vehicle } from '../types';
 import { TRIP_EXPENSE_LABEL } from '../data/mockData';
-import { dieselLitres, rupees, toNumber } from '../utils/calc';
+import { dieselLitres, rupees, toIsoDate, toNumber } from '../utils/calc';
 import { fetchDocumentBlobUrl, parseDisplayDate, scanReceipt, type ScannedReceipt } from '../lib/api';
 
 function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
+  return toIsoDate(new Date());
 }
 
 function fileToBase64(file: File): Promise<{ base64: string; mimeType: string }> {
@@ -275,6 +275,8 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, lockedDri
     setScanFile(null);
   }
 
+  const errorClass = (key: string) => (errors[key] ? 'input input-error' : 'input');
+
   return (
     <section>
       {toast && (
@@ -297,10 +299,10 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, lockedDri
         <div style={{ background: 'var(--color-bg)', padding: 20, border: '2px solid var(--color-divider)' }}>
           <div className="filters-grid" style={{ alignItems: 'stretch' }}>
             <div className="field"><label>Loading date</label><input className="input" type="date" value={form.loadDate} onChange={set('loadDate')} /></div>
-            <div className="field"><label>Unloading date</label><input className="input" type="date" min={form.loadDate} value={form.unloadDate} onChange={set('unloadDate')} /></div>
+            <div className="field"><label>Unloading date</label><input className={errorClass('unloadDate')} type="date" min={form.loadDate} value={form.unloadDate} onChange={set('unloadDate')} /></div>
             <div className="field">
               <label>Vehicle *</label>
-              <select className="input" value={form.vehicle} onChange={set('vehicle')}>
+              <select className={errorClass('vehicle')} value={form.vehicle} onChange={set('vehicle')}>
                 <option value="">Select vehicle</option>
                 {vehicles.map((v) => <option key={v.id} value={v.id}>{v.id}</option>)}
               </select>
@@ -310,19 +312,19 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, lockedDri
               {lockedDriverName ? (
                 <input className="input" type="text" value={form.driver} disabled />
               ) : (
-                <select className="input" value={form.driver} onChange={set('driver')}>
+                <select className={errorClass('driver')} value={form.driver} onChange={set('driver')}>
                   <option value="">Select driver</option>
                   {drivers.map((d) => <option key={d.name} value={d.name}>{d.name}</option>)}
                 </select>
               )}
             </div>
-            <div className="field"><label>Waybill no *</label><input className="input" type="text" placeholder="EWB 0000 0000 0000" value={form.waybillNo} onChange={set('waybillNo')} /></div>
+            <div className="field"><label>Waybill no *</label><input className={errorClass('waybillNo')} type="text" placeholder="EWB 0000 0000 0000" value={form.waybillNo} onChange={set('waybillNo')} /></div>
             <div className="field"><label>Item no</label><input className="input" type="text" placeholder="ITM-0000" value={form.itemNo} onChange={set('itemNo')} /></div>
             <div className="field"><label>Loading location</label><input className="input" type="text" placeholder="Yard / factory" value={form.from} onChange={set('from')} /></div>
             <div className="field"><label>Unloading location</label><input className="input" type="text" placeholder="Warehouse / yard" value={form.to} onChange={set('to')} /></div>
-            <div className="field"><label>Loading weight (tons)</label><input className="input" type="number" step="any" inputMode="decimal" value={form.tons} onChange={set('tons')} /></div>
-            <div className="field"><label>Odometer start (km)</label><input className="input" type="number" value={form.odoStart} onChange={set('odoStart')} /></div>
-            <div className="field"><label>Odometer end (km)</label><input className="input" type="number" value={form.odoEnd} onChange={set('odoEnd')} /></div>
+            <div className="field"><label>Loading weight (tons)</label><input className={errorClass('tons')} type="number" step="any" inputMode="decimal" value={form.tons} onChange={set('tons')} /></div>
+            <div className="field"><label>Odometer start (km)</label><input className={errorClass('odoStart')} type="number" value={form.odoStart} onChange={set('odoStart')} /></div>
+            <div className="field"><label>Odometer end (km)</label><input className={errorClass('odoEnd')} type="number" value={form.odoEnd} onChange={set('odoEnd')} /></div>
             {showFinancials && (
               <div className="field"><label>Revenue (₹)</label><input className="input" type="number" step="any" inputMode="decimal" value={form.revenue} onChange={set('revenue')} /></div>
             )}

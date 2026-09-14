@@ -1,4 +1,16 @@
 import type { Trip, TripExpenseLine } from '../types';
+import { parseDisplayDate } from '../lib/api';
+
+// Date#toISOString() normalizes to UTC, which silently shifts the date by
+// a day in any timezone ahead of UTC (e.g. IST) once local time is past
+// midnight but not yet UTC midnight — build the string from the local
+// Y/M/D components instead.
+export function toIsoDate(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
 
 export function toNumber(v: string | number | undefined | null): number {
   const n = Number(v);
@@ -36,4 +48,23 @@ export function tripCost(t: Trip): TripCost {
 
 export function dieselLitres(lines: TripExpenseLine[]): number {
   return lines.filter((l) => l.kind === 'diesel').reduce((a, l) => a + (l.litres ?? 0), 0);
+}
+
+// Trip/expense dates are stored as display strings ("14 Sep 2026") once
+// they come back from the API — parse back to ISO to compare against a
+// `type="date"` filter input's value.
+export function dateInRange(displayDate: string, from: string, to: string): boolean {
+  const iso = parseDisplayDate(displayDate);
+  if (!iso) return true;
+  return (!from || iso >= from) && (!to || iso <= to);
+}
+
+const RANGE_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+export function formatDateRange(from: string, to: string): string {
+  if (!from || !to) return '';
+  const fmt = (iso: string) => {
+    const [y, m, d] = iso.split('-');
+    return `${d} ${RANGE_MONTHS[Number(m) - 1]} ${y}`;
+  };
+  return `${fmt(from)} – ${fmt(to)}`;
 }

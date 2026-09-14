@@ -1,13 +1,17 @@
 import type { Trip, Vehicle } from '../types';
-import { formatNum, rupees, tripCost } from '../utils/calc';
+import { dateInRange, formatDateRange, formatNum, rupees, tripCost } from '../utils/calc';
 
 interface Props {
   trips: Trip[];
   vehicles: Vehicle[];
   vehicleFilter: string;
   driverFilter: string;
+  dateFrom: string;
+  dateTo: string;
   onVehicleFilter: (v: string) => void;
   onDriverFilter: (v: string) => void;
+  onDateFrom: (v: string) => void;
+  onDateTo: (v: string) => void;
   onResetFilters: () => void;
   onAddMovement: () => void;
   onApprove: (tripId: string) => void;
@@ -16,18 +20,20 @@ interface Props {
   isDriver: boolean;
 }
 
-export function TripLog({ trips, vehicles, vehicleFilter, driverFilter, onVehicleFilter, onDriverFilter, onResetFilters, onAddMovement, onApprove, onEdit, onDelete, isDriver }: Props) {
+export function TripLog({ trips, vehicles, vehicleFilter, driverFilter, dateFrom, dateTo, onVehicleFilter, onDriverFilter, onDateFrom, onDateTo, onResetFilters, onAddMovement, onApprove, onEdit, onDelete, isDriver }: Props) {
   const showFinancials = !isDriver;
   const showActions = !isDriver;
   const rows = trips.filter(
-    (t) => (vehicleFilter === 'all' || t.vehicle === vehicleFilter) && (!driverFilter || t.driver.toLowerCase().includes(driverFilter.toLowerCase()))
+    (t) => (vehicleFilter === 'all' || t.vehicle === vehicleFilter) &&
+      (!driverFilter || t.driver.toLowerCase().includes(driverFilter.toLowerCase())) &&
+      dateInRange(t.loadDate, dateFrom, dateTo)
   );
 
   return (
     <section>
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap', marginBottom: 18 }}>
         <div>
-          <div className="kicker">{rows.length} movements · September 2026</div>
+          <div className="kicker">{rows.length} movements · {formatDateRange(dateFrom, dateTo)}</div>
           <h1 style={{ fontSize: 34, letterSpacing: '-0.02em' }}>Trip Log</h1>
         </div>
         {showActions && (
@@ -41,8 +47,8 @@ export function TripLog({ trips, vehicles, vehicleFilter, driverFilter, onVehicl
 
       <div style={{ border: '2px solid var(--color-divider)', padding: 16, marginBottom: 20 }}>
         <div className="filters-grid">
-          <div className="field"><label>Loading date from</label><input className="input" type="date" defaultValue="2026-09-01" readOnly /></div>
-          <div className="field"><label>Loading date to</label><input className="input" type="date" defaultValue="2026-09-30" readOnly /></div>
+          <div className="field"><label>Loading date from</label><input className="input" type="date" value={dateFrom} onChange={(e) => onDateFrom(e.target.value)} /></div>
+          <div className="field"><label>Loading date to</label><input className="input" type="date" value={dateTo} onChange={(e) => onDateTo(e.target.value)} /></div>
           <div className="field">
             <label>Vehicle</label>
             <select className="input" value={vehicleFilter} onChange={(e) => onVehicleFilter(e.target.value)}>

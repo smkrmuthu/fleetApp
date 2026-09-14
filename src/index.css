@@ -97,6 +97,7 @@ input, select, textarea { font-family: var(--font-body); }
 }
 .input:hover { border-color: color-mix(in srgb, var(--color-text) 45%, transparent); }
 .input:focus-visible { border-color: var(--color-accent); outline-offset: 0; }
+.input-error, .input-error:hover { border: 2px solid var(--color-accent); background: var(--color-accent-100); }
 
 /* — tags — */
 .tag {
