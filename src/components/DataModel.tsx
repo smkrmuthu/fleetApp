@@ -44,9 +44,11 @@ create table trip_expenses (
   litres        numeric(10,2),
   rate_paise    bigint,
   amount_paise  bigint not null,
+  details       text,           -- required when kind = 'other'
   receipt_id    uuid references receipts,
   created_by    uuid references users,
-  created_at    timestamptz default now()
+  created_at    timestamptz default now(),
+  check (kind <> 'other' or details is not null)
 );
 
 create index trip_expenses_trip

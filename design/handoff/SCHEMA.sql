@@ -125,9 +125,11 @@ create table trip_expenses (
   litres        numeric(10,2),
   rate_paise    bigint,
   amount_paise  bigint not null,
+  details       text,                              -- required by the API when kind = 'other'
   receipt_id    uuid,
   created_by    uuid references users,
-  created_at    timestamptz not null default now()
+  created_at    timestamptz not null default now(),
+  check (kind <> 'other' or details is not null)
 ) partition by range (load_date);
 
 create table trip_expenses_2026_09 partition of trip_expenses

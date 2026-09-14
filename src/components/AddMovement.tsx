@@ -13,8 +13,8 @@ function blankForm(): TripFormState {
 
 type FuelEntryMode = 'litres' | 'amount';
 
-function blankLine(): { date: string; kind: TripExpenseKind; entryMode: FuelEntryMode; litres: string; ratePerLitre: string; amount: string } {
-  return { date: '2026-09-11', kind: 'diesel', entryMode: 'litres', litres: '', ratePerLitre: '95', amount: '0' };
+function blankLine(): { date: string; kind: TripExpenseKind; entryMode: FuelEntryMode; litres: string; ratePerLitre: string; amount: string; details: string } {
+  return { date: '2026-09-11', kind: 'diesel', entryMode: 'litres', litres: '', ratePerLitre: '95', amount: '0', details: '' };
 }
 
 const EXPENSE_KINDS: TripExpenseKind[] = ['diesel', 'adblue', 'toll', 'other'];
@@ -38,18 +38,21 @@ export function AddMovement({ onAdd, driverOnly, vehicles }: Props) {
     setForm((f) => ({ ...f, [k]: e.target.value } as TripFormState));
 
   const needsFuelFields = newLine.kind === 'diesel' || newLine.kind === 'adblue';
+  const needsDetails = newLine.kind === 'other';
   const byLitres = needsFuelFields && newLine.entryMode === 'litres';
   const computedAmount = byLitres ? toNumber(newLine.litres) * toNumber(newLine.ratePerLitre) : toNumber(newLine.amount);
 
   function addLine() {
     const amount = byLitres ? computedAmount : toNumber(newLine.amount);
     if (!amount) return;
+    if (needsDetails && !newLine.details.trim()) return;
     const line: TripExpenseLine = {
       id: 'x' + Date.now(),
       date: newLine.date,
       kind: newLine.kind,
       amount,
-      ...(byLitres ? { litres: toNumber(newLine.litres), ratePerLitre: toNumber(newLine.ratePerLitre) } : {})
+      ...(byLitres ? { litres: toNumber(newLine.litres), ratePerLitre: toNumber(newLine.ratePerLitre) } : {}),
+      ...(needsDetails ? { details: newLine.details.trim() } : {})
     };
     setLines((prev) => [...prev, line]);
     setNewLine(blankLine());
@@ -210,25 +213,34 @@ export function AddMovement({ onAdd, driverOnly, vehicles }: Props) {
                   )}
                 </>
               ) : (
-                <div className="field">
-                  <label>Amount (₹)</label>
-                  <input className="input" type="number" value={newLine.amount} onChange={(e) => setNewLine((l) => ({ ...l, amount: e.target.value }))} />
-                </div>
+                <>
+                  <div className="field">
+                    <label>Amount (₹)</label>
+                    <input className="input" type="number" value={newLine.amount} onChange={(e) => setNewLine((l) => ({ ...l, amount: e.target.value }))} />
+                  </div>
+                  {needsDetails && (
+                    <div className="field">
+                      <label>Details *</label>
+                      <input className="input" type="text" placeholder="What was this for?" value={newLine.details} onChange={(e) => setNewLine((l) => ({ ...l, details: e.target.value }))} />
+                    </div>
+                  )}
+                </>
               )}
               <button type="button" className="btn btn-secondary" style={{ justifySelf: 'start' }} onClick={addLine}>Add stop</button>
             </div>
 
             {lines.length > 0 && (
               <div className="scroll-x" style={{ border: '1px solid var(--color-neutral-300)' }}>
-                <table className="table" style={{ minWidth: 480 }}>
+                <table className="table" style={{ minWidth: 620 }}>
                   <thead>
-                    <tr><th>Date</th><th>Kind</th><th style={{ textAlign: 'right' }}>Litres</th><th style={{ textAlign: 'right' }}>Amount</th><th></th></tr>
+                    <tr><th>Date</th><th>Kind</th><th>Details</th><th style={{ textAlign: 'right' }}>Litres</th><th style={{ textAlign: 'right' }}>Amount</th><th></th></tr>
                   </thead>
                   <tbody>
                     {lines.map((l) => (
                       <tr key={l.id}>
                         <td style={{ whiteSpace: 'nowrap' }}>{l.date}</td>
                         <td>{TRIP_EXPENSE_LABEL[l.kind]}</td>
+                        <td style={{ color: 'var(--color-neutral-700)' }}>{l.details ?? '—'}</td>
                         <td style={{ textAlign: 'right' }}>{l.litres ?? '—'}</td>
                         <td style={{ textAlign: 'right' }}>{rupees(l.amount)}</td>
                         <td style={{ textAlign: 'right' }}>

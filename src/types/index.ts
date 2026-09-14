@@ -54,6 +54,7 @@ export interface TripExpenseLine {
   litres?: number;
   ratePerLitre?: number;
   amount: number;
+  details?: string;
 }
 
 export interface Trip {
