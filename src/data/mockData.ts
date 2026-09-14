@@ -161,8 +161,10 @@ export const TAB_LABELS: Record<TabId, string> = {
   schema: 'Data Model'
 };
 
+export const DEMO_DRIVER_NAME = 'Murugan S';
+
 export const ROLE_USER: Record<Role, string> = {
-  Driver: 'Murugan S · Driver',
+  Driver: `${DEMO_DRIVER_NAME} · Driver`,
   Office: 'Kavitha R · Documentation',
   Manager: 'A. Balan · Manager'
 };

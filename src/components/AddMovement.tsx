@@ -3,9 +3,9 @@ import type { Trip, TripExpenseKind, TripExpenseLine, TripFormState, Vehicle } f
 import { SCAN_FIELDS, TRIP_EXPENSE_LABEL } from '../data/mockData';
 import { dieselLitres, rupees, toNumber } from '../utils/calc';
 
-function blankForm(): TripFormState {
+function blankForm(driver = ''): TripFormState {
   return {
-    loadDate: '2026-09-11', unloadDate: '', vehicle: '', driver: '',
+    loadDate: '2026-09-11', unloadDate: '', vehicle: '', driver,
     waybillNo: '', itemNo: '', from: '', to: '', tons: '', odoStart: '', odoEnd: '',
     revenue: '0', remarks: ''
   };
@@ -23,11 +23,12 @@ interface Props {
   onAdd: (trip: Trip) => void;
   driverOnly: boolean;
   vehicles: Vehicle[];
+  lockedDriverName?: string;
 }
 
-export function AddMovement({ onAdd, driverOnly, vehicles }: Props) {
+export function AddMovement({ onAdd, driverOnly, vehicles, lockedDriverName }: Props) {
   const showFinancials = !driverOnly;
-  const [form, setForm] = useState<TripFormState>(blankForm());
+  const [form, setForm] = useState<TripFormState>(() => blankForm(lockedDriverName));
   const [lines, setLines] = useState<TripExpenseLine[]>([]);
   const [newLine, setNewLine] = useState(blankLine());
   const [documents, setDocuments] = useState<string[]>([]);
@@ -90,7 +91,7 @@ export function AddMovement({ onAdd, driverOnly, vehicles }: Props) {
       documents
     };
     onAdd(trip);
-    setForm(blankForm());
+    setForm(blankForm(lockedDriverName));
     setLines([]);
     setDocuments([]);
     setScanned(false);
@@ -121,7 +122,10 @@ export function AddMovement({ onAdd, driverOnly, vehicles }: Props) {
                 {vehicles.map((v) => <option key={v.id} value={v.id}>{v.id}</option>)}
               </select>
             </div>
-            <div className="field"><label>Driver *</label><input className="input" type="text" placeholder="Driver name" value={form.driver} onChange={set('driver')} /></div>
+            <div className="field">
+              <label>Driver *</label>
+              <input className="input" type="text" placeholder="Driver name" value={form.driver} onChange={set('driver')} disabled={!!lockedDriverName} />
+            </div>
             <div className="field"><label>Waybill no *</label><input className="input" type="text" placeholder="EWB 0000 0000 0000" value={form.waybillNo} onChange={set('waybillNo')} /></div>
             <div className="field"><label>Item no</label><input className="input" type="text" placeholder="ITM-0000" value={form.itemNo} onChange={set('itemNo')} /></div>
             <div className="field"><label>Loading location</label><input className="input" type="text" placeholder="Yard / factory" value={form.from} onChange={set('from')} /></div>
@@ -271,7 +275,7 @@ export function AddMovement({ onAdd, driverOnly, vehicles }: Props) {
 
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, paddingTop: 16, marginTop: 16, borderTop: '2px solid var(--color-divider)' }}>
             <button type="button" className="btn btn-primary" onClick={addTrip}>Add movement</button>
-            <button type="button" className="btn btn-secondary" onClick={() => { setForm(blankForm()); setLines([]); setDocuments([]); }}>Clear</button>
+            <button type="button" className="btn btn-secondary" onClick={() => { setForm(blankForm(lockedDriverName)); setLines([]); setDocuments([]); }}>Clear</button>
             <button type="button" className="btn btn-ghost">Save draft</button>
           </div>
           <div style={{ marginTop: 16, display: 'flex', gap: 28, flexWrap: 'wrap', borderTop: '2px solid var(--color-divider)', paddingTop: 16 }}>

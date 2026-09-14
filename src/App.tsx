@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { AppNotification, DriverMaster, MonthlyExpense, Role, TabId, Trip, UserAccount, Vehicle } from './types';
-import { DRIVER_MASTER, MONTHLY_EXPENSES, NOTIFICATIONS, ROLE_TABS, TRIPS, USER_ROWS, VEHICLES } from './data/mockData';
+import { DEMO_DRIVER_NAME, DRIVER_MASTER, MONTHLY_EXPENSES, NOTIFICATIONS, ROLE_TABS, TRIPS, USER_ROWS, VEHICLES } from './data/mockData';
 import { SignIn } from './components/SignIn';
 import { AppShell } from './components/AppShell';
 import { MovementSummary } from './components/MovementSummary';
@@ -100,8 +100,8 @@ export function App() {
     setUsers((prev) => prev.filter((u) => u.phone !== phone));
   }
 
-  // Drivers only ever see their own rows — the demo driver account is Murugan S.
-  const visibleTrips = role === 'Driver' ? trips.filter((t) => t.driver === 'Murugan S') : trips;
+  // Drivers only ever see their own rows.
+  const visibleTrips = role === 'Driver' ? trips.filter((t) => t.driver === DEMO_DRIVER_NAME) : trips;
 
   if (!authed) {
     return <SignIn onSignIn={signIn} />;
@@ -130,7 +130,15 @@ export function App() {
           onResetFilters={resetFilters}
         />
       )}
-      {tab === 'addtrip' && <AddMovement onAdd={addTrip} driverOnly={role === 'Driver'} vehicles={vehicles} />}
+      {tab === 'addtrip' && (
+        <AddMovement
+          key={role}
+          onAdd={addTrip}
+          driverOnly={role === 'Driver'}
+          vehicles={vehicles}
+          lockedDriverName={role === 'Driver' ? DEMO_DRIVER_NAME : undefined}
+        />
+      )}
       {tab === 'triplog' && (
         <TripLog
           trips={visibleTrips}
