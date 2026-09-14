@@ -161,24 +161,16 @@ export const TAB_LABELS: Record<TabId, string> = {
   schema: 'Data Model'
 };
 
-export const DEMO_DRIVER_NAME = 'Murugan S';
-
-export const ROLE_USER: Record<Role, string> = {
-  Driver: `${DEMO_DRIVER_NAME} · Driver`,
-  Office: 'Kavitha R · Documentation',
-  Manager: 'A. Balan · Manager'
-};
-
 export const ROLE_NOTE: Record<Role, string> = {
   Driver: 'Driver view — enter trips, see your own log.',
   Office: 'Documentation view — enter movements for any driver, post fixed costs, read the summary.',
   Manager: 'Manager view — full access including the monthly report and the data model.'
 };
 
-export const DEMO_ACCOUNTS: { name: string; role: string; key: Role }[] = [
-  { name: 'Murugan S · +91 98431 20114', role: 'Driver', key: 'Driver' },
-  { name: 'Kavitha R · +91 90031 77402', role: 'Documentation', key: 'Office' },
-  { name: 'A. Balan · +91 94440 61928', role: 'Manager', key: 'Manager' }
+export const DEMO_ACCOUNTS: { name: string; role: string; key: Role; phone: string; password: string }[] = [
+  { name: 'Murugan S · +91 98431 20114', role: 'Driver', key: 'Driver', phone: '+91 98431 20114', password: 'driver123' },
+  { name: 'Kavitha R · +91 90031 77402', role: 'Documentation', key: 'Office', phone: '+91 90031 77402', password: 'office123' },
+  { name: 'A. Balan · +91 94440 61928', role: 'Manager', key: 'Manager', phone: '+91 94440 61928', password: 'manager123' }
 ];
 
 export const USER_ROWS: UserAccount[] = [

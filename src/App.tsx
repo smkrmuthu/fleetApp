@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { AppNotification, DriverMaster, MonthlyExpense, Role, TabId, Trip, UserAccount, Vehicle } from './types';
-import { DEMO_DRIVER_NAME, DRIVER_MASTER, MONTHLY_EXPENSES, NOTIFICATIONS, ROLE_TABS, TRIPS, USER_ROWS, VEHICLES } from './data/mockData';
+import { DEMO_ACCOUNTS, ROLE_TABS } from './data/mockData';
+import * as api from './lib/api';
 import { SignIn } from './components/SignIn';
 import { AppShell } from './components/AppShell';
 import { MovementSummary } from './components/MovementSummary';
@@ -11,32 +12,90 @@ import { MonthlyReport } from './components/MonthlyReport';
 import { People } from './components/People';
 import { DataModel } from './components/DataModel';
 
+type PersonUser = UserAccount & { id: string };
+
 export function App() {
   const [authed, setAuthed] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
   const [role, setRole] = useState<Role>('Manager');
+  const [currentUserName, setCurrentUserName] = useState('');
   const [tab, setTab] = useState<TabId>(ROLE_TABS['Manager'][0]);
-  const [trips, setTrips] = useState<Trip[]>(TRIPS);
-  const [expenses, setExpenses] = useState<MonthlyExpense[]>(MONTHLY_EXPENSES);
-  const [vehicles, setVehicles] = useState<Vehicle[]>(VEHICLES);
-  const [drivers, setDrivers] = useState<DriverMaster[]>(DRIVER_MASTER);
-  const [users, setUsers] = useState<UserAccount[]>(USER_ROWS);
-  const [notifications, setNotifications] = useState<AppNotification[]>(NOTIFICATIONS);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const [trips, setTrips] = useState<Trip[]>([]);
+  const [expenses, setExpenses] = useState<MonthlyExpense[]>([]);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [drivers, setDrivers] = useState<DriverMaster[]>([]);
+  const [users, setUsers] = useState<PersonUser[]>([]);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [vehicleFilter, setVehicleFilter] = useState('all');
   const [driverFilter, setDriverFilter] = useState('');
 
-  function signIn(r: Role) {
+  async function loadAll(currentRole: Role) {
+    setLoading(true);
+    setError('');
+    try {
+      const [v, d, t, e] = await Promise.all([api.fetchVehicles(), api.fetchDrivers(), api.fetchTrips(), api.fetchMonthlyExpenses()]);
+      setVehicles(v);
+      setDrivers(d);
+      setTrips(t);
+      setExpenses(e);
+      if (currentRole !== 'Driver') {
+        const [u, n] = await Promise.all([api.fetchUsers(), api.fetchNotifications()]);
+        setUsers(u);
+        setNotifications(n);
+      } else {
+        setUsers([]);
+        setNotifications([]);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load data');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    api.restoreSession().then((session) => {
+      if (session) {
+        setRole(session.role);
+        setCurrentUserName(session.name);
+        setTab(ROLE_TABS[session.role][0]);
+        setAuthed(true);
+        loadAll(session.role);
+      }
+      setCheckingSession(false);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function signIn(phone: string, password: string) {
+    const { role: r, name } = await api.login(phone, password);
     setRole(r);
+    setCurrentUserName(name);
     setTab(ROLE_TABS[r][0]);
     setAuthed(true);
+    await loadAll(r);
   }
 
   function signOut() {
+    api.clearToken();
     setAuthed(false);
   }
 
-  function changeRole(r: Role) {
-    setRole(r);
-    setTab(ROLE_TABS[r][0]);
+  // The header's role switcher is a demo affordance for trying the three
+  // roles quickly — it re-authenticates as that role's real demo account
+  // rather than just flipping a client-side flag, so every permission check
+  // it triggers is the same one a genuinely different user would hit.
+  async function changeRole(r: Role) {
+    const demo = DEMO_ACCOUNTS.find((a) => a.key === r);
+    if (!demo) return;
+    try {
+      await signIn(demo.phone, demo.password);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not switch role');
+    }
   }
 
   function resetFilters() {
@@ -44,64 +103,107 @@ export function App() {
     setDriverFilter('');
   }
 
-  function addTrip(trip: Trip) {
-    setTrips((prev) => [trip, ...prev]);
-    setTab('triplog');
-    if (trip.status === 'pending') {
-      const notification: AppNotification = {
-        id: 'n' + Date.now(),
-        kind: 'approval',
-        message: `${trip.driver} logged ${trip.vehicle} — pending approval`,
-        tab: 'triplog',
-        createdAt: 'Just now',
-        read: false,
-        relatedTripId: trip.id
-      };
-      setNotifications((prev) => [notification, ...prev]);
+  async function addTrip(trip: Trip) {
+    try {
+      await api.createTrip({
+        id: trip.id, vehicle: trip.vehicle, driver: trip.driver, waybillNo: trip.waybillNo, itemNo: trip.itemNo,
+        loadDate: trip.loadDate, unloadDate: trip.unloadDate, from: trip.from, to: trip.to, tons: trip.tons,
+        odoStart: trip.odoStart ?? 0, odoEnd: trip.odoEnd ?? 0, revenue: trip.revenue, remarks: trip.remarks,
+        expenses: trip.expenses
+      });
+      setTab('triplog');
+      const tasks = [api.fetchTrips().then(setTrips)];
+      if (role !== 'Driver') tasks.push(api.fetchNotifications().then(setNotifications));
+      await Promise.all(tasks);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not add movement');
     }
   }
 
-  function approveTrip(tripId: string) {
-    setTrips((prev) => prev.map((t) => (t.id === tripId ? { ...t, status: 'approved' } : t)));
-    setNotifications((prev) => prev.map((n) => (n.relatedTripId === tripId ? { ...n, read: true } : n)));
+  async function approveTrip(tripId: string) {
+    try {
+      await api.approveTrip(tripId);
+      await Promise.all([api.fetchTrips().then(setTrips), api.fetchNotifications().then(setNotifications)]);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not approve movement');
+    }
   }
 
-  function openNotification(n: AppNotification) {
-    setNotifications((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)));
+  async function openNotification(n: AppNotification) {
+    try {
+      await api.markNotificationRead(n.id);
+      setNotifications((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)));
+    } catch {
+      // non-critical — still navigate even if marking read failed
+    }
     setTab(n.tab);
   }
 
-  function markAllNotificationsRead() {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  async function markAllNotificationsRead() {
+    try {
+      await api.markAllNotificationsRead();
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not update notifications');
+    }
   }
 
-  function addExpense(expense: MonthlyExpense) {
-    setExpenses((prev) => [expense, ...prev]);
+  async function addExpense(expense: MonthlyExpense) {
+    try {
+      await api.createMonthlyExpense(expense);
+      setExpenses(await api.fetchMonthlyExpenses());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not add expense');
+    }
   }
 
-  function addVehicle(vehicle: Vehicle) {
-    setVehicles((prev) => (prev.some((v) => v.id === vehicle.id) ? prev : [...prev, vehicle]));
+  async function addVehicle(vehicle: Vehicle) {
+    try {
+      await api.createVehicle(vehicle);
+      setVehicles(await api.fetchVehicles());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not add truck');
+    }
   }
 
-  function removeVehicle(id: string) {
-    setVehicles((prev) => prev.filter((v) => v.id !== id));
-    if (vehicleFilter === id) setVehicleFilter('all');
+  async function removeVehicle(id: string) {
+    try {
+      await api.deleteVehicle(id);
+      setVehicles(await api.fetchVehicles());
+      if (vehicleFilter === id) setVehicleFilter('all');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not delete truck');
+    }
   }
 
-  function addDriver(driver: DriverMaster) {
-    setDrivers((prev) => (prev.some((d) => d.name === driver.name) ? prev : [...prev, driver]));
+  async function addDriver(driver: DriverMaster) {
+    try {
+      await api.createDriver(driver);
+      setDrivers(await api.fetchDrivers());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not add driver');
+    }
   }
 
-  function removeDriver(name: string) {
-    setDrivers((prev) => prev.filter((d) => d.name !== name));
+  async function removeDriver(name: string) {
+    try {
+      await api.deleteDriver(name);
+      setDrivers(await api.fetchDrivers());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not delete driver');
+    }
   }
 
-  function removeUser(phone: string) {
-    setUsers((prev) => prev.filter((u) => u.phone !== phone));
+  async function removeUser(id: string) {
+    try {
+      await api.deleteUser(id);
+      setUsers(await api.fetchUsers());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not delete account');
+    }
   }
 
-  // Drivers only ever see their own rows.
-  const visibleTrips = role === 'Driver' ? trips.filter((t) => t.driver === DEMO_DRIVER_NAME) : trips;
+  if (checkingSession) return null;
 
   if (!authed) {
     return <SignIn onSignIn={signIn} />;
@@ -110,6 +212,7 @@ export function App() {
   return (
     <AppShell
       role={role}
+      userName={currentUserName}
       tab={tab}
       onRoleChange={changeRole}
       onTabChange={setTab}
@@ -118,9 +221,16 @@ export function App() {
       onOpenNotification={openNotification}
       onMarkAllNotificationsRead={markAllNotificationsRead}
     >
+      {error && (
+        <div style={{ border: '2px solid var(--color-accent)', color: 'var(--color-accent-700)', padding: '10px 16px', marginBottom: 16 }}>
+          {error} <button type="button" className="btn btn-ghost" style={{ padding: '0 6px' }} onClick={() => setError('')}>Dismiss</button>
+        </div>
+      )}
+      {loading && <div style={{ color: 'var(--color-neutral-700)', marginBottom: 16 }}>Loading…</div>}
+
       {tab === 'summary' && (
         <MovementSummary
-          trips={visibleTrips}
+          trips={trips}
           expenses={expenses}
           vehicles={vehicles}
           vehicleFilter={vehicleFilter}
@@ -137,12 +247,12 @@ export function App() {
           driverOnly={role === 'Driver'}
           vehicles={vehicles}
           drivers={drivers}
-          lockedDriverName={role === 'Driver' ? DEMO_DRIVER_NAME : undefined}
+          lockedDriverName={role === 'Driver' ? currentUserName : undefined}
         />
       )}
       {tab === 'triplog' && (
         <TripLog
-          trips={visibleTrips}
+          trips={trips}
           vehicles={vehicles}
           vehicleFilter={vehicleFilter}
           driverFilter={driverFilter}

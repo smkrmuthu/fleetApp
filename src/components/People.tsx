@@ -6,12 +6,12 @@ interface Props {
   trips: Trip[];
   vehicles: Vehicle[];
   drivers: DriverMaster[];
-  users: UserAccount[];
+  users: (UserAccount & { id: string })[];
   onAddVehicle: (v: Vehicle) => void;
   onRemoveVehicle: (id: string) => void;
   onAddDriver: (d: DriverMaster) => void;
   onRemoveDriver: (name: string) => void;
-  onRemoveUser: (phone: string) => void;
+  onRemoveUser: (id: string) => void;
   canDeleteAccounts: boolean;
 }
 
@@ -91,7 +91,7 @@ export function People({
           </thead>
           <tbody>
             {users.map((u) => (
-              <tr key={u.phone}>
+              <tr key={u.id}>
                 <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{u.name}</td>
                 <td>{u.isManager ? <span className="tag tag-accent">{u.role}</span> : <span className="tag tag-outline">{u.role}</span>}</td>
                 <td style={{ fontFamily: 'ui-monospace, monospace', fontSize: 12, whiteSpace: 'nowrap' }}>{u.phone}</td>
@@ -100,7 +100,7 @@ export function People({
                 <td style={{ whiteSpace: 'nowrap' }}>{u.seen}</td>
                 {canDeleteAccounts && (
                   <td style={{ textAlign: 'right' }}>
-                    <button type="button" className="btn btn-ghost" onClick={() => onRemoveUser(u.phone)}>Delete account</button>
+                    <button type="button" className="btn btn-ghost" onClick={() => onRemoveUser(u.id)}>Delete account</button>
                   </td>
                 )}
               </tr>

@@ -22,7 +22,7 @@ export function MonthlyExpenses({ expenses, vehicles, onAdd }: Props) {
   function addExpense() {
     if (!toNumber(exp.amount)) return;
     onAdd({
-      id: 'e' + Date.now(), date: '11 Sep', vehicle: exp.vehicle, driver: exp.driver || '—',
+      id: 'e' + Date.now(), date: exp.date, vehicle: exp.vehicle, driver: exp.driver || '—',
       category: exp.category, amount: toNumber(exp.amount), remarks: exp.remarks || '—'
     });
     setExp((f) => ({ ...f, amount: '0', remarks: '' }));

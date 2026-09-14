@@ -86,7 +86,7 @@ export function AddMovement({ onAdd, driverOnly, vehicles, drivers, lockedDriver
       id: 't' + Date.now(),
       loadDate: form.loadDate, unloadDate: form.unloadDate || form.loadDate, vehicle: form.vehicle, driver: form.driver,
       waybillNo: form.waybillNo || '—', itemNo: form.itemNo || '—', from: form.from || '—', to: form.to || '—',
-      tons: toNumber(form.tons), km, revenue: toNumber(form.revenue),
+      tons: toNumber(form.tons), km, odoStart: toNumber(form.odoStart), odoEnd: toNumber(form.odoEnd), revenue: toNumber(form.revenue),
       status: driverOnly ? 'pending' : 'approved',
       expenses: lines,
       documents

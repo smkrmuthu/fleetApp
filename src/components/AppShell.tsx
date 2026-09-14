@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react';
 import type { AppNotification, Role, TabId } from '../types';
-import { ROLE_NOTE, ROLE_TABS, ROLE_USER, TAB_LABELS } from '../data/mockData';
+import { ROLE_NOTE, ROLE_TABS, TAB_LABELS } from '../data/mockData';
 import { NotificationBell } from './NotificationBell';
 
 interface Props {
   role: Role;
+  userName: string;
   tab: TabId;
   onRoleChange: (r: Role) => void;
   onTabChange: (t: TabId) => void;
@@ -18,7 +19,7 @@ interface Props {
 const ALL_ROLES: Role[] = ['Driver', 'Office', 'Manager'];
 
 export function AppShell({
-  role, tab, onRoleChange, onTabChange, onSignOut, notifications, onOpenNotification, onMarkAllNotificationsRead, children
+  role, userName, tab, onRoleChange, onTabChange, onSignOut, notifications, onOpenNotification, onMarkAllNotificationsRead, children
 }: Props) {
   const tabs = ROLE_TABS[role];
 
@@ -54,7 +55,7 @@ export function AppShell({
               <NotificationBell notifications={notifications} onOpen={onOpenNotification} onMarkAllRead={onMarkAllNotificationsRead} />
             )}
             <div style={{ textAlign: 'right', lineHeight: 1.25 }}>
-              <div style={{ fontWeight: 600 }}>{ROLE_USER[role]}</div>
+              <div style={{ fontWeight: 600 }}>{userName} · {role}</div>
               <div style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-neutral-700)' }}>Meridian Logistics · Chennai</div>
             </div>
             <button type="button" className="btn btn-ghost" onClick={onSignOut}>Sign out</button>

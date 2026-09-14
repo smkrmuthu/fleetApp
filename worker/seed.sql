@@ -19,29 +19,29 @@ INSERT INTO vehicles (id, org_id, reg_no, model, fc_date, fc_renewal_due, active
   ('TN52 BK 2290', 'org-meridian', 'TN52 BK 2290', 'Eicher Pro 6028',     '2024-11-05', '2026-11-04', 1);
 
 INSERT INTO drivers (id, org_id, branch_id, full_name, phone, licence_no, licence_expiry, credential, default_vehicle, active) VALUES
-  ('driver-murugan', 'org-meridian', 'branch-chennai', 'Murugan S', '+91 98431 20114', 'TN38 20110004412', '2028-03-14', 'Yard pass · valid', 'TN38 AB 4412', 1),
-  ('driver-rafiq',   'org-meridian', 'branch-cochin',  'Rafiq A',   '+91 99401 55380', 'KL07 20140091877', '2026-11-02', 'Yard pass · valid', 'TN45 CQ 9087', 1),
-  ('driver-prakash', 'org-meridian', 'branch-hosur',   'Prakash N', '+91 94433 71206', 'KA01 20090037741', '2027-06-27', 'Hazmat endorsed',   'KA01 MD 7731', 1),
-  ('driver-ilango',  'org-meridian', 'branch-chennai', 'Ilango R',  '+91 90805 44117', 'TN52 20160112290', '2026-10-09', 'Yard pass · renew', 'TN52 BK 2290', 1);
+  ('Murugan S', 'org-meridian', 'branch-chennai', 'Murugan S', '+91 98431 20114', 'TN38 20110004412', '2028-03-14', 'Yard pass · valid', 'TN38 AB 4412', 1),
+  ('Rafiq A',   'org-meridian', 'branch-cochin',  'Rafiq A',   '+91 99401 55380', 'KL07 20140091877', '2026-11-02', 'Yard pass · valid', 'TN45 CQ 9087', 1),
+  ('Prakash N', 'org-meridian', 'branch-hosur',   'Prakash N', '+91 94433 71206', 'KA01 20090037741', '2027-06-27', 'Hazmat endorsed',   'KA01 MD 7731', 1),
+  ('Ilango R',  'org-meridian', 'branch-chennai', 'Ilango R',  '+91 90805 44117', 'TN52 20160112290', '2026-10-09', 'Yard pass · renew', 'TN52 BK 2290', 1);
 
 INSERT INTO users (id, org_id, branch_id, role, full_name, phone, password_hash, password_salt, driver_id, last_seen_at) VALUES
   ('user-balan',   'org-meridian', 'branch-chennai', 'manager', 'A. Balan',  '+91 94440 61928', '7910d62f16a10f8efe732b6befc939c492bb97f79068497abbef9812997b10dc', 'a1b2c3d4e5f60718293a4b5c6d7e8f90', NULL, '2026-09-14T09:12:00Z'),
   ('user-kavitha', 'org-meridian', 'branch-chennai', 'office',  'Kavitha R', '+91 90031 77402', '6580eacfafbc9e7c06290bcadae41dc961af8be698fbe25a24b3c549b321d852', 'b2c3d4e5f60718293a4b5c6d7e8f90a1', NULL, '2026-09-14T08:40:00Z'),
   ('user-suresh',  'org-meridian', 'branch-cochin',  'office',  'Suresh V',  '+91 98847 30215', NULL, NULL, NULL, '2026-09-13T18:22:00Z'),
-  ('user-murugan', 'org-meridian', 'branch-chennai', 'driver',  'Murugan S', '+91 98431 20114', 'dd79aa9700ce22fefaebec2b5884a612c20b587bae5d0f0de640143c8dd7f13e', 'c3d4e5f60718293a4b5c6d7e8f90a1b2', 'driver-murugan', '2026-09-14T07:05:00Z'),
-  ('user-rafiq',   'org-meridian', 'branch-cochin',  'driver',  'Rafiq A',   '+91 99401 55380', NULL, NULL, 'driver-rafiq', '2026-09-14T06:48:00Z'),
-  ('user-prakash', 'org-meridian', 'branch-hosur',   'driver',  'Prakash N', '+91 94433 71206', NULL, NULL, 'driver-prakash', '2026-09-12T00:00:00Z'),
-  ('user-ilango',  'org-meridian', 'branch-chennai', 'driver',  'Ilango R',  '+91 90805 44117', NULL, NULL, 'driver-ilango', '2026-09-14T11:30:00Z');
+  ('user-murugan', 'org-meridian', 'branch-chennai', 'driver',  'Murugan S', '+91 98431 20114', 'dd79aa9700ce22fefaebec2b5884a612c20b587bae5d0f0de640143c8dd7f13e', 'c3d4e5f60718293a4b5c6d7e8f90a1b2', 'Murugan S', '2026-09-14T07:05:00Z'),
+  ('user-rafiq',   'org-meridian', 'branch-cochin',  'driver',  'Rafiq A',   '+91 99401 55380', NULL, NULL, 'Rafiq A', '2026-09-14T06:48:00Z'),
+  ('user-prakash', 'org-meridian', 'branch-hosur',   'driver',  'Prakash N', '+91 94433 71206', NULL, NULL, 'Prakash N', '2026-09-12T00:00:00Z'),
+  ('user-ilango',  'org-meridian', 'branch-chennai', 'driver',  'Ilango R',  '+91 90805 44117', NULL, NULL, 'Ilango R', '2026-09-14T11:30:00Z');
 
 INSERT INTO trips (id, org_id, vehicle_id, driver_id, waybill_no, item_no, load_date, unload_date, from_loc, to_loc, weight_kg, revenue_paise, status, created_by, created_at, updated_at) VALUES
-  ('t1', 'org-meridian', 'TN38 AB 4412', 'driver-murugan', 'EWB 2710 0345 6789', 'ITM-4471', '2026-09-02', '2026-09-03', 'Chennai Yard', 'Sriperumbudur ICD', 24500, 3450000, 'approved', 'user-kavitha', '2026-09-02T09:00:00Z', '2026-09-02T09:00:00Z'),
-  ('t2', 'org-meridian', 'TN45 CQ 9087', 'driver-rafiq',   'EWB 3312 8890 0217', 'ITM-5502', '2026-09-03', '2026-09-04', 'Tirupur Factory', 'Cochin Yard', 18000, 3180000, 'approved', 'user-kavitha', '2026-09-03T09:00:00Z', '2026-09-03T09:00:00Z'),
-  ('t3', 'org-meridian', 'KA01 MD 7731', 'driver-prakash', 'EWB 1145 0032 8871', 'ITM-2290', '2026-09-05', '2026-09-05', 'Ennore Yard', 'Hosur Warehouse', 21200, 1940000, 'approved', 'user-kavitha', '2026-09-05T09:00:00Z', '2026-09-05T09:00:00Z'),
-  ('t4', 'org-meridian', 'TN52 BK 2290', 'driver-ilango',  'EWB 4420 7765 1190', 'ITM-6610', '2026-09-06', '2026-09-08', 'Hosur Warehouse', 'Cochin Yard', 26000, 6820000, 'approved', 'user-kavitha', '2026-09-06T09:00:00Z', '2026-09-06T09:00:00Z'),
-  ('t5', 'org-meridian', 'TN38 AB 4412', 'driver-murugan', 'EWB 2299 1173 6602', 'ITM-4488', '2026-09-08', '2026-09-09', 'Chennai Yard', 'Vijayawada Warehouse', 25000, 4190000, 'approved', 'user-kavitha', '2026-09-08T09:00:00Z', '2026-09-08T09:00:00Z'),
-  ('t6', 'org-meridian', 'TN45 CQ 9087', 'driver-rafiq',   'EWB 3366 0482 1907', 'ITM-5521', '2026-09-09', '2026-09-10', 'Hyderabad Plant', 'Krishnapatnam Yard', 19500, 4760000, 'approved', 'user-kavitha', '2026-09-09T09:00:00Z', '2026-09-09T09:00:00Z'),
-  ('t7', 'org-meridian', 'KA01 MD 7731', 'driver-prakash', 'EWB 1198 4402 7765', 'ITM-2295', '2026-09-10', '2026-09-10', 'Ennore Yard', 'Erode Warehouse', 22000, 860000, 'pending', 'user-prakash', '2026-09-10T09:00:00Z', '2026-09-10T09:00:00Z'),
-  ('t8', 'org-meridian', 'TN52 BK 2290', 'driver-ilango',  'EWB 4467 7743 0199', 'ITM-6615', '2026-09-11', '2026-09-12', 'Madurai Factory', 'Tuticorin Yard', 23400, 2480000, 'pending', 'user-ilango', '2026-09-11T09:00:00Z', '2026-09-11T09:00:00Z');
+  ('t1', 'org-meridian', 'TN38 AB 4412', 'Murugan S', 'EWB 2710 0345 6789', 'ITM-4471', '2026-09-02', '2026-09-03', 'Chennai Yard', 'Sriperumbudur ICD', 24500, 3450000, 'approved', 'user-kavitha', '2026-09-02T09:00:00Z', '2026-09-02T09:00:00Z'),
+  ('t2', 'org-meridian', 'TN45 CQ 9087', 'Rafiq A',   'EWB 3312 8890 0217', 'ITM-5502', '2026-09-03', '2026-09-04', 'Tirupur Factory', 'Cochin Yard', 18000, 3180000, 'approved', 'user-kavitha', '2026-09-03T09:00:00Z', '2026-09-03T09:00:00Z'),
+  ('t3', 'org-meridian', 'KA01 MD 7731', 'Prakash N', 'EWB 1145 0032 8871', 'ITM-2290', '2026-09-05', '2026-09-05', 'Ennore Yard', 'Hosur Warehouse', 21200, 1940000, 'approved', 'user-kavitha', '2026-09-05T09:00:00Z', '2026-09-05T09:00:00Z'),
+  ('t4', 'org-meridian', 'TN52 BK 2290', 'Ilango R',  'EWB 4420 7765 1190', 'ITM-6610', '2026-09-06', '2026-09-08', 'Hosur Warehouse', 'Cochin Yard', 26000, 6820000, 'approved', 'user-kavitha', '2026-09-06T09:00:00Z', '2026-09-06T09:00:00Z'),
+  ('t5', 'org-meridian', 'TN38 AB 4412', 'Murugan S', 'EWB 2299 1173 6602', 'ITM-4488', '2026-09-08', '2026-09-09', 'Chennai Yard', 'Vijayawada Warehouse', 25000, 4190000, 'approved', 'user-kavitha', '2026-09-08T09:00:00Z', '2026-09-08T09:00:00Z'),
+  ('t6', 'org-meridian', 'TN45 CQ 9087', 'Rafiq A',   'EWB 3366 0482 1907', 'ITM-5521', '2026-09-09', '2026-09-10', 'Hyderabad Plant', 'Krishnapatnam Yard', 19500, 4760000, 'approved', 'user-kavitha', '2026-09-09T09:00:00Z', '2026-09-09T09:00:00Z'),
+  ('t7', 'org-meridian', 'KA01 MD 7731', 'Prakash N', 'EWB 1198 4402 7765', 'ITM-2295', '2026-09-10', '2026-09-10', 'Ennore Yard', 'Erode Warehouse', 22000, 860000, 'pending', 'user-prakash', '2026-09-10T09:00:00Z', '2026-09-10T09:00:00Z'),
+  ('t8', 'org-meridian', 'TN52 BK 2290', 'Ilango R',  'EWB 4467 7743 0199', 'ITM-6615', '2026-09-11', '2026-09-12', 'Madurai Factory', 'Tuticorin Yard', 23400, 2480000, 'pending', 'user-ilango', '2026-09-11T09:00:00Z', '2026-09-11T09:00:00Z');
 
 INSERT INTO trip_expenses (id, org_id, trip_id, spent_on, kind, litres, rate_paise, amount_paise, created_by, created_at) VALUES
   ('t1x1', 'org-meridian', 't1', '2026-09-02', 'diesel', 118,   9500, 1121000, 'user-kavitha', '2026-09-02T09:00:00Z'),
@@ -88,12 +88,12 @@ UPDATE trips SET odo_start = 0, odo_end = 98  WHERE id = 't7';
 UPDATE trips SET odo_start = 0, odo_end = 268 WHERE id = 't8';
 
 INSERT INTO monthly_expenses (id, org_id, vehicle_id, driver_id, spent_on, category, amount_paise, remarks, created_by, created_at) VALUES
-  ('e1', 'org-meridian', 'TN38 AB 4412', 'driver-murugan', '2026-09-01', 'detention', 2860000, 'EWB 2710 0345 6789 · yard halt', 'user-kavitha', '2026-09-01T09:00:00Z'),
-  ('e2', 'org-meridian', 'TN45 CQ 9087', 'driver-rafiq',   '2026-09-02', 'permit_tax', 1240000, 'Sept transit permit', 'user-kavitha', '2026-09-02T09:00:00Z'),
-  ('e3', 'org-meridian', 'KA01 MD 7731', 'driver-prakash', '2026-09-04', 'detention', 1980000, '2 days, EWB 1145 0032 8871', 'user-kavitha', '2026-09-04T09:00:00Z'),
-  ('e4', 'org-meridian', 'TN52 BK 2290', 'driver-ilango',  '2026-09-06', 'loan_lease', 5620000, 'EMI', 'user-kavitha', '2026-09-06T09:00:00Z'),
-  ('e5', 'org-meridian', 'TN38 AB 4412', 'driver-murugan', '2026-09-07', 'insurance', 1840000, 'Goods-in-transit insurance, Q3', 'user-kavitha', '2026-09-07T09:00:00Z'),
-  ('e6', 'org-meridian', 'TN45 CQ 9087', 'driver-rafiq',   '2026-09-09', 'maintenance', 520000, 'Oil change', 'user-kavitha', '2026-09-09T09:00:00Z');
+  ('e1', 'org-meridian', 'TN38 AB 4412', 'Murugan S', '2026-09-01', 'detention', 2860000, 'EWB 2710 0345 6789 · yard halt', 'user-kavitha', '2026-09-01T09:00:00Z'),
+  ('e2', 'org-meridian', 'TN45 CQ 9087', 'Rafiq A',   '2026-09-02', 'permit_tax', 1240000, 'Sept transit permit', 'user-kavitha', '2026-09-02T09:00:00Z'),
+  ('e3', 'org-meridian', 'KA01 MD 7731', 'Prakash N', '2026-09-04', 'detention', 1980000, '2 days, EWB 1145 0032 8871', 'user-kavitha', '2026-09-04T09:00:00Z'),
+  ('e4', 'org-meridian', 'TN52 BK 2290', 'Ilango R',  '2026-09-06', 'loan_lease', 5620000, 'EMI', 'user-kavitha', '2026-09-06T09:00:00Z'),
+  ('e5', 'org-meridian', 'TN38 AB 4412', 'Murugan S', '2026-09-07', 'insurance', 1840000, 'Goods-in-transit insurance, Q3', 'user-kavitha', '2026-09-07T09:00:00Z'),
+  ('e6', 'org-meridian', 'TN45 CQ 9087', 'Rafiq A',   '2026-09-09', 'maintenance', 520000, 'Oil change', 'user-kavitha', '2026-09-09T09:00:00Z');
 
 INSERT INTO notifications (id, org_id, kind, message, tab, related_trip_id, read, created_at) VALUES
   ('n1', 'org-meridian', 'approval', 'Ilango R logged TN52 BK 2290 — pending approval', 'triplog', 't8', 0, '2026-09-11T12:40:00Z'),

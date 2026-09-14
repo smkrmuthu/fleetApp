@@ -1,14 +1,27 @@
 import { useState } from 'react';
-import type { Role } from '../types';
 import { DEMO_ACCOUNTS } from '../data/mockData';
 
 interface Props {
-  onSignIn: (role: Role) => void;
+  onSignIn: (phone: string, password: string) => Promise<void>;
 }
 
 export function SignIn({ onSignIn }: Props) {
   const [phone, setPhone] = useState('');
   const [pass, setPass] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  async function attempt(p: string, pw: string) {
+    setError('');
+    setBusy(true);
+    try {
+      await onSignIn(p, pw);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Sign in failed');
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <div style={{ minHeight: '100vh', display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)' }}>
@@ -30,7 +43,13 @@ export function SignIn({ onSignIn }: Props) {
         <h1 style={{ fontSize: 32, letterSpacing: '-0.02em', margin: '0 0 6px' }}>Sign in</h1>
         <p style={{ color: 'var(--color-neutral-700)', margin: '0 0 28px' }}>Use the mobile number registered with your branch.</p>
 
-        <div style={{ display: 'grid', gap: 16 }}>
+        <form
+          style={{ display: 'grid', gap: 16 }}
+          onSubmit={(e) => {
+            e.preventDefault();
+            attempt(phone, pass);
+          }}
+        >
           <div className="field">
             <label>Mobile number</label>
             <input className="input" type="tel" placeholder="+91 98xxx xxxxx" value={phone} onChange={(e) => setPhone(e.target.value)} />
@@ -43,23 +62,25 @@ export function SignIn({ onSignIn }: Props) {
             <input type="checkbox" defaultChecked />
             <span>Keep me signed in on this device</span>
           </label>
-          <button type="button" className="btn btn-primary btn-block" onClick={() => onSignIn('Office')}>Sign in</button>
+          {error && <div style={{ color: 'var(--color-accent-700)', fontSize: 13 }}>{error}</div>}
+          <button type="submit" className="btn btn-primary btn-block" disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
             <a href="#reset">Forgot password</a>
             <a href="#otp">Sign in with OTP instead</a>
           </div>
-        </div>
+        </form>
 
         <div style={{ marginTop: 36, borderTop: '2px solid var(--color-divider)', paddingTop: 18 }}>
           <div style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--color-neutral-700)', marginBottom: 12 }}>
-            Prototype — sign in as
+            Demo — sign in as
           </div>
           <div style={{ display: 'grid', gap: 2, background: 'var(--color-divider)', border: '2px solid var(--color-divider)' }}>
             {DEMO_ACCOUNTS.map((a) => (
               <button
                 key={a.key}
                 type="button"
-                onClick={() => onSignIn(a.key)}
+                disabled={busy}
+                onClick={() => attempt(a.phone, a.password)}
                 style={{
                   appearance: 'none', border: 0, background: 'var(--color-bg)', textAlign: 'left',
                   padding: '13px 16px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between',

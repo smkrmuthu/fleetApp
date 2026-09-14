@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Env, Vars } from '../types';
-import { getDb, newId } from '../db';
+import { getDb } from '../db';
 import { drivers } from '../../drizzle/schema';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { writeAudit } from '../lib/audit';
@@ -41,7 +41,12 @@ driverRoutes.post('/', requireRole('office', 'manager'), async (c) => {
   if (!parsed.success) return c.json({ error: { code: 'validation_error', message: parsed.error.message } }, 422);
 
   const db = getDb(c.env);
-  const id = newId();
+  // The driver's full name is the id — every screen already treats a
+  // driver's name as their identity (Trip.driverId, filters, People rows),
+  // same simplification already made for vehicles/reg_no. Names colliding
+  // across a large roster is the real risk this trades away; a surrogate
+  // id plus a display name is the fix if that ever bites.
+  const id = parsed.data.fullName;
   await db.insert(drivers).values({ id, orgId: auth.orgId, active: true, ...parsed.data });
   await writeAudit(db, auth.orgId, 'drivers', id, 'insert', parsed.data, auth.userId);
 

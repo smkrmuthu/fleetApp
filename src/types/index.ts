@@ -69,6 +69,8 @@ export interface Trip {
   to: string;
   tons: number;
   km: number;
+  odoStart?: number;
+  odoEnd?: number;
   revenue: number;
   status: TripStatus;
   remarks?: string;
