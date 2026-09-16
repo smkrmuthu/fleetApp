@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { DEMO_ACCOUNTS } from '../data/mockData';
+import logoMarkWhite from '../assets/logo-mark-white.png';
 
 interface Props {
   onSignIn: (phone: string, password: string) => Promise<void>;
@@ -26,7 +27,10 @@ export function SignIn({ onSignIn }: Props) {
   return (
     <div className="sign-in-grid">
       <div className="sign-in-brand" style={{ background: 'var(--color-accent)', color: '#fff', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 24 }}>
-        <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 18, letterSpacing: '0.02em', textTransform: 'uppercase' }}>Fleet Ledger</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <img src={logoMarkWhite} alt="" style={{ height: 26, width: 'auto' }} />
+          <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 18, letterSpacing: '0.02em', textTransform: 'uppercase' }}>Fleet Ledger</div>
+        </div>
         <div>
           <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 'clamp(30px, 6vw, 62px)', lineHeight: 1.02, letterSpacing: '-0.03em' }}>
             Every trip, every rupee, one ledger.
