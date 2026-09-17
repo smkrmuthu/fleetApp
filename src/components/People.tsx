@@ -72,7 +72,7 @@ export function People({
     <section>
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap', marginBottom: 18 }}>
         <div>
-          <div className="kicker">Meridian Logistics · {users.length} accounts, 3 branches</div>
+          <div className="kicker">Shree Mira Trader · {users.length} accounts, 3 branches</div>
           <h1 style={{ fontSize: 34, letterSpacing: '-0.02em' }}>People</h1>
           <p style={{ color: 'var(--color-neutral-700)', marginTop: 6, fontSize: 13 }}>Manage the fleet's trucks, drivers and user accounts.</p>
         </div>

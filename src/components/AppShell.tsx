@@ -60,7 +60,7 @@ export function AppShell({
             )}
             <div style={{ textAlign: 'right', lineHeight: 1.25 }}>
               <div style={{ fontWeight: 600 }}>{userName} · {role}</div>
-              <div style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-neutral-700)' }}>Meridian Logistics · Chennai</div>
+              <div style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-neutral-700)' }}>Shree Mira Trader · Chennai</div>
             </div>
             <button type="button" className="btn btn-ghost" onClick={onSignOut}>Sign out</button>
           </div>

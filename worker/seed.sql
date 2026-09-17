@@ -1,11 +1,11 @@
--- Demo data for Meridian Logistics — mirrors the mock data the frontend
+-- Demo data for Shree Mira Trader — mirrors the mock data the frontend
 -- prototype shipped with, now as real rows. Demo sign-in passwords:
 --   Manager  A. Balan   +91 94440 61928 / manager123
 --   Office   Kavitha R  +91 90031 77402 / office123
 --   Driver   Murugan S  +91 98431 20114 / driver123
 
 INSERT INTO orgs (id, name, currency, fy_start_month) VALUES
-  ('org-meridian', 'Meridian Logistics', 'INR', 4);
+  ('org-meridian', 'Shree Mira Trader', 'INR', 4);
 
 INSERT INTO branches (id, org_id, name) VALUES
   ('branch-chennai', 'org-meridian', 'Chennai HQ'),

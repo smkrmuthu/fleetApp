@@ -41,7 +41,7 @@ export function SignIn({ onSignIn }: Props) {
             Track every trip, fuel stop, and expense across your fleet — from the road to the ledger, in one place for your whole team.
           </div>
         </div>
-        <div style={{ fontSize: 12, letterSpacing: '0.1em', textTransform: 'uppercase', opacity: 0.85 }}>Meridian Logistics · Chennai &amp; Cochin</div>
+        <div style={{ fontSize: 12, letterSpacing: '0.1em', textTransform: 'uppercase', opacity: 0.85 }}>Shree Mira Trader · Chennai &amp; Cochin</div>
       </div>
 
       <div className="sign-in-form-panel" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
