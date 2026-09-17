@@ -151,7 +151,9 @@ input, select, textarea { font-family: var(--font-body); }
   grid-template-columns: minmax(0,1fr) minmax(0,1fr);
   min-height: 100vh;
 }
-.sign-in-brand { padding: 56px 48px; min-height: 100vh; }
+.sign-in-brand { padding: 56px 48px; min-height: 100vh; position: relative; overflow: hidden; display: grid; grid-template-rows: auto 1fr auto; }
+.sign-in-watermark { position: absolute; right: -12%; bottom: -10%; width: 88%; height: auto; max-width: 640px; opacity: 0.08; pointer-events: none; transform: rotate(-6deg); }
+.sign-in-brand > *:not(.sign-in-watermark) { position: relative; z-index: 1; }
 .sign-in-form-panel { padding: 56px 48px; max-width: 560px; }
 
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -174,7 +176,8 @@ input, select, textarea { font-family: var(--font-body); }
   .app-shell-bar { padding: 10px 14px; }
 
   .sign-in-grid { grid-template-columns: 1fr; }
-  .sign-in-brand { min-height: auto; padding: 28px 20px 24px; }
+  .sign-in-brand { min-height: auto; padding: 28px 20px 24px; grid-template-rows: auto auto auto; gap: 28px; }
+  .sign-in-watermark { width: 78%; right: -16%; bottom: -8%; opacity: 0.07; }
   .sign-in-form-panel { padding: 24px 20px 36px; max-width: none; }
 
   .movement-grid { grid-template-columns: minmax(0,1fr); }

@@ -26,13 +26,14 @@ export function SignIn({ onSignIn }: Props) {
 
   return (
     <div className="sign-in-grid">
-      <div className="sign-in-brand" style={{ background: 'var(--color-accent)', color: '#fff', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 24 }}>
+      <div className="sign-in-brand" style={{ background: 'var(--color-accent)', color: '#fff' }}>
+        <img src={logoMarkWhite} alt="" className="sign-in-watermark" />
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <img src={logoMarkWhite} alt="" style={{ height: 26, width: 'auto' }} />
           <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 18, letterSpacing: '0.02em', textTransform: 'uppercase' }}>Fleet Ledger</div>
         </div>
-        <div>
-          <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 'clamp(30px, 6vw, 62px)', lineHeight: 1.02, letterSpacing: '-0.03em' }}>
+        <div style={{ alignSelf: 'center' }}>
+          <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 'clamp(32px, 6.4vw, 72px)', lineHeight: 1.02, letterSpacing: '-0.03em' }}>
             Every trip, every rupee, one ledger.
           </div>
           <div style={{ height: 2, background: '#fff', opacity: 0.6, margin: '24px 0 18px', maxWidth: 340 }} />
