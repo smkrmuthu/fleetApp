@@ -117,27 +117,22 @@ export function TripLog({ trips, vehicles, drivers, vehicleFilter, driverFilter,
                     )}
                     <td style={{ textAlign: 'right', color: 'var(--color-neutral-700)' }}>{t.documents.length || '—'}</td>
                     <td style={{ whiteSpace: 'nowrap' }}>
-                      {t.status === 'draft' ? (
+                      {t.status !== 'approved' ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span className="tag tag-outline">Draft</span>
+                          <span className={t.status === 'pending' ? 'tag tag-accent' : 'tag tag-outline'}>
+                            {t.status === 'pending' ? 'Pending' : 'Draft'}
+                          </span>
                           {(isDriver || isOffice) && (
                             <button type="button" className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => onEdit(t)}>
                               Edit
                             </button>
                           )}
-                          <button type="button" className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 12, color: 'var(--color-accent-700)' }} onClick={() => onDelete(t)}>
-                            Delete
-                          </button>
-                        </div>
-                      ) : t.status === 'pending' ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span className="tag tag-accent">Pending</span>
                           {!isDriver && (
                             <button type="button" className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => onApprove(t.id)}>
-                              Approve
+                              Complete Trip
                             </button>
                           )}
-                          {!isDriver && (
+                          {(t.status === 'draft' || !isDriver) && (
                             <button type="button" className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 12, color: 'var(--color-accent-700)' }} onClick={() => onDelete(t)}>
                               Delete
                             </button>

@@ -249,7 +249,7 @@ tripRoutes.post('/:id/expenses', async (c) => {
   const db = getDb(c.env);
   const [trip] = await db.select().from(trips).where(and(eq(trips.id, id), eq(trips.orgId, auth.orgId))).limit(1);
   if (!trip) return c.json({ error: { code: 'not_found', message: 'Trip not found' } }, 404);
-  if (auth.role === 'driver' && (trip.driverId !== auth.driverId || trip.status !== 'draft')) {
+  if (auth.role === 'driver' && (trip.driverId !== auth.driverId || trip.status === 'approved')) {
     return c.json({ error: { code: 'forbidden', message: 'Can only add to your own open movement' } }, 403);
   }
 
@@ -274,7 +274,7 @@ tripRoutes.post('/:id/documents', async (c) => {
   const db = getDb(c.env);
   const [trip] = await db.select().from(trips).where(and(eq(trips.id, id), eq(trips.orgId, auth.orgId))).limit(1);
   if (!trip) return c.json({ error: { code: 'not_found', message: 'Trip not found' } }, 404);
-  if (auth.role === 'driver' && (trip.driverId !== auth.driverId || trip.status !== 'draft')) {
+  if (auth.role === 'driver' && (trip.driverId !== auth.driverId || trip.status === 'approved')) {
     return c.json({ error: { code: 'forbidden', message: 'Can only attach files to your own open movement' } }, 403);
   }
 
@@ -291,7 +291,7 @@ tripRoutes.delete('/:id/documents/:docId', async (c) => {
 
   const [trip] = await db.select().from(trips).where(and(eq(trips.id, id), eq(trips.orgId, auth.orgId))).limit(1);
   if (!trip) return c.json({ error: { code: 'not_found', message: 'Trip not found' } }, 404);
-  if (auth.role === 'driver' && (trip.driverId !== auth.driverId || trip.status !== 'draft')) {
+  if (auth.role === 'driver' && (trip.driverId !== auth.driverId || trip.status === 'approved')) {
     return c.json({ error: { code: 'forbidden', message: 'Can only remove files from your own open movement' } }, 403);
   }
 
@@ -333,16 +333,16 @@ tripRoutes.get('/:id/documents/:docId/file', async (c) => {
 });
 
 // Office/manager may edit any trip at any time. A driver may only edit
-// their own trip, and only while it's still open (draft) — once submitted
-// for approval it's locked from their side. A month-close guard (409 if
-// the month is frozen) is future work once /months/:yyyy-mm:close exists.
+// their own trip, and only until it's approved — once office has closed it
+// out it's locked from their side. A month-close guard (409 if the month is
+// frozen) is future work once /months/:yyyy-mm:close exists.
 tripRoutes.patch('/:id', async (c) => {
   const auth = c.get('auth');
   const id = c.req.param('id')!;
   const db = getDb(c.env);
   const [existing] = await db.select().from(trips).where(and(eq(trips.id, id), eq(trips.orgId, auth.orgId))).limit(1);
   if (!existing) return c.json({ error: { code: 'not_found', message: 'Trip not found' } }, 404);
-  if (auth.role === 'driver' && (existing.driverId !== auth.driverId || existing.status !== 'draft')) {
+  if (auth.role === 'driver' && (existing.driverId !== auth.driverId || existing.status === 'approved')) {
     return c.json({ error: { code: 'forbidden', message: 'Can only edit your own open movement' } }, 403);
   }
 
@@ -366,18 +366,19 @@ tripRoutes.patch('/:id', async (c) => {
   return c.json(row);
 });
 
-// Finalizes an open (draft) trip: sets the closing odometer reading and
-// marks it approved. Office/manager only — a driver can open and add to a
-// movement but never finalize it themselves, and finalizing needs no
-// separate approval step.
+// Finalizes an open trip (draft, or a pending one left over from the old
+// driver-approval flow): sets the closing odometer reading and marks it
+// approved. Office/manager only — a driver can open and add to a movement
+// but never finalize it themselves, and finalizing needs no separate
+// approval step.
 tripRoutes.post('/:id/complete', requireRole('office', 'manager'), async (c) => {
   const auth = c.get('auth');
   const id = c.req.param('id')!;
   const db = getDb(c.env);
   const [existing] = await db.select().from(trips).where(and(eq(trips.id, id), eq(trips.orgId, auth.orgId))).limit(1);
   if (!existing) return c.json({ error: { code: 'not_found', message: 'Trip not found' } }, 404);
-  if (existing.status !== 'draft') {
-    return c.json({ error: { code: 'invalid_state', message: 'This movement is already submitted' } }, 409);
+  if (existing.status === 'approved') {
+    return c.json({ error: { code: 'invalid_state', message: 'This movement is already approved' } }, 409);
   }
 
   const body = await c.req.json().catch(() => null);
