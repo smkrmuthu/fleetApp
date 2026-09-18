@@ -180,7 +180,7 @@ export function App() {
   }
 
   async function deleteTrip(trip: Trip) {
-    if (!window.confirm(`Delete the movement for ${trip.vehicle} (waybill ${trip.waybillNo})? This cannot be undone.`)) return;
+    if (!window.confirm(`Delete the movement for ${trip.vehicle} (invoice ${trip.waybillNo})? This cannot be undone.`)) return;
     try {
       await api.deleteTrip(trip.id);
       if (editingTrip?.id === trip.id) setEditingTrip(null);
@@ -315,7 +315,7 @@ export function App() {
           driverOnly={role === 'Driver'}
           vehicles={vehicles}
           drivers={drivers}
-          lockedDriverName={role === 'Driver' ? currentUserName : undefined}
+          defaultDriverName={role === 'Driver' ? currentUserName : undefined}
           editingTrip={editingTrip}
           onCancelEdit={cancelEditingTrip}
         />
@@ -338,7 +338,7 @@ export function App() {
           onApprove={approveTrip}
           onEdit={startEditingTrip}
           onDelete={deleteTrip}
-          isDriver={role === 'Driver'}
+          role={role}
         />
       )}
       {tab === 'expenses' && (

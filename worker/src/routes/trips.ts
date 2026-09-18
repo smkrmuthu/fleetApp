@@ -3,7 +3,7 @@ import { and, desc, eq, lt, or, gt } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Env, Vars } from '../types';
 import { getDb, newId, nowIso } from '../db';
-import { trips, tripExpenses, drivers, notifications, receipts, tripDocuments } from '../../drizzle/schema';
+import { trips, tripExpenses, notifications, receipts, tripDocuments } from '../../drizzle/schema';
 import { base64ToBytes, filenameFromKey, storageKeyFor } from '../lib/storage';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { buildFilters, combine, parsePagination } from '../lib/filters';
@@ -116,8 +116,14 @@ tripRoutes.post('/', async (c) => {
   }
 
   const isDriver = auth.role === 'driver';
-  const driverId = isDriver ? auth.driverId : data.driverId ?? null;
-  const status = isDriver ? (data.draft ? 'draft' : 'pending') : 'approved';
+  // A driver's own login is the account used to enter the trip, but the
+  // driver named on it may be someone else — an office assistant keying
+  // data for whoever's actually driving. Trust the submitted driver, only
+  // falling back to the logged-in driver when none was picked.
+  const driverId = isDriver ? data.driverId ?? auth.driverId : data.driverId ?? null;
+  // A driver can only ever open a trip, never finalize it — see
+  // POST /:id/complete, which office/manager alone may call.
+  const status = isDriver ? 'draft' : 'approved';
   const now = nowIso();
 
   if (data.odoEnd != null && data.odoStart != null && data.odoEnd <= data.odoStart) {
@@ -165,20 +171,6 @@ tripRoutes.post('/', async (c) => {
   await db.batch(statements as [any, ...any[]]);
 
   await writeAudit(db, auth.orgId, 'trips', data.id, 'insert', { status, expenseCount: expenseRows.length }, auth.userId);
-
-  if (status === 'pending' && driverId) {
-    const [driver] = await db.select().from(drivers).where(eq(drivers.id, driverId)).limit(1);
-    await db.insert(notifications).values({
-      id: newId(),
-      orgId: auth.orgId,
-      kind: 'approval',
-      message: `${driver?.fullName ?? 'A driver'} logged ${data.vehicleId} — pending approval`,
-      tab: 'triplog',
-      relatedTripId: data.id,
-      read: false,
-      createdAt: now
-    });
-  }
 
   const documentRows = [];
   for (const doc of data.documents) {
@@ -375,17 +367,15 @@ tripRoutes.patch('/:id', async (c) => {
 });
 
 // Finalizes an open (draft) trip: sets the closing odometer reading and
-// submits it — pending for a driver, straight to approved for office/
-// manager. This is the only way a driver's trip leaves 'draft'.
-tripRoutes.post('/:id/complete', async (c) => {
+// marks it approved. Office/manager only — a driver can open and add to a
+// movement but never finalize it themselves, and finalizing needs no
+// separate approval step.
+tripRoutes.post('/:id/complete', requireRole('office', 'manager'), async (c) => {
   const auth = c.get('auth');
   const id = c.req.param('id')!;
   const db = getDb(c.env);
   const [existing] = await db.select().from(trips).where(and(eq(trips.id, id), eq(trips.orgId, auth.orgId))).limit(1);
   if (!existing) return c.json({ error: { code: 'not_found', message: 'Trip not found' } }, 404);
-  if (auth.role === 'driver' && existing.driverId !== auth.driverId) {
-    return c.json({ error: { code: 'forbidden', message: 'Not your movement' } }, 403);
-  }
   if (existing.status !== 'draft') {
     return c.json({ error: { code: 'invalid_state', message: 'This movement is already submitted' } }, 409);
   }
@@ -399,39 +389,25 @@ tripRoutes.post('/:id/complete', async (c) => {
     return c.json({ error: { code: 'validation_error', message: 'Odometer end must be greater than odometer start', field: 'odoEnd' } }, 422);
   }
 
-  const status = auth.role === 'driver' ? 'pending' : 'approved';
   const now = nowIso();
   await db.update(trips).set({
     odoEnd: parsed.data.odoEnd,
     unloadDate: parsed.data.unloadDate ?? existing.unloadDate,
     remarks: parsed.data.remarks ?? existing.remarks,
-    status,
+    status: 'approved',
     updatedAt: now
   }).where(eq(trips.id, id));
-  await writeAudit(db, auth.orgId, 'trips', id, 'complete', { status }, auth.userId);
-
-  if (status === 'pending' && existing.driverId) {
-    const [driver] = await db.select().from(drivers).where(eq(drivers.id, existing.driverId)).limit(1);
-    await db.insert(notifications).values({
-      id: newId(),
-      orgId: auth.orgId,
-      kind: 'approval',
-      message: `${driver?.fullName ?? 'A driver'} completed ${existing.vehicleId} — pending approval`,
-      tab: 'triplog',
-      relatedTripId: id,
-      read: false,
-      createdAt: now
-    });
-  }
+  await writeAudit(db, auth.orgId, 'trips', id, 'complete', { status: 'approved' }, auth.userId);
 
   const [row] = await db.select().from(trips).where(eq(trips.id, id)).limit(1);
   return c.json(row);
 });
 
-// A trip can be deleted any time before it's approved — a driver may delete
-// their own draft or pending movement, office/manager may delete any
-// draft or pending trip. Once approved it's locked; there is no undo, so
-// this is a hard delete of the trip and its expense lines.
+// A driver may delete only their own still-open (draft) movement — once it
+// is complete (pending or approved) it is locked from their side. Office/
+// manager may delete any trip that isn't yet approved. Once approved it's
+// locked for everyone; there is no undo, so this is a hard delete of the
+// trip and its expense lines.
 tripRoutes.delete('/:id', async (c) => {
   const auth = c.get('auth');
   const id = c.req.param('id')!;
@@ -440,6 +416,9 @@ tripRoutes.delete('/:id', async (c) => {
   if (!existing) return c.json({ error: { code: 'not_found', message: 'Trip not found' } }, 404);
   if (auth.role === 'driver' && existing.driverId !== auth.driverId) {
     return c.json({ error: { code: 'forbidden', message: 'Not your movement' } }, 403);
+  }
+  if (auth.role === 'driver' && existing.status !== 'draft') {
+    return c.json({ error: { code: 'invalid_state', message: 'A completed movement cannot be deleted by a driver' } }, 409);
   }
   if (existing.status === 'approved') {
     return c.json({ error: { code: 'invalid_state', message: 'An approved movement cannot be deleted' } }, 409);

@@ -1,4 +1,4 @@
-import type { DriverMaster, Trip, Vehicle } from '../types';
+import type { DriverMaster, Role, Trip, Vehicle } from '../types';
 import { dateInRange, formatDateRange, formatNum, rupees, tripCost } from '../utils/calc';
 
 interface Props {
@@ -18,10 +18,12 @@ interface Props {
   onApprove: (tripId: string) => void;
   onEdit: (trip: Trip) => void;
   onDelete: (trip: Trip) => void;
-  isDriver: boolean;
+  role: Role;
 }
 
-export function TripLog({ trips, vehicles, drivers, vehicleFilter, driverFilter, dateFrom, dateTo, onVehicleFilter, onDriverFilter, onDateFrom, onDateTo, onResetFilters, onAddMovement, onApprove, onEdit, onDelete, isDriver }: Props) {
+export function TripLog({ trips, vehicles, drivers, vehicleFilter, driverFilter, dateFrom, dateTo, onVehicleFilter, onDriverFilter, onDateFrom, onDateTo, onResetFilters, onAddMovement, onApprove, onEdit, onDelete, role }: Props) {
+  const isDriver = role === 'Driver';
+  const isOffice = role === 'Office';
   const showFinancials = !isDriver;
   const showActions = !isDriver;
   const rows = trips.filter(
@@ -36,7 +38,7 @@ export function TripLog({ trips, vehicles, drivers, vehicleFilter, driverFilter,
         <div>
           <div className="kicker">{rows.length} movements · {formatDateRange(dateFrom, dateTo)}</div>
           <h1 style={{ fontSize: 34, letterSpacing: '-0.02em' }}>Trip Log</h1>
-          <p style={{ color: 'var(--color-neutral-700)', marginTop: 6, fontSize: 13 }}>Every movement in one place — approve pending ones, edit or delete drafts.</p>
+          <p style={{ color: 'var(--color-neutral-700)', marginTop: 6, fontSize: 13 }}>Every movement in one place — open a draft to complete it, or delete what's still open.</p>
         </div>
         {showActions && (
           <div style={{ display: 'flex', gap: 10 }}>
@@ -80,7 +82,7 @@ export function TripLog({ trips, vehicles, drivers, vehicleFilter, driverFilter,
           <table className="table" style={{ minWidth: 1680 }}>
             <thead>
               <tr>
-                <th>Gated</th><th>Waybill</th><th>Item</th><th>Vehicle</th><th>Driver</th><th>Route</th>
+                <th>Gated</th><th>Invoice No.</th><th>Item</th><th>Vehicle</th><th>Driver</th><th>Route</th>
                 <th style={{ textAlign: 'right' }}>Tons</th><th style={{ textAlign: 'right' }}>KM</th><th style={{ textAlign: 'right' }}>Diesel</th>
                 <th style={{ textAlign: 'right' }}>AdBlue</th><th style={{ textAlign: 'right' }}>Toll</th><th style={{ textAlign: 'right' }}>Other</th><th style={{ textAlign: 'right' }}>Expense</th>
                 {showFinancials && <th style={{ textAlign: 'right' }}>Revenue</th>}
@@ -118,7 +120,7 @@ export function TripLog({ trips, vehicles, drivers, vehicleFilter, driverFilter,
                       {t.status === 'draft' ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <span className="tag tag-outline">Draft</span>
-                          {isDriver && (
+                          {(isDriver || isOffice) && (
                             <button type="button" className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => onEdit(t)}>
                               Edit
                             </button>
@@ -135,9 +137,11 @@ export function TripLog({ trips, vehicles, drivers, vehicleFilter, driverFilter,
                               Approve
                             </button>
                           )}
-                          <button type="button" className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 12, color: 'var(--color-accent-700)' }} onClick={() => onDelete(t)}>
-                            Delete
-                          </button>
+                          {!isDriver && (
+                            <button type="button" className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 12, color: 'var(--color-accent-700)' }} onClick={() => onDelete(t)}>
+                              Delete
+                            </button>
+                          )}
                         </div>
                       ) : (
                         <span className="tag tag-outline">Approved</span>

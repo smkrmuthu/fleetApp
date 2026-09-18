@@ -20,6 +20,13 @@ function normalizeReg(v: string): string {
   return v.replace(/\s+/g, '').toUpperCase();
 }
 
+function generateInvoiceNo(vehicleId: string): string {
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const stamp = `${pad(now.getFullYear() % 100)}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`;
+  return `INV-${normalizeReg(vehicleId)}-${stamp}`;
+}
+
 function mapFuelType(fuelType?: string): TripExpenseKind {
   return (fuelType ?? '').toLowerCase().includes('adblue') ? 'adblue' : 'diesel';
 }
@@ -57,15 +64,15 @@ interface Props {
   driverOnly: boolean;
   vehicles: Vehicle[];
   drivers: DriverMaster[];
-  lockedDriverName?: string;
+  defaultDriverName?: string;
   editingTrip?: Trip | null;
   onCancelEdit?: () => void;
 }
 
-export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, lockedDriverName, editingTrip, onCancelEdit }: Props) {
+export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, defaultDriverName, editingTrip, onCancelEdit }: Props) {
   const showFinancials = !driverOnly;
   const isEditing = !!editingTrip;
-  const [form, setForm] = useState<TripFormState>(() => (editingTrip ? formFromTrip(editingTrip) : blankForm(lockedDriverName)));
+  const [form, setForm] = useState<TripFormState>(() => (editingTrip ? formFromTrip(editingTrip) : blankForm(defaultDriverName)));
   const [lines, setLines] = useState<TripExpenseLine[]>(() => editingTrip?.expenses ?? []);
   const [newLine, setNewLine] = useState(blankLine());
   const [documents, setDocuments] = useState<TripDocument[]>(() => editingTrip?.documents ?? []);
@@ -92,6 +99,18 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, lockedDri
 
   const set = (k: keyof TripFormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setForm((f) => ({ ...f, [k]: e.target.value } as TripFormState));
+    setErrors({});
+  };
+
+  // Invoice numbers are auto-generated from the vehicle once one is picked,
+  // but only while the field is still blank — never clobber a manual edit.
+  const onVehicleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const vehicleId = e.target.value;
+    setForm((f) => ({
+      ...f,
+      vehicle: vehicleId,
+      waybillNo: !f.waybillNo.trim() && vehicleId ? generateInvoiceNo(vehicleId) : f.waybillNo
+    }));
     setErrors({});
   };
 
@@ -168,7 +187,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, lockedDri
     const errs: Record<string, string> = {};
     if (!form.vehicle) errs.vehicle = 'Select a vehicle.';
     if (!form.driver) errs.driver = 'Select a driver.';
-    if (!form.waybillNo.trim()) errs.waybillNo = 'Waybill number is required.';
+    if (!form.waybillNo.trim()) errs.waybillNo = 'Invoice number is required.';
     if (completing) {
       if (!form.tons) errs.tons = 'Loading weight is required to complete this movement.';
       if (!form.odoStart) errs.odoStart = 'Odometer start is required to complete this movement.';
@@ -216,7 +235,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, lockedDri
       setLines(editingTrip.expenses);
       setDocuments(editingTrip.documents);
     } else {
-      setForm(blankForm(lockedDriverName));
+      setForm(blankForm(defaultDriverName));
       setLines([]);
       setDocuments([]);
     }
@@ -301,23 +320,19 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, lockedDri
             <div className="field"><label>Unloading date</label><input className={errorClass('unloadDate')} type="date" min={form.loadDate} value={form.unloadDate} onChange={set('unloadDate')} /></div>
             <div className="field">
               <label>Vehicle *</label>
-              <select className={errorClass('vehicle')} value={form.vehicle} onChange={set('vehicle')}>
+              <select className={errorClass('vehicle')} value={form.vehicle} onChange={onVehicleChange}>
                 <option value="">Select vehicle</option>
                 {vehicles.map((v) => <option key={v.id} value={v.id}>{v.id}</option>)}
               </select>
             </div>
             <div className="field">
               <label>Driver *</label>
-              {lockedDriverName ? (
-                <input className="input" type="text" value={form.driver} disabled />
-              ) : (
-                <select className={errorClass('driver')} value={form.driver} onChange={set('driver')}>
-                  <option value="">Select driver</option>
-                  {drivers.map((d) => <option key={d.name} value={d.name}>{d.name}</option>)}
-                </select>
-              )}
+              <select className={errorClass('driver')} value={form.driver} onChange={set('driver')}>
+                <option value="">Select driver</option>
+                {drivers.map((d) => <option key={d.name} value={d.name}>{d.name}</option>)}
+              </select>
             </div>
-            <div className="field"><label>Waybill no *</label><input className={errorClass('waybillNo')} type="text" placeholder="EWB 0000 0000 0000" value={form.waybillNo} onChange={set('waybillNo')} /></div>
+            <div className="field"><label>Invoice number *</label><input className={errorClass('waybillNo')} type="text" placeholder="Auto-generated from vehicle" value={form.waybillNo} onChange={set('waybillNo')} /></div>
             <div className="field"><label>Item no</label><input className="input" type="text" placeholder="ITM-0000" value={form.itemNo} onChange={set('itemNo')} /></div>
             <div className="field"><label>Loading location</label><input className="input" type="text" placeholder="Yard / factory" value={form.from} onChange={set('from')} /></div>
             <div className="field"><label>Unloading location</label><input className="input" type="text" placeholder="Warehouse / yard" value={form.to} onChange={set('to')} /></div>
@@ -530,7 +545,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, lockedDri
               <div style={{ padding: 12, display: 'grid', gap: 6, fontSize: 13 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}><span style={{ color: 'var(--color-neutral-700)' }}>Vehicle</span><span style={{ fontWeight: 600 }}>{form.vehicle}</span></div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}><span style={{ color: 'var(--color-neutral-700)' }}>Driver</span><span style={{ fontWeight: 600 }}>{form.driver}</span></div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}><span style={{ color: 'var(--color-neutral-700)' }}>Waybill</span><span style={{ fontWeight: 600 }}>{form.waybillNo}</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}><span style={{ color: 'var(--color-neutral-700)' }}>Invoice no.</span><span style={{ fontWeight: 600 }}>{form.waybillNo}</span></div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}><span style={{ color: 'var(--color-neutral-700)' }}>Route</span><span style={{ fontWeight: 600 }}>{form.from || '—'} → {form.to || '—'}</span></div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
                   <span style={{ color: 'var(--color-neutral-700)' }}>Odometer</span>
@@ -538,9 +553,8 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, lockedDri
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}><span style={{ color: 'var(--color-neutral-700)' }}>Fuel &amp; expense entries</span><span style={{ fontWeight: 600 }}>{lines.length}</span></div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}><span style={{ color: 'var(--color-neutral-700)' }}>Trip expense so far</span><span style={{ fontWeight: 600 }}>{rupees(expense)}</span></div>
-                {confirmAction === 'start' && <div style={{ color: 'var(--color-neutral-700)' }}>This saves as an open movement — you can keep adding entries and complete it later.</div>}
-                {confirmAction === 'complete' && <div style={{ color: 'var(--color-neutral-700)' }}>This marks the movement complete and sends it for approval.</div>}
-                {confirmAction === 'create' && driverOnly && <div style={{ color: 'var(--color-neutral-700)' }}>This submits the movement for approval now.</div>}
+                {confirmAction === 'start' && <div style={{ color: 'var(--color-neutral-700)' }}>This saves as an open movement — you or documentation can keep adding entries and complete it later.</div>}
+                {confirmAction === 'complete' && <div style={{ color: 'var(--color-neutral-700)' }}>This marks the movement complete and locks it — a driver can no longer edit or delete it.</div>}
               </div>
               <div style={{ display: 'flex', gap: 10, padding: 12, borderTop: '1px solid var(--color-neutral-300)' }}>
                 <button type="button" className="btn btn-primary" onClick={confirmSubmit}>Confirm &amp; save</button>
@@ -552,13 +566,14 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, lockedDri
               {isEditing ? (
                 <>
                   <button type="button" className="btn btn-primary" onClick={() => tryAction('save', false)}>Save changes</button>
-                  <button type="button" className="btn btn-secondary" onClick={() => tryAction('complete', true)}>Complete movement</button>
+                  {!driverOnly && (
+                    <button type="button" className="btn btn-secondary" onClick={() => tryAction('complete', true)}>Complete movement</button>
+                  )}
                   <button type="button" className="btn btn-ghost" onClick={onCancelEdit}>Cancel edit</button>
                 </>
               ) : driverOnly ? (
                 <>
                   <button type="button" className="btn btn-primary" onClick={() => tryAction('start', false)}>Start movement</button>
-                  <button type="button" className="btn btn-secondary" onClick={() => tryAction('create', true)}>Complete movement now</button>
                   <button type="button" className="btn btn-ghost" onClick={resetForm}>Clear</button>
                 </>
               ) : (
