@@ -20,11 +20,16 @@ function normalizeReg(v: string): string {
   return v.replace(/\s+/g, '').toUpperCase();
 }
 
-function generateInvoiceNo(vehicleId: string): string {
+function generateInvoiceNo(vehicleId: string, loadDate: string): string {
   const now = new Date();
   const pad = (n: number) => String(n).padStart(2, '0');
-  const stamp = `${pad(now.getFullYear() % 100)}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`;
-  return `INV-${normalizeReg(vehicleId)}-${stamp}`;
+  // date portion follows the trip's own loading date (falls back to today if
+  // that's not set yet) — the time suffix is just there to keep two trips
+  // for the same vehicle on the same day from colliding.
+  const [y, m, d] = loadDate ? loadDate.split('-').map(Number) : [now.getFullYear(), now.getMonth() + 1, now.getDate()];
+  const dateStamp = `${pad(y % 100)}${pad(m)}${pad(d)}`;
+  const timeStamp = `${pad(now.getHours())}${pad(now.getMinutes())}`;
+  return `INV-${normalizeReg(vehicleId)}-${dateStamp}-${timeStamp}`;
 }
 
 function mapFuelType(fuelType?: string): TripExpenseKind {
@@ -84,6 +89,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, defaultDr
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [confirmAction, setConfirmAction] = useState<SubmitAction | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [invoiceTouched, setInvoiceTouched] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scanFileInputRef = useRef<HTMLInputElement>(null);
   const errorBoxRef = useRef<HTMLDivElement>(null);
@@ -102,15 +108,32 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, defaultDr
     setErrors({});
   };
 
-  // Invoice numbers are auto-generated from the vehicle once one is picked,
-  // but only while the field is still blank — never clobber a manual edit.
+  // Invoice numbers follow the vehicle + loading date and keep re-deriving
+  // as either one changes — right up until the user types into the field
+  // themselves, at which point their own value sticks for good.
   const onVehicleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const vehicleId = e.target.value;
     setForm((f) => ({
       ...f,
       vehicle: vehicleId,
-      waybillNo: !f.waybillNo.trim() && vehicleId ? generateInvoiceNo(vehicleId) : f.waybillNo
+      waybillNo: !invoiceTouched && vehicleId ? generateInvoiceNo(vehicleId, f.loadDate) : f.waybillNo
     }));
+    setErrors({});
+  };
+
+  const onLoadDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const loadDate = e.target.value;
+    setForm((f) => ({
+      ...f,
+      loadDate,
+      waybillNo: !invoiceTouched && f.vehicle ? generateInvoiceNo(f.vehicle, loadDate) : f.waybillNo
+    }));
+    setErrors({});
+  };
+
+  const onInvoiceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInvoiceTouched(true);
+    setForm((f) => ({ ...f, waybillNo: e.target.value }));
     setErrors({});
   };
 
@@ -241,6 +264,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, defaultDr
     }
     setErrors({});
     setConfirmAction(null);
+    setInvoiceTouched(false);
   }
 
   async function onScanFileChosen(e: React.ChangeEvent<HTMLInputElement>) {
@@ -316,7 +340,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, defaultDr
       <div className="movement-grid">
         <div style={{ background: 'var(--color-bg)', padding: 20, border: '2px solid var(--color-divider)' }}>
           <div className="filters-grid" style={{ alignItems: 'stretch' }}>
-            <div className="field"><label>Loading date</label><input className="input" type="date" value={form.loadDate} onChange={set('loadDate')} /></div>
+            <div className="field"><label>Loading date</label><input className="input" type="date" value={form.loadDate} onChange={onLoadDateChange} /></div>
             <div className="field"><label>Unloading date</label><input className={errorClass('unloadDate')} type="date" min={form.loadDate} value={form.unloadDate} onChange={set('unloadDate')} /></div>
             <div className="field">
               <label>Vehicle *</label>
@@ -332,7 +356,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, defaultDr
                 {drivers.map((d) => <option key={d.name} value={d.name}>{d.name}</option>)}
               </select>
             </div>
-            <div className="field"><label>Invoice number *</label><input className={errorClass('waybillNo')} type="text" placeholder="Auto-generated from vehicle" value={form.waybillNo} onChange={set('waybillNo')} /></div>
+            <div className="field"><label>Invoice number *</label><input className={errorClass('waybillNo')} type="text" placeholder="Auto-generated from vehicle" value={form.waybillNo} onChange={onInvoiceChange} /></div>
             <div className="field"><label>Item no</label><input className="input" type="text" placeholder="ITM-0000" value={form.itemNo} onChange={set('itemNo')} /></div>
             <div className="field"><label>Loading location</label><input className="input" type="text" placeholder="Yard / factory" value={form.from} onChange={set('from')} /></div>
             <div className="field"><label>Unloading location</label><input className="input" type="text" placeholder="Warehouse / yard" value={form.to} onChange={set('to')} /></div>
