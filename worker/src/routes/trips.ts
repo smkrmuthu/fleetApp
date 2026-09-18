@@ -182,9 +182,8 @@ tripRoutes.post('/', async (c) => {
 });
 
 // Keyset pagination on (created_at desc, id) — newest-entered first, no
-// offset scans as the log grows. Drivers are forced to their own rows
-// regardless of what a client sends; every other filter is optional and
-// order in the URL never matters.
+// offset scans as the log grows. Every filter is optional and order in the
+// URL never matters.
 tripRoutes.get('/', async (c) => {
   const auth = c.get('auth');
   const db = getDb(c.env);
@@ -198,11 +197,11 @@ tripRoutes.get('/', async (c) => {
     from: { column: trips.loadDate, op: 'gte' },
     to: { column: trips.loadDate, op: 'lte' }
   })];
-  // Scoped by who logged the trip (their account), not who it's attributed
-  // to — an office assistant keying data on a driver's behalf picks whoever
-  // actually drove from the dropdown, and that shouldn't hide the trip from
-  // the login that entered it.
-  if (auth.role === 'driver') conditions.push(eq(trips.createdBy, auth.userId));
+  // Temporarily unscoped: every driver login sees every trip in the org,
+  // same as office/manager. Edit/delete/expense/document routes still only
+  // let a driver touch what they themselves entered (trip.created_by) — this
+  // only widens what Trip Log displays. A real per-login filter is planned;
+  // this is a deliberate stopgap, not the intended long-term visibility rule.
 
   if (cursor) {
     const [cursorCreatedAt, cursorId] = cursor.split('|');
