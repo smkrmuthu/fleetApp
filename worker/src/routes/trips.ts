@@ -197,7 +197,11 @@ tripRoutes.get('/', async (c) => {
     from: { column: trips.loadDate, op: 'gte' },
     to: { column: trips.loadDate, op: 'lte' }
   })];
-  if (auth.role === 'driver') conditions.push(eq(trips.driverId, auth.driverId ?? ''));
+  // Scoped by who logged the trip (their account), not who it's attributed
+  // to — an office assistant keying data on a driver's behalf picks whoever
+  // actually drove from the dropdown, and that shouldn't hide the trip from
+  // the login that entered it.
+  if (auth.role === 'driver') conditions.push(eq(trips.createdBy, auth.userId));
 
   if (cursor) {
     const [cursorDate, cursorId] = cursor.split('|');
@@ -228,7 +232,7 @@ tripRoutes.get('/:id', async (c) => {
   const db = getDb(c.env);
   const [trip] = await db.select().from(trips).where(and(eq(trips.id, id), eq(trips.orgId, auth.orgId))).limit(1);
   if (!trip) return c.json({ error: { code: 'not_found', message: 'Trip not found' } }, 404);
-  if (auth.role === 'driver' && trip.driverId !== auth.driverId) {
+  if (auth.role === 'driver' && trip.createdBy !== auth.userId) {
     return c.json({ error: { code: 'forbidden', message: 'Not your trip' } }, 403);
   }
   const expenses = await db.select().from(tripExpenses).where(eq(tripExpenses.tripId, id));
@@ -249,7 +253,7 @@ tripRoutes.post('/:id/expenses', async (c) => {
   const db = getDb(c.env);
   const [trip] = await db.select().from(trips).where(and(eq(trips.id, id), eq(trips.orgId, auth.orgId))).limit(1);
   if (!trip) return c.json({ error: { code: 'not_found', message: 'Trip not found' } }, 404);
-  if (auth.role === 'driver' && (trip.driverId !== auth.driverId || trip.status === 'approved')) {
+  if (auth.role === 'driver' && (trip.createdBy !== auth.userId || trip.status === 'approved')) {
     return c.json({ error: { code: 'forbidden', message: 'Can only add to your own open movement' } }, 403);
   }
 
@@ -274,7 +278,7 @@ tripRoutes.post('/:id/documents', async (c) => {
   const db = getDb(c.env);
   const [trip] = await db.select().from(trips).where(and(eq(trips.id, id), eq(trips.orgId, auth.orgId))).limit(1);
   if (!trip) return c.json({ error: { code: 'not_found', message: 'Trip not found' } }, 404);
-  if (auth.role === 'driver' && (trip.driverId !== auth.driverId || trip.status === 'approved')) {
+  if (auth.role === 'driver' && (trip.createdBy !== auth.userId || trip.status === 'approved')) {
     return c.json({ error: { code: 'forbidden', message: 'Can only attach files to your own open movement' } }, 403);
   }
 
@@ -291,7 +295,7 @@ tripRoutes.delete('/:id/documents/:docId', async (c) => {
 
   const [trip] = await db.select().from(trips).where(and(eq(trips.id, id), eq(trips.orgId, auth.orgId))).limit(1);
   if (!trip) return c.json({ error: { code: 'not_found', message: 'Trip not found' } }, 404);
-  if (auth.role === 'driver' && (trip.driverId !== auth.driverId || trip.status === 'approved')) {
+  if (auth.role === 'driver' && (trip.createdBy !== auth.userId || trip.status === 'approved')) {
     return c.json({ error: { code: 'forbidden', message: 'Can only remove files from your own open movement' } }, 403);
   }
 
@@ -318,7 +322,7 @@ tripRoutes.get('/:id/documents/:docId/file', async (c) => {
 
   const [trip] = await db.select().from(trips).where(and(eq(trips.id, id), eq(trips.orgId, auth.orgId))).limit(1);
   if (!trip) return c.json({ error: { code: 'not_found', message: 'Trip not found' } }, 404);
-  if (auth.role === 'driver' && trip.driverId !== auth.driverId) {
+  if (auth.role === 'driver' && trip.createdBy !== auth.userId) {
     return c.json({ error: { code: 'forbidden', message: 'Not your movement' } }, 403);
   }
 
@@ -342,7 +346,7 @@ tripRoutes.patch('/:id', async (c) => {
   const db = getDb(c.env);
   const [existing] = await db.select().from(trips).where(and(eq(trips.id, id), eq(trips.orgId, auth.orgId))).limit(1);
   if (!existing) return c.json({ error: { code: 'not_found', message: 'Trip not found' } }, 404);
-  if (auth.role === 'driver' && (existing.driverId !== auth.driverId || existing.status === 'approved')) {
+  if (auth.role === 'driver' && (existing.createdBy !== auth.userId || existing.status === 'approved')) {
     return c.json({ error: { code: 'forbidden', message: 'Can only edit your own open movement' } }, 403);
   }
 
@@ -415,7 +419,7 @@ tripRoutes.delete('/:id', async (c) => {
   const db = getDb(c.env);
   const [existing] = await db.select().from(trips).where(and(eq(trips.id, id), eq(trips.orgId, auth.orgId))).limit(1);
   if (!existing) return c.json({ error: { code: 'not_found', message: 'Trip not found' } }, 404);
-  if (auth.role === 'driver' && existing.driverId !== auth.driverId) {
+  if (auth.role === 'driver' && existing.createdBy !== auth.userId) {
     return c.json({ error: { code: 'forbidden', message: 'Not your movement' } }, 403);
   }
   if (auth.role === 'driver' && existing.status !== 'draft') {
