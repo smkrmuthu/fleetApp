@@ -455,12 +455,33 @@ tripRoutes.delete('/:id', async (c) => {
   return c.json({ ok: true });
 });
 
+// The quick one-click finalize from Trip Log — same required-field bar as
+// POST /:id/complete (loading weight and both odometer readings), just
+// without opening the edit form first. A trip missing any of them has to be
+// opened and filled in before it can be finalized either way.
 tripRoutes.post('/:id/approve', requireRole('office', 'manager'), async (c) => {
   const auth = c.get('auth');
   const id = c.req.param('id')!;
   const db = getDb(c.env);
-  const result = await db.update(trips).set({ status: 'approved', updatedAt: nowIso() }).where(and(eq(trips.id, id), eq(trips.orgId, auth.orgId)));
-  if (result.meta.changes === 0) return c.json({ error: { code: 'not_found', message: 'Trip not found' } }, 404);
+  const [existing] = await db.select().from(trips).where(and(eq(trips.id, id), eq(trips.orgId, auth.orgId))).limit(1);
+  if (!existing) return c.json({ error: { code: 'not_found', message: 'Trip not found' } }, 404);
+  if (existing.status === 'approved') {
+    return c.json({ error: { code: 'invalid_state', message: 'This movement is already approved' } }, 409);
+  }
+  if (existing.weightKg == null) {
+    return c.json({ error: { code: 'validation_error', message: 'Loading weight is required to complete this movement', field: 'weightKg' } }, 422);
+  }
+  if (existing.odoStart == null) {
+    return c.json({ error: { code: 'validation_error', message: 'Odometer start is required to complete this movement', field: 'odoStart' } }, 422);
+  }
+  if (existing.odoEnd == null) {
+    return c.json({ error: { code: 'validation_error', message: 'Odometer end is required to complete this movement', field: 'odoEnd' } }, 422);
+  }
+  if (existing.odoEnd <= existing.odoStart) {
+    return c.json({ error: { code: 'validation_error', message: 'Odometer end must be greater than odometer start', field: 'odoEnd' } }, 422);
+  }
+
+  await db.update(trips).set({ status: 'approved', updatedAt: nowIso() }).where(and(eq(trips.id, id), eq(trips.orgId, auth.orgId)));
   await writeAudit(db, auth.orgId, 'trips', id, 'approve', {}, auth.userId);
   await db.update(notifications).set({ read: true }).where(and(eq(notifications.relatedTripId, id), eq(notifications.orgId, auth.orgId)));
   return c.json({ ok: true });
