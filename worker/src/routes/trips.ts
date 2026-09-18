@@ -181,9 +181,10 @@ tripRoutes.post('/', async (c) => {
   return c.json({ ...tripValues, expenses: expenseRows, documents: documentRows }, 201);
 });
 
-// Keyset pagination on (load_date desc, id) — no offset scans as the log
-// grows. Drivers are forced to their own rows regardless of what a client
-// sends; every other filter is optional and order in the URL never matters.
+// Keyset pagination on (created_at desc, id) — newest-entered first, no
+// offset scans as the log grows. Drivers are forced to their own rows
+// regardless of what a client sends; every other filter is optional and
+// order in the URL never matters.
 tripRoutes.get('/', async (c) => {
   const auth = c.get('auth');
   const db = getDb(c.env);
@@ -204,12 +205,14 @@ tripRoutes.get('/', async (c) => {
   if (auth.role === 'driver') conditions.push(eq(trips.createdBy, auth.userId));
 
   if (cursor) {
-    const [cursorDate, cursorId] = cursor.split('|');
-    conditions.push(or(lt(trips.loadDate, cursorDate), and(eq(trips.loadDate, cursorDate), gt(trips.id, cursorId)))!);
+    const [cursorCreatedAt, cursorId] = cursor.split('|');
+    conditions.push(or(lt(trips.createdAt, cursorCreatedAt), and(eq(trips.createdAt, cursorCreatedAt), gt(trips.id, cursorId)))!);
   }
 
-  const rows = await db.select().from(trips).where(combine(conditions)).orderBy(desc(trips.loadDate), trips.id).limit(limit);
-  const nextCursor = rows.length === limit ? `${rows[rows.length - 1].loadDate}|${rows[rows.length - 1].id}` : null;
+  // Newest-entered first — the trip's own load date doesn't drive order,
+  // so a movement logged just now always lands at the top of the list.
+  const rows = await db.select().from(trips).where(combine(conditions)).orderBy(desc(trips.createdAt), trips.id).limit(limit);
+  const nextCursor = rows.length === limit ? `${rows[rows.length - 1].createdAt}|${rows[rows.length - 1].id}` : null;
 
   const tripIds = rows.map((t) => t.id);
   const expenseRows = tripIds.length
