@@ -150,6 +150,25 @@ export const tripExpenses = sqliteTable(
   })
 );
 
+// Intermediate stops between a trip's loading point (trips.from_loc) and its
+// final unloading point (trips.to_loc), in visiting order. Replaced as a whole
+// list whenever the stops change, so seq is always 1..n.
+export const tripStops = sqliteTable(
+  'trip_stops',
+  {
+    id: text('id').primaryKey(),
+    orgId: text('org_id').notNull().references(() => orgs.id, { onDelete: 'cascade' }),
+    tripId: text('trip_id').notNull().references(() => trips.id, { onDelete: 'cascade' }),
+    seq: integer('seq').notNull(),
+    location: text('location').notNull(),
+    note: text('note'),
+    createdAt: text('created_at').notNull().default(sql`(current_timestamp)`)
+  },
+  (t) => ({
+    tripIdx: index('trip_stops_trip').on(t.orgId, t.tripId)
+  })
+);
+
 // Any supporting file beyond the fuel receipts already linked from
 // trip_expenses — a waybill copy, a weighbridge slip.
 export const tripDocuments = sqliteTable(

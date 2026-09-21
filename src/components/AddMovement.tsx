@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { DriverMaster, FuelRates, Trip, TripDocument, TripExpenseKind, TripExpenseLine, TripFormState, Vehicle } from '../types';
+import type { DriverMaster, FuelRates, Trip, TripDocument, TripExpenseKind, TripExpenseLine, TripFormState, TripStop, Vehicle } from '../types';
 import { TRIP_EXPENSE_LABEL } from '../data/mockData';
 import { dieselLitres, rupees, todayIso, toNumber } from '../utils/calc';
 import { MovementReview } from './MovementReview';
@@ -67,6 +67,18 @@ function blankLine(): NewLine {
 }
 
 const EXPENSE_KINDS: TripExpenseKind[] = ['diesel', 'adblue', 'toll', 'other'];
+const MAX_STOPS = 20;
+
+function routeBadge(kind: 'start' | 'stop' | 'end'): React.CSSProperties {
+  const filled = kind !== 'stop';
+  return {
+    flex: 'none', width: 24, height: 24, borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    fontSize: 12, fontWeight: 700,
+    background: kind === 'end' ? 'var(--color-accent)' : kind === 'start' ? 'var(--color-text)' : 'transparent',
+    color: filled ? '#fff' : 'var(--color-text)',
+    border: filled ? 'none' : '2px solid var(--color-text)'
+  };
+}
 
 type SubmitAction = 'create' | 'start' | 'save' | 'complete';
 
@@ -89,6 +101,8 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, fuelRates
   const [lines, setLines] = useState<TripExpenseLine[]>(() => editingTrip?.expenses ?? []);
   const [newLine, setNewLine] = useState<NewLine>(blankLine());
   const [documents, setDocuments] = useState<TripDocument[]>(() => editingTrip?.documents ?? []);
+  const [stops, setStops] = useState<TripStop[]>(() => editingTrip?.stops ?? []);
+  const [lastAddedStop, setLastAddedStop] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
   const [scanResult, setScanResult] = useState<ScannedReceipt | null>(null);
   const [scanFile, setScanFile] = useState<{ base64: string; mimeType: string; filename: string } | null>(null);
@@ -182,6 +196,31 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, fuelRates
     setLines((prev) => prev.filter((l) => l.id !== id));
   }
 
+  function addStop() {
+    const id = 's' + Date.now() + Math.random().toString(36).slice(2, 6);
+    setStops((prev) => (prev.length >= MAX_STOPS ? prev : [...prev, { id, location: '', note: '' }]));
+    setLastAddedStop(id);
+  }
+
+  function updateStop(id: string, patch: Partial<TripStop>) {
+    setStops((prev) => prev.map((st) => (st.id === id ? { ...st, ...patch } : st)));
+    setErrors({});
+  }
+
+  function moveStop(index: number, by: -1 | 1) {
+    setStops((prev) => {
+      const j = index + by;
+      if (j < 0 || j >= prev.length) return prev;
+      const next = [...prev];
+      [next[index], next[j]] = [next[j], next[index]];
+      return next;
+    });
+  }
+
+  function removeStop(id: string) {
+    setStops((prev) => prev.filter((st) => st.id !== id));
+  }
+
   async function onFilesChosen(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -226,8 +265,15 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, fuelRates
   const litres = dieselLitres(lines);
   const kmpl = litres ? (km / litres).toFixed(2) + ' km/l' : '—';
 
+  // Blank rows are ignored; a note on its own (no place) is an error.
+  const cleanStops: TripStop[] = stops
+    .map((st) => ({ ...st, location: st.location.trim(), note: (st.note ?? '').trim() }))
+    .filter((st) => st.location);
+
   function validate(completing: boolean): Record<string, string> {
     const errs: Record<string, string> = {};
+    const orphan = stops.findIndex((st) => !st.location.trim() && (st.note ?? '').trim());
+    if (orphan >= 0) errs.stops = `Stop ${orphan + 1} has a note but no place — enter the place or remove the stop.`;
     if (!form.vehicle) errs.vehicle = 'Select a vehicle.';
     if (!form.driver) errs.driver = 'Select a driver.';
     if (!form.waybillNo.trim()) errs.waybillNo = 'Trip number is required.';
@@ -257,6 +303,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, fuelRates
       remarks: form.remarks.trim(),
       status: editingTrip?.status ?? 'pending',
       expenses: lines,
+      stops: cleanStops,
       documents
     };
   }
@@ -278,10 +325,12 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, fuelRates
       setForm(formFromTrip(editingTrip));
       setLines(editingTrip.expenses);
       setDocuments(editingTrip.documents);
+      setStops(editingTrip.stops);
     } else {
       setForm(blankForm(defaultDriverName));
       setLines([]);
       setDocuments([]);
+      setStops([]);
     }
     setErrors({});
     setConfirmAction(null);
@@ -381,8 +430,6 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, fuelRates
             </div>
             <div className="field"><label>Trip number *</label><input className={errorClass('waybillNo')} type="text" placeholder="Auto-generated from vehicle" value={form.waybillNo} onChange={onTripNoChange} /></div>
             <div className="field"><label>Item no</label><input className="input" type="text" placeholder="ITM-0000" value={form.itemNo} onChange={set('itemNo')} /></div>
-            <div className="field"><label>Loading location</label><input className="input" type="text" placeholder="Yard / factory" value={form.from} onChange={set('from')} /></div>
-            <div className="field"><label>Unloading location</label><input className="input" type="text" placeholder="Warehouse / yard" value={form.to} onChange={set('to')} /></div>
             <div className="field"><label>Loading weight (tons)</label><input className={errorClass('tons')} type="number" step="any" inputMode="decimal" value={form.tons} onChange={set('tons')} /></div>
             <div className="field"><label>Odometer start (km)</label><input className={errorClass('odoStart')} type="number" value={form.odoStart} onChange={set('odoStart')} /></div>
             <div className="field"><label>Odometer end (km)</label><input className={errorClass('odoEnd')} type="number" value={form.odoEnd} onChange={set('odoEnd')} /></div>
@@ -390,6 +437,51 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, fuelRates
               <div className="field"><label>Revenue (₹)</label><input className="input" type="number" step="any" inputMode="decimal" value={form.revenue} onChange={set('revenue')} /></div>
             )}
             <div className="field field-span-2"><label>Remarks</label><input className="input" type="text" placeholder="Remarks" value={form.remarks} onChange={set('remarks')} /></div>
+          </div>
+
+          <div style={{ marginTop: 20, borderTop: '2px solid var(--color-divider)', paddingTop: 16 }}>
+            <div style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--color-neutral-700)', marginBottom: 12 }}>
+              Route
+            </div>
+            <div style={{ display: 'grid', gap: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={routeBadge('start')} aria-hidden="true">A</span>
+                <input className="input" type="text" aria-label="Loading point" placeholder="Loading point (yard / factory)" value={form.from} onChange={set('from')} style={{ flex: 1 }} />
+              </div>
+
+              {stops.map((st, i) => (
+                <div key={st.id} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <span style={routeBadge('stop')} aria-hidden="true">{i + 1}</span>
+                  <input
+                    className="input" type="text" aria-label={`Stop ${i + 1} place`} placeholder={`Stop ${i + 1} — place`}
+                    value={st.location} autoFocus={st.id === lastAddedStop}
+                    onChange={(e) => updateStop(st.id, { location: e.target.value })}
+                    style={{ flex: '2 1 180px', minWidth: 0 }}
+                  />
+                  <input
+                    className="input" type="text" aria-label={`Stop ${i + 1} note`} placeholder="Note (optional)"
+                    value={st.note ?? ''} onChange={(e) => updateStop(st.id, { note: e.target.value })}
+                    style={{ flex: '1 1 130px', minWidth: 0 }}
+                  />
+                  <span style={{ display: 'flex' }}>
+                    <button type="button" className="btn btn-ghost" aria-label={`Move stop ${i + 1} up`} disabled={i === 0} onClick={() => moveStop(i, -1)} style={{ padding: '4px 8px' }}>↑</button>
+                    <button type="button" className="btn btn-ghost" aria-label={`Move stop ${i + 1} down`} disabled={i === stops.length - 1} onClick={() => moveStop(i, 1)} style={{ padding: '4px 8px' }}>↓</button>
+                    <button type="button" className="btn btn-ghost" aria-label={`Remove stop ${i + 1}`} onClick={() => removeStop(st.id)} style={{ padding: '4px 8px' }}>✕</button>
+                  </span>
+                </div>
+              ))}
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={routeBadge('end')} aria-hidden="true">B</span>
+                <input className="input" type="text" aria-label="Final unloading point" placeholder="Final unloading point (warehouse / yard)" value={form.to} onChange={set('to')} style={{ flex: 1 }} />
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 12, flexWrap: 'wrap' }}>
+              <button type="button" className="btn btn-secondary" onClick={addStop} disabled={stops.length >= MAX_STOPS}>Add stop</button>
+              <span style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>
+                {stops.length === 0 ? 'Optional — add stops between the loading point and the final unloading point.' : 'Stops are visited in this order, before the final unloading point.'}
+              </span>
+            </div>
           </div>
 
           <div style={{ marginTop: 20, borderTop: '2px solid var(--color-divider)', paddingTop: 16 }}>
@@ -590,6 +682,8 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, fuelRates
               original={editingTrip ? formFromTrip(editingTrip) : null}
               lines={lines}
               originalLines={editingTrip?.expenses ?? []}
+              stops={cleanStops}
+              originalStops={editingTrip?.stops ?? []}
               documents={documents}
               originalDocuments={editingTrip?.documents ?? []}
               showFinancials={showFinancials}

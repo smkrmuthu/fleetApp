@@ -3,7 +3,7 @@ import { and, desc, eq, lt, or, gt } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Env, Vars } from '../types';
 import { getDb, newId, nowIso } from '../db';
-import { trips, tripExpenses, notifications, receipts, tripDocuments, drivers } from '../../drizzle/schema';
+import { trips, tripExpenses, notifications, receipts, tripDocuments, tripStops, drivers } from '../../drizzle/schema';
 import { base64ToBytes, filenameFromKey, storageKeyFor } from '../lib/storage';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { buildFilters, combine, parsePagination } from '../lib/filters';
@@ -40,6 +40,12 @@ function completionProblem(t: { weightKg?: number | null; odoStart?: number | nu
   return null;
 }
 
+const stopSchema = z.object({
+  location: z.string().trim().min(1, 'Stop location is required').max(200),
+  note: z.string().trim().max(200).nullish()
+});
+const MAX_STOPS = 20;
+
 const createTripSchema = z.object({
   id: z.string().min(1),
   vehicleId: z.string().min(1),
@@ -59,6 +65,7 @@ const createTripSchema = z.object({
   // than submitting straight away — see POST /:id/complete.
   draft: z.boolean().optional(),
   expenses: z.array(expenseLineSchema).default([]),
+  stops: z.array(stopSchema).max(MAX_STOPS).default([]),
   documents: z.array(documentInputSchema).default([])
 });
 
@@ -122,7 +129,8 @@ tripRoutes.post('/', async (c) => {
   const [existing] = await db.select().from(trips).where(and(eq(trips.id, data.id), eq(trips.orgId, auth.orgId))).limit(1);
   if (existing) {
     const docs = (await fetchDocumentsByTrip(db, auth.orgId, [data.id])).get(data.id) ?? [];
-    return c.json({ ...existing, documents: docs }, 200);
+    const stops = await db.select().from(tripStops).where(eq(tripStops.tripId, data.id)).orderBy(tripStops.seq);
+    return c.json({ ...existing, stops, documents: docs }, 200);
   }
 
   const isDriver = auth.role === 'driver';
@@ -181,11 +189,16 @@ tripRoutes.post('/', async (c) => {
     createdAt: now
   }));
 
+  const stopRows = data.stops.map((st, i) => ({
+    id: newId(), orgId: auth.orgId, tripId: data.id, seq: i + 1, location: st.location, note: st.note || null, createdAt: now
+  }));
+
   const statements = [db.insert(trips).values(tripValues)];
   for (const row of expenseRows) statements.push(db.insert(tripExpenses).values(row) as any);
+  for (const row of stopRows) statements.push(db.insert(tripStops).values(row) as any);
   await db.batch(statements as [any, ...any[]]);
 
-  await writeAudit(db, auth.orgId, 'trips', data.id, 'insert', { status, expenseCount: expenseRows.length }, auth.userId);
+  await writeAudit(db, auth.orgId, 'trips', data.id, 'insert', { status, expenseCount: expenseRows.length, stopCount: stopRows.length }, auth.userId);
 
   const documentRows = [];
   for (const doc of data.documents) {
@@ -193,7 +206,7 @@ tripRoutes.post('/', async (c) => {
     documentRows.push(await uploadDocument(c.env, db, auth, data.id, doc));
   }
 
-  return c.json({ ...tripValues, expenses: expenseRows, documents: documentRows }, 201);
+  return c.json({ ...tripValues, expenses: expenseRows, stops: stopRows, documents: documentRows }, 201);
 });
 
 // Keyset pagination on (created_at desc, id) — newest-entered first, no
@@ -239,8 +252,19 @@ tripRoutes.get('/', async (c) => {
     byTrip.get(e.tripId)!.push(e);
   }
   const docsByTrip = await fetchDocumentsByTrip(db, auth.orgId, tripIds);
+  // Same shape as the expense lookup above (an IN list over up to 200 trips
+  // would blow D1's bound-parameter limit).
+  const stopRows = tripIds.length
+    ? await db.select().from(tripStops).where(eq(tripStops.orgId, auth.orgId)).orderBy(tripStops.seq)
+    : [];
+  const stopsByTrip = new Map<string, typeof stopRows>();
+  for (const st of stopRows) {
+    if (!tripIds.includes(st.tripId)) continue;
+    if (!stopsByTrip.has(st.tripId)) stopsByTrip.set(st.tripId, []);
+    stopsByTrip.get(st.tripId)!.push(st);
+  }
 
-  return c.json({ trips: rows.map((t) => ({ ...t, expenses: byTrip.get(t.id) ?? [], documents: docsByTrip.get(t.id) ?? [] })), nextCursor });
+  return c.json({ trips: rows.map((t) => ({ ...t, expenses: byTrip.get(t.id) ?? [], stops: stopsByTrip.get(t.id) ?? [], documents: docsByTrip.get(t.id) ?? [] })), nextCursor });
 });
 
 tripRoutes.get('/:id', async (c) => {
@@ -253,8 +277,9 @@ tripRoutes.get('/:id', async (c) => {
     return c.json({ error: { code: 'forbidden', message: 'Not your trip' } }, 403);
   }
   const expenses = await db.select().from(tripExpenses).where(eq(tripExpenses.tripId, id));
+  const stops = await db.select().from(tripStops).where(eq(tripStops.tripId, id)).orderBy(tripStops.seq);
   const documents = (await fetchDocumentsByTrip(db, auth.orgId, [id])).get(id) ?? [];
-  return c.json({ ...trip, expenses, documents });
+  return c.json({ ...trip, expenses, stops, documents });
 });
 
 // A driver may only add stops to their own trip while it's still open
@@ -278,6 +303,35 @@ tripRoutes.post('/:id/expenses', async (c) => {
   await db.insert(tripExpenses).values(row);
   await writeAudit(db, auth.orgId, 'trip_expenses', row.id, 'insert', { tripId: id, kind: row.kind }, auth.userId);
   return c.json(row, 201);
+});
+
+// Replaces the whole ordered list of intermediate stops. Same permission as
+// editing the trip: office/manager on any trip, a driver only on their own
+// open movement.
+tripRoutes.put('/:id/stops', async (c) => {
+  const auth = c.get('auth');
+  const id = c.req.param('id')!;
+  const body = await c.req.json().catch(() => null);
+  const parsed = z.object({ stops: z.array(stopSchema).max(MAX_STOPS) }).safeParse(body);
+  if (!parsed.success) return c.json({ error: { code: 'validation_error', message: parsed.error.message } }, 422);
+
+  const db = getDb(c.env);
+  const [trip] = await db.select().from(trips).where(and(eq(trips.id, id), eq(trips.orgId, auth.orgId))).limit(1);
+  if (!trip) return c.json({ error: { code: 'not_found', message: 'Trip not found' } }, 404);
+  if (auth.role === 'driver' && (trip.createdBy !== auth.userId || trip.status === 'approved')) {
+    return c.json({ error: { code: 'forbidden', message: 'Can only change the stops on your own open movement' } }, 403);
+  }
+
+  const now = nowIso();
+  const rows = parsed.data.stops.map((st, i) => ({
+    id: newId(), orgId: auth.orgId, tripId: id, seq: i + 1, location: st.location, note: st.note || null, createdAt: now
+  }));
+  const statements: any[] = [db.delete(tripStops).where(and(eq(tripStops.tripId, id), eq(tripStops.orgId, auth.orgId)))];
+  for (const row of rows) statements.push(db.insert(tripStops).values(row));
+  await db.batch(statements as [any, ...any[]]);
+  await db.update(trips).set({ updatedAt: now }).where(eq(trips.id, id));
+  await writeAudit(db, auth.orgId, 'trip_stops', id, 'replace', { stops: rows.map((r) => r.location) }, auth.userId);
+  return c.json({ stops: rows });
 });
 
 // Removes one fuel/expense line. Same rule as adding: a driver only on their
@@ -392,7 +446,7 @@ tripRoutes.patch('/:id', async (c) => {
   }
 
   const body = await c.req.json().catch(() => null);
-  const baseSchema = createTripSchema.omit({ id: true, expenses: true, draft: true, documents: true }).partial();
+  const baseSchema = createTripSchema.omit({ id: true, expenses: true, draft: true, documents: true, stops: true }).partial();
   // The driver named on a trip can be changed by whoever may edit it — as at
   // creation, a driver login is often an office assistant keying data for
   // whoever is actually driving. (Ownership, createdBy, never changes.)
@@ -497,6 +551,7 @@ tripRoutes.delete('/:id', async (c) => {
   await db.batch([
     db.delete(tripDocuments).where(eq(tripDocuments.tripId, id)),
     db.delete(tripExpenses).where(eq(tripExpenses.tripId, id)),
+    db.delete(tripStops).where(eq(tripStops.tripId, id)),
     db.delete(notifications).where(and(eq(notifications.relatedTripId, id), eq(notifications.orgId, auth.orgId))),
     db.delete(trips).where(eq(trips.id, id))
   ]);

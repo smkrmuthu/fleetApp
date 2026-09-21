@@ -127,7 +127,7 @@ export function App() {
           id: trip.id, vehicle: trip.vehicle, driver: trip.driver, waybillNo: trip.waybillNo, itemNo: trip.itemNo,
           loadDate: trip.loadDate, unloadDate: trip.unloadDate, from: trip.from, to: trip.to, tons: trip.tons,
           odoStart: trip.odoStart ?? 0, odoEnd: trip.odoEnd ?? 0, revenue: trip.revenue, remarks: trip.remarks,
-          expenses: trip.expenses, documents: trip.documents, draft: action === 'start'
+          expenses: trip.expenses, stops: trip.stops, documents: trip.documents, draft: action === 'start'
         });
       } else {
         const originalIds = new Set((editingTrip?.expenses ?? []).map((e) => e.id));
@@ -141,6 +141,10 @@ export function App() {
           unloadDate: trip.unloadDate, from: trip.from, to: trip.to, tons: trip.tons, odoStart: trip.odoStart,
           odoEnd: trip.odoEnd, revenue: trip.revenue, remarks: trip.remarks
         });
+        const stopSig = (list: { location: string; note?: string }[]) => JSON.stringify(list.map((st) => [st.location, st.note ?? '']));
+        if (stopSig(trip.stops) !== stopSig(editingTrip?.stops ?? [])) {
+          await api.setTripStops(trip.id, trip.stops);
+        }
         for (const line of removedLines) {
           await api.deleteTripExpense(trip.id, line.id);
         }

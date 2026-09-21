@@ -15,7 +15,7 @@ const app = new Hono<{ Bindings: Env; Variables: Vars }>();
 
 app.use('*', async (c, next) => {
   const allowed = c.env.ALLOWED_ORIGIN.split(',').map((o) => o.trim());
-  return cors({ origin: allowed, allowHeaders: ['Content-Type', 'Authorization'], allowMethods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'] })(c, next);
+  return cors({ origin: allowed, allowHeaders: ['Content-Type', 'Authorization'], allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'] })(c, next);
 });
 
 app.get('/', (c) => c.json({ name: 'fleet-ledger-api', ok: true }));

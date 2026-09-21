@@ -72,6 +72,13 @@ export interface TripExpenseLine {
 // `base64` is only ever set for a document staged locally in the Add
 // Movement form before it's uploaded — a document that came back from the
 // API never carries it.
+// An intermediate stop between a trip's loading point and its final unloading point.
+export interface TripStop {
+  id: string;
+  location: string;
+  note?: string;
+}
+
 export interface TripDocument {
   id: string;
   filename: string;
@@ -97,6 +104,7 @@ export interface Trip {
   status: TripStatus;
   remarks?: string;
   expenses: TripExpenseLine[];
+  stops: TripStop[];
   documents: TripDocument[];
 }
 

@@ -15,6 +15,13 @@
       "when": 1789957750572,
       "tag": "0001_master_data",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1789968769696,
+      "tag": "0002_trip_stops",
+      "breakpoints": true
     }
   ]
 }

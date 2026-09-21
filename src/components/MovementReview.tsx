@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import type { TripDocument, TripExpenseLine, TripFormState } from '../types';
+import type { TripDocument, TripExpenseLine, TripFormState, TripStop } from '../types';
 import { TRIP_EXPENSE_LABEL } from '../data/mockData';
 import { formatDisplayDate } from '../lib/api';
 import { rupees, toNumber } from '../utils/calc';
@@ -13,6 +13,8 @@ interface Props {
   original: TripFormState | null;
   lines: TripExpenseLine[];
   originalLines: TripExpenseLine[];
+  stops: TripStop[];
+  originalStops: TripStop[];
   documents: TripDocument[];
   originalDocuments: TripDocument[];
   showFinancials: boolean;
@@ -37,8 +39,8 @@ const FIELDS: { key: keyof TripFormState; label: string; kind: FieldKind; financ
   { key: 'vehicle', label: 'Vehicle', kind: 'text' },
   { key: 'driver', label: 'Driver', kind: 'text' },
   { key: 'itemNo', label: 'Item no.', kind: 'text' },
-  { key: 'from', label: 'Loading location', kind: 'text' },
-  { key: 'to', label: 'Unloading location', kind: 'text' },
+  { key: 'from', label: 'Loading point', kind: 'text' },
+  { key: 'to', label: 'Final unloading point', kind: 'text' },
   { key: 'tons', label: 'Loading weight', kind: 'tons' },
   { key: 'odoStart', label: 'Odometer start', kind: 'km' },
   { key: 'odoEnd', label: 'Odometer end', kind: 'km' },
@@ -80,7 +82,7 @@ const NOTE: Partial<Record<Action, string>> = {
 const muted = { color: 'var(--color-neutral-700)' } as const;
 const changedColor = 'var(--color-accent-700)';
 
-export function MovementReview({ action, form, original, lines, originalLines, documents, originalDocuments, showFinancials, wasCompleted, totals, onConfirm, onBack, standalone }: Props) {
+export function MovementReview({ action, form, original, lines, originalLines, stops, originalStops, documents, originalDocuments, showFinancials, wasCompleted, totals, onConfirm, onBack, standalone }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!standalone) rootRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -97,7 +99,9 @@ export function MovementReview({ action, form, original, lines, originalLines, d
   const removedDocs = originalDocuments.filter((d) => !documents.some((x) => x.id === d.id));
   const lineChanges = newLineIds.size + removedLines.length;
   const docChanges = documents.filter((d) => !originalDocIds.has(d.id)).length + removedDocs.length;
-  const anyChange = changedCount + lineChanges + docChanges > 0;
+  const stopSig = (list: TripStop[]) => list.map((st) => `${st.location}|${st.note ?? ''}`).join('\n');
+  const stopsChanged = editing && stopSig(stops) !== stopSig(originalStops);
+  const anyChange = changedCount + lineChanges + docChanges > 0 || stopsChanged;
 
   const tag = (text: string, color: string) => (
     <span style={{ fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, color, border: `1px solid ${color}`, padding: '0 5px', marginLeft: 6 }}>{text}</span>
@@ -137,6 +141,27 @@ export function MovementReview({ action, form, original, lines, originalLines, d
           <dd style={{ margin: 0, fontWeight: 600 }}>{totals.km.toLocaleString('en-IN')} km</dd>
         </div>
       </dl>
+
+      <div style={{ padding: '10px 12px 4px', fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', ...muted }}>
+        Stops ({stops.length}){stopsChanged && tag('Changed', changedColor)}
+      </div>
+      {stops.length === 0 ? (
+        <div style={{ padding: '0 12px 10px', fontSize: 13, ...muted }}>None — direct from the loading point to the final unloading point.</div>
+      ) : (
+        <ol style={{ margin: 0, padding: '0 12px 8px 32px', fontSize: 13, color: stopsChanged ? changedColor : undefined }}>
+          {stops.map((st) => (
+            <li key={st.id} style={{ padding: '2px 0' }}>
+              <span style={{ fontWeight: 600 }}>{st.location}</span>
+              {st.note && <span style={{ color: 'var(--color-neutral-700)' }}> — {st.note}</span>}
+            </li>
+          ))}
+        </ol>
+      )}
+      {stopsChanged && (
+        <div style={{ padding: '0 12px 10px', fontSize: 11, ...muted }}>
+          was {originalStops.length === 0 ? 'no stops' : originalStops.map((st) => st.location).join(' → ')}
+        </div>
+      )}
 
       <div style={{ padding: '10px 12px 4px', fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', ...muted }}>
         Fuel &amp; expense entries ({lines.length})

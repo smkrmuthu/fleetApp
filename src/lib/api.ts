@@ -1,6 +1,6 @@
 import type {
   AppNotification, DriverMaster, ExpenseCategory, FuelRates, MonthlyExpense, NotificationKind,
-  Role, TabId, Trip, TripDocument, TripExpenseKind, TripExpenseLine, UserAccount, Vehicle
+  Role, TabId, Trip, TripDocument, TripExpenseKind, TripExpenseLine, TripStop, UserAccount, Vehicle
 } from '../types';
 
 const API_BASE = 'https://fleet-ledger-api.smkrmuthu.workers.dev/v1';
@@ -284,6 +284,7 @@ interface ApiTrip {
   odoStart: number | null; odoEnd: number | null; revenuePaise: number; status: 'draft' | 'pending' | 'approved' | 'void';
   expenses: ApiTripExpense[];
   documents?: ApiTripDocument[];
+  stops?: { id: string; location: string; note: string | null }[];
   remarks?: string | null;
 }
 
@@ -298,6 +299,7 @@ function tripFromApi(t: ApiTrip): Trip {
       id: e.id, date: formatDisplayDate(e.spentOn), kind: e.kind, litres: e.litres ?? undefined,
       ratePerLitre: e.ratePaise != null ? paiseToRupees(e.ratePaise) : undefined, amount: paiseToRupees(e.amountPaise), details: e.details ?? undefined
     })),
+    stops: (t.stops ?? []).map((st) => ({ id: st.id, location: st.location, note: st.note ?? undefined })),
     documents: (t.documents ?? []).map((d) => ({ id: d.id, filename: d.filename, mimeType: d.mimeType ?? undefined }))
   };
 }
@@ -315,6 +317,7 @@ export interface NewTripInput {
   id: string; vehicle: string; driver: string; waybillNo: string; itemNo: string; loadDate: string; unloadDate: string;
   from: string; to: string; tons: number; odoStart: number; odoEnd: number; revenue: number; remarks?: string;
   expenses: TripExpenseLine[];
+  stops?: TripStop[];
   documents?: TripDocument[];
   draft?: boolean;
 }
@@ -328,6 +331,7 @@ export async function createTrip(t: NewTripInput): Promise<Trip> {
       fromLoc: orUndefined(t.from), toLoc: orUndefined(t.to), weightKg: Math.round(t.tons * 1000) || undefined,
       odoStart: t.odoStart || undefined, odoEnd: t.odoEnd || undefined, revenuePaise: rupeesToPaise(t.revenue),
       remarks: t.remarks || undefined, draft: t.draft || undefined,
+      stops: (t.stops ?? []).map((st) => ({ location: st.location, note: st.note || undefined })),
       expenses: t.expenses.map((l) => ({
         spentOn: l.date, kind: l.kind, litres: l.litres, ratePaise: l.ratePerLitre != null ? rupeesToPaise(l.ratePerLitre) : undefined,
         amountPaise: rupeesToPaise(l.amount), details: l.details
@@ -372,6 +376,13 @@ export async function addTripExpense(tripId: string, line: TripExpenseLine): Pro
       ratePaise: line.ratePerLitre != null ? rupeesToPaise(line.ratePerLitre) : undefined,
       amountPaise: rupeesToPaise(line.amount), details: line.details
     })
+  });
+}
+
+export async function setTripStops(tripId: string, stops: TripStop[]): Promise<void> {
+  await request(`/trips/${encodeURIComponent(tripId)}/stops`, {
+    method: 'PUT',
+    body: JSON.stringify({ stops: stops.map((st) => ({ location: st.location, note: st.note || undefined })) })
   });
 }
 

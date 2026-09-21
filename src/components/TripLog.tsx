@@ -132,7 +132,10 @@ export function TripLog({ trips, vehicles, drivers, vehicleFilter, driverFilter,
                     <td style={{ fontFamily: 'ui-monospace, monospace', fontSize: 12, whiteSpace: 'nowrap', color: 'var(--color-neutral-700)' }}>{t.itemNo}</td>
                     <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{t.vehicle}</td>
                     <td>{t.driver}</td>
-                    <td style={{ color: 'var(--color-neutral-700)', whiteSpace: 'nowrap' }}>{t.from} → {t.to}</td>
+                    <td style={{ color: 'var(--color-neutral-700)', whiteSpace: 'nowrap' }}>
+                      {[t.from, ...t.stops.map((st) => st.location), t.to].join(' → ')}
+                      {t.stops.length > 0 && <span style={{ marginLeft: 6, fontSize: 11 }}>({t.stops.length} {t.stops.length === 1 ? 'stop' : 'stops'})</span>}
+                    </td>
                     <td style={{ textAlign: 'right' }}>{formatNum(t.tons, 1)}</td>
                     <td style={{ textAlign: 'right' }}>{formatNum(t.km)}</td>
                     <td style={{ textAlign: 'right' }}>{rupees(c.diesel)}</td>
@@ -202,6 +205,8 @@ export function TripLog({ trips, vehicles, drivers, vehicleFilter, driverFilter,
                 original={null}
                 lines={completing.expenses}
                 originalLines={[]}
+                stops={completing.stops}
+                originalStops={[]}
                 documents={completing.documents}
                 originalDocuments={[]}
                 showFinancials={showFinancials}
