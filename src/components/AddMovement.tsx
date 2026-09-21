@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { DriverMaster, FuelRates, Trip, TripDocument, TripExpenseKind, TripExpenseLine, TripFormState, Vehicle } from '../types';
 import { TRIP_EXPENSE_LABEL } from '../data/mockData';
 import { dieselLitres, rupees, todayIso, toNumber } from '../utils/calc';
+import { MovementReview } from './MovementReview';
 import { fetchDocumentBlobUrl, parseDisplayDate, scanReceipt, type ScannedReceipt } from '../lib/api';
 
 function fileToBase64(file: File): Promise<{ base64: string; mimeType: string }> {
@@ -44,7 +45,7 @@ function blankForm(driver = ''): TripFormState {
   };
 }
 
-function formFromTrip(trip: Trip): TripFormState {
+export function formFromTrip(trip: Trip): TripFormState {
   const clear = (v: string) => (v === '—' ? '' : v);
   return {
     loadDate: parseDisplayDate(trip.loadDate) || todayIso(), unloadDate: parseDisplayDate(clear(trip.unloadDate)), vehicle: trip.vehicle, driver: trip.driver,
@@ -253,6 +254,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, fuelRates
       odoStart: form.odoStart ? toNumber(form.odoStart) : undefined,
       odoEnd: form.odoEnd ? toNumber(form.odoEnd) : undefined,
       revenue: toNumber(form.revenue),
+      remarks: form.remarks.trim(),
       status: editingTrip?.status ?? 'pending',
       expenses: lines,
       documents
@@ -583,29 +585,20 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, fuelRates
           )}
 
           {confirmAction ? (
-            <div style={{ border: '2px solid var(--color-text)', marginTop: 16 }}>
-              <div style={{ background: 'var(--color-text)', color: 'var(--color-bg)', padding: '8px 12px', fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-                Confirm before saving
-              </div>
-              <div style={{ padding: 12, display: 'grid', gap: 6, fontSize: 13 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}><span style={{ color: 'var(--color-neutral-700)' }}>Vehicle</span><span style={{ fontWeight: 600 }}>{form.vehicle}</span></div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}><span style={{ color: 'var(--color-neutral-700)' }}>Driver</span><span style={{ fontWeight: 600 }}>{form.driver}</span></div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}><span style={{ color: 'var(--color-neutral-700)' }}>Invoice no.</span><span style={{ fontWeight: 600 }}>{form.waybillNo}</span></div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}><span style={{ color: 'var(--color-neutral-700)' }}>Route</span><span style={{ fontWeight: 600 }}>{form.from || '—'} → {form.to || '—'}</span></div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-                  <span style={{ color: 'var(--color-neutral-700)' }}>Odometer</span>
-                  <span style={{ fontWeight: 600 }}>{form.odoStart || '0'} km{form.odoEnd ? ` → ${form.odoEnd} km` : ' (end not set yet)'}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}><span style={{ color: 'var(--color-neutral-700)' }}>Fuel &amp; expense entries</span><span style={{ fontWeight: 600 }}>{lines.length}</span></div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}><span style={{ color: 'var(--color-neutral-700)' }}>Trip expense so far</span><span style={{ fontWeight: 600 }}>{rupees(expense)}</span></div>
-                {confirmAction === 'start' && <div style={{ color: 'var(--color-neutral-700)' }}>This saves as an open movement — you or documentation can keep adding entries and complete it later.</div>}
-                {confirmAction === 'complete' && <div style={{ color: 'var(--color-neutral-700)' }}>This marks the movement complete and locks it — a driver can no longer edit or delete it.</div>}
-              </div>
-              <div style={{ display: 'flex', gap: 10, padding: 12, borderTop: '1px solid var(--color-neutral-300)' }}>
-                <button type="button" className="btn btn-primary" onClick={confirmSubmit}>Confirm &amp; save</button>
-                <button type="button" className="btn btn-ghost" onClick={() => setConfirmAction(null)}>Back to edit</button>
-              </div>
-            </div>
+            <MovementReview
+              action={confirmAction}
+              form={{ ...form, unloadDate: form.unloadDate || form.loadDate }}
+              original={editingTrip ? formFromTrip(editingTrip) : null}
+              lines={lines}
+              originalLines={editingTrip?.expenses ?? []}
+              documents={documents}
+              originalDocuments={editingTrip?.documents ?? []}
+              showFinancials={showFinancials}
+              wasCompleted={isCompleted}
+              totals={{ km, expense, profit }}
+              onConfirm={confirmSubmit}
+              onBack={() => setConfirmAction(null)}
+            />
           ) : (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, paddingTop: 16, marginTop: 16, borderTop: '2px solid var(--color-divider)' }}>
               {isEditing ? (

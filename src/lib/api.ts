@@ -108,6 +108,10 @@ const CATEGORY_FROM_API: Record<string, ExpenseCategory> = Object.fromEntries(
 function orUndefined(value: string): string | undefined {
   return value && value !== '—' ? value : undefined;
 }
+// For PATCH: undefined = leave alone, null = clear, string = set.
+function orNullOpt(value: string | undefined): string | null | undefined {
+  return value === undefined ? undefined : orUndefined(value) ?? null;
+}
 function orUndefinedOpt(value: string | undefined): string | undefined {
   return value === undefined ? undefined : orUndefined(value);
 }
@@ -280,6 +284,7 @@ interface ApiTrip {
   odoStart: number | null; odoEnd: number | null; revenuePaise: number; status: 'draft' | 'pending' | 'approved' | 'void';
   expenses: ApiTripExpense[];
   documents?: ApiTripDocument[];
+  remarks?: string | null;
 }
 
 function tripFromApi(t: ApiTrip): Trip {
@@ -288,7 +293,7 @@ function tripFromApi(t: ApiTrip): Trip {
     vehicle: t.vehicleId, driver: t.driverId ?? '—', waybillNo: t.waybillNo ?? '—', itemNo: t.itemNo ?? '—',
     from: t.fromLoc ?? '—', to: t.toLoc ?? '—', tons: (t.weightKg ?? 0) / 1000, km: Math.max(0, (t.odoEnd ?? 0) - (t.odoStart ?? 0)),
     odoStart: t.odoStart ?? undefined, odoEnd: t.odoEnd ?? undefined,
-    revenue: paiseToRupees(t.revenuePaise), status: t.status === 'void' ? 'approved' : t.status,
+    revenue: paiseToRupees(t.revenuePaise), status: t.status === 'void' ? 'approved' : t.status, remarks: t.remarks ?? undefined,
     expenses: t.expenses.map((e) => ({
       id: e.id, date: formatDisplayDate(e.spentOn), kind: e.kind, litres: e.litres ?? undefined,
       ratePerLitre: e.ratePaise != null ? paiseToRupees(e.ratePaise) : undefined, amount: paiseToRupees(e.amountPaise), details: e.details ?? undefined
@@ -342,11 +347,11 @@ export async function updateTrip(id: string, patch: TripPatchInput): Promise<Tri
   const res = await request<ApiTrip>(`/trips/${encodeURIComponent(id)}`, {
     method: 'PATCH',
     body: JSON.stringify({
-      vehicleId: patch.vehicle, driverId: orUndefined(patch.driver ?? ''), waybillNo: orUndefinedOpt(patch.waybillNo), itemNo: orUndefinedOpt(patch.itemNo),
-      loadDate: patch.loadDate, unloadDate: orUndefinedOpt(patch.unloadDate), fromLoc: orUndefinedOpt(patch.from),
-      toLoc: orUndefinedOpt(patch.to), weightKg: patch.tons != null ? Math.round(patch.tons * 1000) : undefined,
+      vehicleId: patch.vehicle, driverId: orUndefined(patch.driver ?? ''), waybillNo: orUndefinedOpt(patch.waybillNo), itemNo: orNullOpt(patch.itemNo),
+      loadDate: patch.loadDate, unloadDate: orNullOpt(patch.unloadDate), fromLoc: orNullOpt(patch.from),
+      toLoc: orNullOpt(patch.to), weightKg: patch.tons != null ? Math.round(patch.tons * 1000) : undefined,
       odoStart: patch.odoStart, odoEnd: patch.odoEnd, revenuePaise: patch.revenue != null ? rupeesToPaise(patch.revenue) : undefined,
-      remarks: orUndefinedOpt(patch.remarks)
+      remarks: orNullOpt(patch.remarks)
     })
   });
   return tripFromApi({ ...res, expenses: [] });

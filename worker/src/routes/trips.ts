@@ -381,7 +381,10 @@ tripRoutes.patch('/:id', async (c) => {
   // The driver named on a trip can be changed by whoever may edit it — as at
   // creation, a driver login is often an office assistant keying data for
   // whoever is actually driving. (Ownership, createdBy, never changes.)
-  const parsed = baseSchema.safeParse(body);
+  // Optional text fields can be cleared on edit by sending null.
+  const clearable = z.string().nullable().optional();
+  const schema = baseSchema.extend({ itemNo: clearable, unloadDate: clearable, fromLoc: clearable, toLoc: clearable, remarks: clearable });
+  const parsed = schema.safeParse(body);
   if (!parsed.success) return c.json({ error: { code: 'validation_error', message: parsed.error.message } }, 422);
   if (parsed.data.driverId && parsed.data.driverId !== existing.driverId) {
     const [drv] = await db.select({ id: drivers.id }).from(drivers)

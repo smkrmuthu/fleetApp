@@ -1,4 +1,7 @@
+import { useEffect, useState } from 'react';
 import type { DriverMaster, Role, Trip, Vehicle } from '../types';
+import { formFromTrip } from './AddMovement';
+import { MovementReview } from './MovementReview';
 import { dateInRange, formatDateRange, formatNum, rupees, tripCost } from '../utils/calc';
 
 interface Props {
@@ -15,7 +18,7 @@ interface Props {
   onDateTo: (v: string) => void;
   onResetFilters: () => void;
   onAddMovement: () => void;
-  onApprove: (tripId: string) => void;
+  onApprove: (tripId: string) => Promise<void>;
   onEdit: (trip: Trip) => void;
   onDelete: (trip: Trip) => void;
   role: Role;
@@ -27,6 +30,33 @@ export function TripLog({ trips, vehicles, drivers, vehicleFilter, driverFilter,
   const isManager = role === 'Manager';
   const showFinancials = !isDriver;
   const showActions = !isDriver;
+  const [completing, setCompleting] = useState<Trip | null>(null);
+  const [completingBusy, setCompletingBusy] = useState(false);
+
+  useEffect(() => {
+    if (!completing) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !completingBusy) setCompleting(null); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [completing, completingBusy]);
+
+  // What's still missing before a movement can be completed (mirrors the server's checks).
+  function completionBlockers(t: Trip): string[] {
+    const out: string[] = [];
+    if (!t.tons) out.push('Loading weight is required.');
+    if (!t.odoStart) out.push('Odometer start is required.');
+    if (!t.odoEnd) out.push('Odometer end is required.');
+    else if (t.odoStart && t.odoEnd <= t.odoStart) out.push('Odometer end must be greater than odometer start.');
+    return out;
+  }
+
+  async function confirmComplete(t: Trip) {
+    setCompletingBusy(true);
+    await onApprove(t.id);
+    setCompletingBusy(false);
+    setCompleting(null);
+  }
+
   const rows = trips.filter(
     (t) => (vehicleFilter === 'all' || t.vehicle === vehicleFilter) &&
       (!driverFilter || t.driver === driverFilter) &&
@@ -129,7 +159,7 @@ export function TripLog({ trips, vehicles, drivers, vehicleFilter, driverFilter,
                             </button>
                           )}
                           {!isDriver && (
-                            <button type="button" className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => onApprove(t.id)}>
+                            <button type="button" className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => setCompleting(t)}>
                               Complete Trip
                             </button>
                           )}
@@ -157,6 +187,34 @@ export function TripLog({ trips, vehicles, drivers, vehicleFilter, driverFilter,
           </table>
         </div>
       )}
+
+      {completing && (() => {
+        const c = tripCost(completing);
+        return (
+          <div
+            style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(32,30,29,0.55)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '4vh 16px', overflowY: 'auto' }}
+            onMouseDown={(e) => { if (e.target === e.currentTarget && !completingBusy) setCompleting(null); }}
+          >
+            <div role="dialog" aria-modal="true" aria-label="Complete movement" style={{ width: '100%', maxWidth: 640 }}>
+              <MovementReview
+                action="complete"
+                form={formFromTrip(completing)}
+                original={null}
+                lines={completing.expenses}
+                originalLines={[]}
+                documents={completing.documents}
+                originalDocuments={[]}
+                showFinancials={showFinancials}
+                wasCompleted={false}
+                totals={{ km: completing.km, expense: c.expense, profit: c.profit }}
+                onConfirm={() => confirmComplete(completing)}
+                onBack={() => setCompleting(null)}
+                standalone={{ blockers: completionBlockers(completing), busy: completingBusy, onEdit: () => { const t = completing; setCompleting(null); onEdit(t); } }}
+              />
+            </div>
+          </div>
+        );
+      })()}
     </section>
   );
 }
