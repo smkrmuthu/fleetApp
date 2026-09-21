@@ -334,7 +334,7 @@ export async function createTrip(t: NewTripInput): Promise<Trip> {
 }
 
 export interface TripPatchInput {
-  vehicle?: string; waybillNo?: string; itemNo?: string; loadDate?: string; unloadDate?: string;
+  vehicle?: string; driver?: string; waybillNo?: string; itemNo?: string; loadDate?: string; unloadDate?: string;
   from?: string; to?: string; tons?: number; odoStart?: number; odoEnd?: number; revenue?: number; remarks?: string;
 }
 
@@ -342,7 +342,7 @@ export async function updateTrip(id: string, patch: TripPatchInput): Promise<Tri
   const res = await request<ApiTrip>(`/trips/${encodeURIComponent(id)}`, {
     method: 'PATCH',
     body: JSON.stringify({
-      vehicleId: patch.vehicle, waybillNo: orUndefinedOpt(patch.waybillNo), itemNo: orUndefinedOpt(patch.itemNo),
+      vehicleId: patch.vehicle, driverId: orUndefined(patch.driver ?? ''), waybillNo: orUndefinedOpt(patch.waybillNo), itemNo: orUndefinedOpt(patch.itemNo),
       loadDate: patch.loadDate, unloadDate: orUndefinedOpt(patch.unloadDate), fromLoc: orUndefinedOpt(patch.from),
       toLoc: orUndefinedOpt(patch.to), weightKg: patch.tons != null ? Math.round(patch.tons * 1000) : undefined,
       odoStart: patch.odoStart, odoEnd: patch.odoEnd, revenuePaise: patch.revenue != null ? rupeesToPaise(patch.revenue) : undefined,

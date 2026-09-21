@@ -3,7 +3,7 @@ import { and, desc, eq, lt, or, gt } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Env, Vars } from '../types';
 import { getDb, newId, nowIso } from '../db';
-import { trips, tripExpenses, notifications, receipts, tripDocuments } from '../../drizzle/schema';
+import { trips, tripExpenses, notifications, receipts, tripDocuments, drivers } from '../../drizzle/schema';
 import { base64ToBytes, filenameFromKey, storageKeyFor } from '../lib/storage';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { buildFilters, combine, parsePagination } from '../lib/filters';
@@ -354,10 +354,16 @@ tripRoutes.patch('/:id', async (c) => {
 
   const body = await c.req.json().catch(() => null);
   const baseSchema = createTripSchema.omit({ id: true, expenses: true, draft: true, documents: true }).partial();
-  // A driver edits their own facts about the trip, never who it belongs to.
-  const schema = auth.role === 'driver' ? baseSchema.omit({ driverId: true }) : baseSchema;
-  const parsed = schema.safeParse(body);
+  // The driver named on a trip can be changed by whoever may edit it — as at
+  // creation, a driver login is often an office assistant keying data for
+  // whoever is actually driving. (Ownership, createdBy, never changes.)
+  const parsed = baseSchema.safeParse(body);
   if (!parsed.success) return c.json({ error: { code: 'validation_error', message: parsed.error.message } }, 422);
+  if (parsed.data.driverId && parsed.data.driverId !== existing.driverId) {
+    const [drv] = await db.select({ id: drivers.id }).from(drivers)
+      .where(and(eq(drivers.id, parsed.data.driverId), eq(drivers.orgId, auth.orgId), eq(drivers.active, true))).limit(1);
+    if (!drv) return c.json({ error: { code: 'validation_error', message: 'Driver not found', field: 'driverId' } }, 422);
+  }
 
   const odoStart = ('odoStart' in parsed.data ? parsed.data.odoStart : undefined) ?? existing.odoStart;
   const odoEnd = ('odoEnd' in parsed.data ? parsed.data.odoEnd : undefined) ?? existing.odoEnd;

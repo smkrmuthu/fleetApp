@@ -136,9 +136,9 @@ export function App() {
         const newDocs = trip.documents.filter((d) => !originalDocIds.has(d.id));
         const removedDocs = (editingTrip?.documents ?? []).filter((d) => !trip.documents.some((td) => td.id === d.id));
         await api.updateTrip(trip.id, {
-          vehicle: trip.vehicle, waybillNo: trip.waybillNo, itemNo: trip.itemNo, loadDate: trip.loadDate,
+          vehicle: trip.vehicle, driver: trip.driver, waybillNo: trip.waybillNo, itemNo: trip.itemNo, loadDate: trip.loadDate,
           unloadDate: trip.unloadDate, from: trip.from, to: trip.to, tons: trip.tons, odoStart: trip.odoStart,
-          revenue: trip.revenue, remarks: trip.remarks
+          odoEnd: trip.odoEnd, revenue: trip.revenue, remarks: trip.remarks
         });
         for (const line of newLines) {
           await api.addTripExpense(trip.id, line);
