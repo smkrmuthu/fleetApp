@@ -3,7 +3,7 @@ import type { DriverMaster, MasterSettings, Trip, TripDocument, TripExpenseKind,
 import { TRIP_EXPENSE_LABEL } from '../data/mockData';
 import { dieselLitres, rupees, todayIso, toNumber } from '../utils/calc';
 import { MovementReview } from './MovementReview';
-import { fetchDocumentBlobUrl, parseDisplayDate, scanReceipt, type ScannedReceipt } from '../lib/api';
+import { fetchDocumentBlobUrl, fetchNextTripNumber, parseDisplayDate, scanReceipt, type ScannedReceipt } from '../lib/api';
 
 function fileToBase64(file: File): Promise<{ base64: string; mimeType: string }> {
   return new Promise((resolve, reject) => {
@@ -19,18 +19,6 @@ function fileToBase64(file: File): Promise<{ base64: string; mimeType: string }>
 
 function normalizeReg(v: string): string {
   return v.replace(/\s+/g, '').toUpperCase();
-}
-
-function generateTripNo(vehicleId: string, loadDate: string): string {
-  const now = new Date();
-  const pad = (n: number) => String(n).padStart(2, '0');
-  // date portion follows the trip's own loading date (falls back to today if
-  // that's not set yet) — the time suffix is just there to keep two trips
-  // for the same vehicle on the same day from colliding.
-  const [y, m, d] = loadDate ? loadDate.split('-').map(Number) : [now.getFullYear(), now.getMonth() + 1, now.getDate()];
-  const dateStamp = `${pad(y % 100)}${pad(m)}${pad(d)}`;
-  const timeStamp = `${pad(now.getHours())}${pad(now.getMinutes())}`;
-  return `INV-${normalizeReg(vehicleId)}-${dateStamp}-${timeStamp}`;
 }
 
 function mapFuelType(fuelType?: string): TripExpenseKind {
@@ -122,7 +110,6 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, d
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [confirmAction, setConfirmAction] = useState<SubmitAction | null>(null);
   const [toast, setToast] = useState<string | null>(null);
-  const [tripNoTouched, setTripNoTouched] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scanFileInputRef = useRef<HTMLInputElement>(null);
   const errorBoxRef = useRef<HTMLDivElement>(null);
@@ -154,9 +141,22 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, d
     return name && drivers.some((d) => d.name === name) ? name : '';
   };
 
-  // Trip numbers follow the vehicle + loading date and keep re-deriving
-  // as either one changes — right up until the user types into the field
-  // themselves, at which point their own value sticks for good.
+  // Trip numbers are "<truck>-<4 digits>", the next free one for that truck. It
+  // follows the truck as it's picked — right up until the user types into the
+  // field themselves, at which point their own value sticks for good.
+  const tripNoTouchedRef = useRef(false);
+  const refreshTripNo = (vehicleId: string) => {
+    if (!vehicleId || tripNoTouchedRef.current) return;
+    if (editingTrip && vehicleId === editingTrip.vehicle) {
+      // back on the truck it was saved with: keep the number it already has
+      setForm((f) => ({ ...f, waybillNo: editingTrip.waybillNo === '—' ? '' : editingTrip.waybillNo }));
+      return;
+    }
+    fetchNextTripNumber(vehicleId)
+      .then((n) => setForm((f) => (f.vehicle === vehicleId && !tripNoTouchedRef.current ? { ...f, waybillNo: n } : f)))
+      .catch(() => { /* leave it blank — it can be typed in */ });
+  };
+
   const onVehicleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const vehicleId = e.target.value;
     const defaultDriver = isEditing ? '' : defaultDriverFor(vehicleId);
@@ -164,23 +164,20 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, d
       ...f,
       vehicle: vehicleId,
       driver: defaultDriver || f.driver,
-      waybillNo: !tripNoTouched && vehicleId ? generateTripNo(vehicleId, f.loadDate) : f.waybillNo
+      // blank until the lookup answers, so a stale number never shows for the new truck
+      waybillNo: !tripNoTouchedRef.current && vehicleId && !(editingTrip && vehicleId === editingTrip.vehicle) ? '' : f.waybillNo
     }));
+    refreshTripNo(vehicleId);
     setErrors({});
   };
 
   const onLoadDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const loadDate = e.target.value;
-    setForm((f) => ({
-      ...f,
-      loadDate,
-      waybillNo: !tripNoTouched && f.vehicle ? generateTripNo(f.vehicle, loadDate) : f.waybillNo
-    }));
+    setForm((f) => ({ ...f, loadDate: e.target.value }));
     setErrors({});
   };
 
   const onTripNoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setTripNoTouched(true);
+    tripNoTouchedRef.current = true;
     setForm((f) => ({ ...f, waybillNo: e.target.value }));
     setErrors({});
   };
@@ -366,7 +363,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, d
     }
     setErrors({});
     setConfirmAction(null);
-    setTripNoTouched(false);
+    tripNoTouchedRef.current = false;
   }
 
   async function onScanFileChosen(e: React.ChangeEvent<HTMLInputElement>) {
@@ -384,7 +381,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, d
       setScanFile({ base64, mimeType, filename: file.name });
       if (!form.vehicle && result.vehicleNo) {
         const match = vehicles.find((v) => normalizeReg(v.id) === normalizeReg(result.vehicleNo!));
-        if (match) setForm((f) => ({ ...f, vehicle: match.id, driver: f.driver || (isEditing ? '' : defaultDriverFor(match.id)) }));
+        if (match) { setForm((f) => ({ ...f, vehicle: match.id, driver: f.driver || (isEditing ? '' : defaultDriverFor(match.id)) })); refreshTripNo(match.id); }
       }
     } catch (err) {
       setScanErrorMsg(err instanceof Error ? err.message : 'Could not read the receipt — try again or enter it manually');
@@ -444,6 +441,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, d
       <div className="movement-grid">
         <div style={{ background: 'var(--color-bg)', padding: 20, border: '2px solid var(--color-divider)' }}>
           <div className="filters-grid" style={{ alignItems: 'stretch' }}>
+            <div className="field"><label>Trip number *</label><input className={errorClass('waybillNo')} type="text" placeholder="Pick a truck — number fills in" value={form.waybillNo} onChange={onTripNoChange} /></div>
             <div className="field"><label>Loading date</label><input className="input" type="date" value={form.loadDate} onChange={onLoadDateChange} /></div>
             <div className="field"><label>Unloading date</label><input className={errorClass('unloadDate')} type="date" min={form.loadDate} value={form.unloadDate} onChange={set('unloadDate')} /></div>
             <div className="field">
@@ -460,7 +458,6 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, d
                 {drivers.map((d) => <option key={d.name} value={d.name}>{d.name}</option>)}
               </select>
             </div>
-            <div className="field"><label>Trip number *</label><input className={errorClass('waybillNo')} type="text" placeholder="Auto-generated from vehicle" value={form.waybillNo} onChange={onTripNoChange} /></div>
             <div className="field"><label>Item no</label><input className="input" type="text" placeholder="ITM-0000" value={form.itemNo} onChange={set('itemNo')} /></div>
             <div className="field"><label>Loading weight (tons)</label><input className={errorClass('tons')} type="number" step="any" inputMode="decimal" value={form.tons} onChange={set('tons')} /></div>
             {showFinancials && (

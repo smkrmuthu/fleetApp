@@ -158,6 +158,12 @@ tripRoutes.post('/', async (c) => {
     return c.json({ ...existing, stops, documents: docs }, 200);
   }
 
+  if (data.waybillNo) {
+    const [clash] = await db.select({ id: trips.id }).from(trips)
+      .where(and(eq(trips.orgId, auth.orgId), eq(trips.waybillNo, data.waybillNo))).limit(1);
+    if (clash) return c.json({ error: { code: 'conflict', message: `Trip number ${data.waybillNo} is already used by another movement`, field: 'waybillNo' } }, 409);
+  }
+
   const isDriver = auth.role === 'driver';
   // A driver's own login is the account used to enter the trip, but the
   // driver named on it may be someone else — an office assistant keying
@@ -288,6 +294,27 @@ tripRoutes.get('/', async (c) => {
   }
 
   return c.json({ trips: rows.map((t) => ({ ...t, expenses: byTrip.get(t.id) ?? [], stops: stopsByTrip.get(t.id) ?? [], documents: docsByTrip.get(t.id) ?? [] })), nextCursor });
+});
+
+// The next free trip number for a truck: "<TRUCK>-<4 digits>", one more than
+// the highest number already used for that truck (older numbers in any other
+// format are ignored). Must be registered before GET /:id.
+tripRoutes.get('/next-number', async (c) => {
+  const auth = c.get('auth');
+  const vehicleId = new URL(c.req.url).searchParams.get('vehicle_id')?.trim();
+  if (!vehicleId) return c.json({ error: { code: 'validation_error', message: 'vehicle_id is required' } }, 422);
+
+  const db = getDb(c.env);
+  const rows = await db.select({ n: trips.waybillNo }).from(trips)
+    .where(and(eq(trips.orgId, auth.orgId), eq(trips.vehicleId, vehicleId)));
+  const prefix = `${vehicleId}-`;
+  let highest = 0;
+  for (const { n } of rows) {
+    if (!n || !n.startsWith(prefix)) continue;
+    const tail = n.slice(prefix.length);
+    if (/^\d{4,}$/.test(tail)) highest = Math.max(highest, Number(tail));
+  }
+  return c.json({ number: `${prefix}${String(highest + 1).padStart(4, '0')}` });
 });
 
 tripRoutes.get('/:id', async (c) => {
@@ -460,6 +487,12 @@ tripRoutes.patch('/:id', async (c) => {
   const odoEnd = ('odoEnd' in parsed.data ? parsed.data.odoEnd : undefined) ?? existing.odoEnd;
   if (odoEnd != null && odoStart != null && odoEnd <= odoStart) {
     return c.json({ error: { code: 'validation_error', message: 'Odometer end must be greater than odometer start', field: 'odoEnd' } }, 422);
+  }
+
+  if (parsed.data.waybillNo && parsed.data.waybillNo !== existing.waybillNo) {
+    const [clash] = await db.select({ id: trips.id }).from(trips)
+      .where(and(eq(trips.orgId, auth.orgId), eq(trips.waybillNo, parsed.data.waybillNo))).limit(1);
+    if (clash) return c.json({ error: { code: 'conflict', message: `Trip number ${parsed.data.waybillNo} is already used by another movement`, field: 'waybillNo' } }, 409);
   }
 
   const { stops: newStops, ...tripPatch } = parsed.data;

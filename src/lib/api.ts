@@ -385,6 +385,11 @@ export async function addTripExpense(tripId: string, line: TripExpenseLine): Pro
   });
 }
 
+export async function fetchNextTripNumber(vehicleId: string): Promise<string> {
+  const res = await request<{ number: string }>(`/trips/next-number?vehicle_id=${encodeURIComponent(vehicleId)}`);
+  return res.number;
+}
+
 export async function deleteTripExpense(tripId: string, expenseId: string): Promise<void> {
   await request(`/trips/${encodeURIComponent(tripId)}/expenses/${encodeURIComponent(expenseId)}`, { method: 'DELETE' });
 }
