@@ -30,18 +30,43 @@ const documentInputSchema = z.object({
   base64: z.string().min(1)
 });
 
-// A movement can only be complete once it has its loading weight and both
-// odometer readings, end above start. Returns the first thing missing.
-function completionProblem(t: { weightKg?: number | null; odoStart?: number | null; odoEnd?: number | null }): { message: string; field: string } | null {
+type Problem = { message: string; field: string };
+type StopReading = { odo?: number | null };
+
+// Odometer readings must only ever go up along the route: start, then each
+// stop that has a reading (in visiting order), then end.
+function stopOdometerProblem(odoStart: number | null | undefined, odoEnd: number | null | undefined, stops: StopReading[]): Problem | null {
+  let prev: number | null = odoStart || null;
+  for (let i = 0; i < stops.length; i++) {
+    const r = stops[i].odo;
+    if (r == null) continue;
+    if (prev != null && r < prev) {
+      return { message: `Stop ${i + 1} odometer (${r}) can't be lower than the previous reading (${prev})`, field: 'stops' };
+    }
+    prev = r;
+  }
+  if (odoEnd && prev != null && odoEnd < prev) {
+    return { message: `Odometer end can't be lower than the last stop's reading (${prev})`, field: 'odoEnd' };
+  }
+  return null;
+}
+
+// A movement can only be complete once it has its loading weight, both
+// odometer readings (end above start) and a reading at every stop.
+// Returns the first thing missing.
+function completionProblem(t: { weightKg?: number | null; odoStart?: number | null; odoEnd?: number | null }, stops: StopReading[] = []): Problem | null {
   if (!t.weightKg) return { message: 'Loading weight is required to complete this movement', field: 'weightKg' };
   if (!t.odoStart) return { message: 'Odometer start is required to complete this movement', field: 'odoStart' };
   if (!t.odoEnd) return { message: 'Odometer end is required to complete this movement', field: 'odoEnd' };
   if (t.odoEnd <= t.odoStart) return { message: 'Odometer end must be greater than odometer start', field: 'odoEnd' };
-  return null;
+  const missing = stops.findIndex((st) => !st.odo);
+  if (missing >= 0) return { message: `Odometer reading is required at stop ${missing + 1} to complete this movement`, field: 'stops' };
+  return stopOdometerProblem(t.odoStart, t.odoEnd, stops);
 }
 
 const stopSchema = z.object({
   location: z.string().trim().min(1, 'Stop location is required').max(200),
+  odo: z.number().int().positive().nullish(),
   note: z.string().trim().max(200).nullish()
 });
 const MAX_STOPS = 20;
@@ -144,10 +169,8 @@ tripRoutes.post('/', async (c) => {
   const status = isDriver ? 'draft' : 'approved';
   const now = nowIso();
 
-  if (!isDriver) {
-    const problem = completionProblem(data);
-    if (problem) return c.json({ error: { code: 'validation_error', ...problem } }, 422);
-  }
+  const problem = isDriver ? stopOdometerProblem(data.odoStart, data.odoEnd, data.stops) : completionProblem(data, data.stops);
+  if (problem) return c.json({ error: { code: 'validation_error', ...problem } }, 422);
 
   if (data.odoEnd != null && data.odoStart != null && data.odoEnd <= data.odoStart) {
     return c.json({ error: { code: 'validation_error', message: 'Odometer end must be greater than odometer start', field: 'odoEnd' } }, 422);
@@ -190,7 +213,7 @@ tripRoutes.post('/', async (c) => {
   }));
 
   const stopRows = data.stops.map((st, i) => ({
-    id: newId(), orgId: auth.orgId, tripId: data.id, seq: i + 1, location: st.location, note: st.note || null, createdAt: now
+    id: newId(), orgId: auth.orgId, tripId: data.id, seq: i + 1, location: st.location, odo: st.odo ?? null, note: st.note || null, createdAt: now
   }));
 
   const statements = [db.insert(trips).values(tripValues)];
@@ -303,35 +326,6 @@ tripRoutes.post('/:id/expenses', async (c) => {
   await db.insert(tripExpenses).values(row);
   await writeAudit(db, auth.orgId, 'trip_expenses', row.id, 'insert', { tripId: id, kind: row.kind }, auth.userId);
   return c.json(row, 201);
-});
-
-// Replaces the whole ordered list of intermediate stops. Same permission as
-// editing the trip: office/manager on any trip, a driver only on their own
-// open movement.
-tripRoutes.put('/:id/stops', async (c) => {
-  const auth = c.get('auth');
-  const id = c.req.param('id')!;
-  const body = await c.req.json().catch(() => null);
-  const parsed = z.object({ stops: z.array(stopSchema).max(MAX_STOPS) }).safeParse(body);
-  if (!parsed.success) return c.json({ error: { code: 'validation_error', message: parsed.error.message } }, 422);
-
-  const db = getDb(c.env);
-  const [trip] = await db.select().from(trips).where(and(eq(trips.id, id), eq(trips.orgId, auth.orgId))).limit(1);
-  if (!trip) return c.json({ error: { code: 'not_found', message: 'Trip not found' } }, 404);
-  if (auth.role === 'driver' && (trip.createdBy !== auth.userId || trip.status === 'approved')) {
-    return c.json({ error: { code: 'forbidden', message: 'Can only change the stops on your own open movement' } }, 403);
-  }
-
-  const now = nowIso();
-  const rows = parsed.data.stops.map((st, i) => ({
-    id: newId(), orgId: auth.orgId, tripId: id, seq: i + 1, location: st.location, note: st.note || null, createdAt: now
-  }));
-  const statements: any[] = [db.delete(tripStops).where(and(eq(tripStops.tripId, id), eq(tripStops.orgId, auth.orgId)))];
-  for (const row of rows) statements.push(db.insert(tripStops).values(row));
-  await db.batch(statements as [any, ...any[]]);
-  await db.update(trips).set({ updatedAt: now }).where(eq(trips.id, id));
-  await writeAudit(db, auth.orgId, 'trip_stops', id, 'replace', { stops: rows.map((r) => r.location) }, auth.userId);
-  return c.json({ stops: rows });
 });
 
 // Removes one fuel/expense line. Same rule as adding: a driver only on their
@@ -452,7 +446,8 @@ tripRoutes.patch('/:id', async (c) => {
   // whoever is actually driving. (Ownership, createdBy, never changes.)
   // Optional text fields can be cleared on edit by sending null.
   const clearable = z.string().nullable().optional();
-  const schema = baseSchema.extend({ itemNo: clearable, unloadDate: clearable, fromLoc: clearable, toLoc: clearable, remarks: clearable });
+  // stops, when present, replace the whole ordered list (checked together with the odometers below).
+  const schema = baseSchema.extend({ itemNo: clearable, unloadDate: clearable, fromLoc: clearable, toLoc: clearable, remarks: clearable, stops: z.array(stopSchema).max(MAX_STOPS).optional() });
   const parsed = schema.safeParse(body);
   if (!parsed.success) return c.json({ error: { code: 'validation_error', message: parsed.error.message } }, 422);
   if (parsed.data.driverId && parsed.data.driverId !== existing.driverId) {
@@ -467,16 +462,26 @@ tripRoutes.patch('/:id', async (c) => {
     return c.json({ error: { code: 'validation_error', message: 'Odometer end must be greater than odometer start', field: 'odoEnd' } }, 422);
   }
 
-  if (existing.status === 'approved') {
-    const problem = completionProblem({
-      weightKg: 'weightKg' in parsed.data ? parsed.data.weightKg : existing.weightKg,
-      odoStart, odoEnd
-    });
-    if (problem) return c.json({ error: { code: 'validation_error', ...problem } }, 422);
-  }
+  const { stops: newStops, ...tripPatch } = parsed.data;
+  const storedStops = newStops ? [] : await db.select().from(tripStops).where(eq(tripStops.tripId, id)).orderBy(tripStops.seq);
+  const effectiveStops: StopReading[] = newStops ?? storedStops;
 
-  await db.update(trips).set({ ...parsed.data, updatedAt: nowIso() }).where(eq(trips.id, id));
-  await writeAudit(db, auth.orgId, 'trips', id, 'update', parsed.data, auth.userId);
+  const problem = existing.status === 'approved'
+    ? completionProblem({ weightKg: 'weightKg' in tripPatch ? tripPatch.weightKg : existing.weightKg, odoStart, odoEnd }, effectiveStops)
+    : stopOdometerProblem(odoStart, odoEnd, effectiveStops);
+  if (problem) return c.json({ error: { code: 'validation_error', ...problem } }, 422);
+
+  const now = nowIso();
+  await db.update(trips).set({ ...tripPatch, updatedAt: now }).where(eq(trips.id, id));
+  if (newStops) {
+    const rows = newStops.map((st, i) => ({
+      id: newId(), orgId: auth.orgId, tripId: id, seq: i + 1, location: st.location, odo: st.odo ?? null, note: st.note || null, createdAt: now
+    }));
+    const statements: any[] = [db.delete(tripStops).where(and(eq(tripStops.tripId, id), eq(tripStops.orgId, auth.orgId)))];
+    for (const row of rows) statements.push(db.insert(tripStops).values(row));
+    await db.batch(statements as [any, ...any[]]);
+  }
+  await writeAudit(db, auth.orgId, 'trips', id, 'update', { ...tripPatch, ...(newStops ? { stops: newStops.map((st) => st.location) } : {}) }, auth.userId);
 
   const [row] = await db.select().from(trips).where(eq(trips.id, id)).limit(1);
   return c.json(row);
@@ -501,7 +506,8 @@ tripRoutes.post('/:id/complete', requireRole('office', 'manager'), async (c) => 
   const parsed = completeSchema.safeParse(body);
   if (!parsed.success) return c.json({ error: { code: 'validation_error', message: parsed.error.message } }, 422);
 
-  const problem = completionProblem({ weightKg: existing.weightKg, odoStart: existing.odoStart, odoEnd: parsed.data.odoEnd });
+  const stopsNow = await db.select().from(tripStops).where(eq(tripStops.tripId, id)).orderBy(tripStops.seq);
+  const problem = completionProblem({ weightKg: existing.weightKg, odoStart: existing.odoStart, odoEnd: parsed.data.odoEnd }, stopsNow);
   if (problem) return c.json({ error: { code: 'validation_error', ...problem } }, 422);
 
   const now = nowIso();
@@ -577,7 +583,8 @@ tripRoutes.post('/:id/approve', requireRole('office', 'manager'), async (c) => {
   if (existing.status === 'approved') {
     return c.json({ error: { code: 'invalid_state', message: 'This movement is already approved' } }, 409);
   }
-  const problem = completionProblem(existing);
+  const stopsNow = await db.select().from(tripStops).where(eq(tripStops.tripId, id)).orderBy(tripStops.seq);
+  const problem = completionProblem(existing, stopsNow);
   if (problem) return c.json({ error: { code: 'validation_error', ...problem } }, 422);
 
   await db.update(trips).set({ status: 'approved', updatedAt: nowIso() }).where(and(eq(trips.id, id), eq(trips.orgId, auth.orgId)));

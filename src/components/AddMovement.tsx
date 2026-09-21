@@ -265,15 +265,30 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, fuelRates
   const litres = dieselLitres(lines);
   const kmpl = litres ? (km / litres).toFixed(2) + ' km/l' : '—';
 
-  // Blank rows are ignored; a note on its own (no place) is an error.
+  // Blank rows are ignored; a note or reading with no place is an error.
   const cleanStops: TripStop[] = stops
-    .map((st) => ({ ...st, location: st.location.trim(), note: (st.note ?? '').trim() }))
+    .map((st) => ({ ...st, location: st.location.trim(), odo: st.odo && st.odo > 0 ? st.odo : undefined, note: (st.note ?? '').trim() }))
     .filter((st) => st.location);
 
   function validate(completing: boolean): Record<string, string> {
     const errs: Record<string, string> = {};
-    const orphan = stops.findIndex((st) => !st.location.trim() && (st.note ?? '').trim());
-    if (orphan >= 0) errs.stops = `Stop ${orphan + 1} has a note but no place — enter the place or remove the stop.`;
+    const orphan = stops.findIndex((st) => !st.location.trim() && ((st.note ?? '').trim() || st.odo));
+    if (orphan >= 0) errs.stops = `Stop ${orphan + 1} has a note or reading but no place — enter the place or remove the stop.`;
+    else if (completing && cleanStops.some((st) => !st.odo)) {
+      errs.stops = `Odometer reading is required at stop ${cleanStops.findIndex((st) => !st.odo) + 1} to complete this movement.`;
+    } else {
+      // readings only ever go up along the route: start, each stop, end
+      let prev = toNumber(form.odoStart) > 0 ? toNumber(form.odoStart) : 0;
+      for (let i = 0; i < cleanStops.length; i++) {
+        const r = cleanStops[i].odo;
+        if (r === undefined) continue;
+        if (prev && r < prev) { errs.stops = `Stop ${i + 1} odometer (${r}) can't be lower than the previous reading (${prev}).`; break; }
+        prev = r;
+      }
+      if (!errs.stops && prev && form.odoEnd && toNumber(form.odoEnd) < prev) {
+        errs.odoEnd = `Odometer end can't be lower than the last stop's reading (${prev}).`;
+      }
+    }
     if (!form.vehicle) errs.vehicle = 'Select a vehicle.';
     if (!form.driver) errs.driver = 'Select a driver.';
     if (!form.waybillNo.trim()) errs.waybillNo = 'Trip number is required.';
@@ -457,6 +472,11 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, fuelRates
                     value={st.location} autoFocus={st.id === lastAddedStop}
                     onChange={(e) => updateStop(st.id, { location: e.target.value })}
                     style={{ flex: '2 1 180px', minWidth: 0 }}
+                  />
+                  <input
+                    className="input" type="number" inputMode="numeric" aria-label={`Stop ${i + 1} odometer`} placeholder="Odo (km)"
+                    value={st.odo ?? ''} onChange={(e) => updateStop(st.id, { odo: e.target.value ? Number(e.target.value) : undefined })}
+                    style={{ flex: '0 1 110px', minWidth: 0 }}
                   />
                   <input
                     className="input" type="text" aria-label={`Stop ${i + 1} note`} placeholder="Note (optional)"

@@ -47,6 +47,7 @@ export function TripLog({ trips, vehicles, drivers, vehicleFilter, driverFilter,
     if (!t.odoStart) out.push('Odometer start is required.');
     if (!t.odoEnd) out.push('Odometer end is required.');
     else if (t.odoStart && t.odoEnd <= t.odoStart) out.push('Odometer end must be greater than odometer start.');
+    t.stops.forEach((st, i) => { if (!st.odo) out.push(`Odometer reading is required at stop ${i + 1} (${st.location}).`); });
     return out;
   }
 

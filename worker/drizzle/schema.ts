@@ -161,6 +161,7 @@ export const tripStops = sqliteTable(
     tripId: text('trip_id').notNull().references(() => trips.id, { onDelete: 'cascade' }),
     seq: integer('seq').notNull(),
     location: text('location').notNull(),
+    odo: integer('odo'), // odometer reading (km) at this stop
     note: text('note'),
     createdAt: text('created_at').notNull().default(sql`(current_timestamp)`)
   },

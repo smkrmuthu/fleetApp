@@ -76,6 +76,7 @@ export interface TripExpenseLine {
 export interface TripStop {
   id: string;
   location: string;
+  odo?: number; // odometer reading (km) at this stop
   note?: string;
 }
 

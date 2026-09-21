@@ -99,7 +99,7 @@ export function MovementReview({ action, form, original, lines, originalLines, s
   const removedDocs = originalDocuments.filter((d) => !documents.some((x) => x.id === d.id));
   const lineChanges = newLineIds.size + removedLines.length;
   const docChanges = documents.filter((d) => !originalDocIds.has(d.id)).length + removedDocs.length;
-  const stopSig = (list: TripStop[]) => list.map((st) => `${st.location}|${st.note ?? ''}`).join('\n');
+  const stopSig = (list: TripStop[]) => list.map((st) => `${st.location}|${st.odo ?? ''}|${st.note ?? ''}`).join('\n');
   const stopsChanged = editing && stopSig(stops) !== stopSig(originalStops);
   const anyChange = changedCount + lineChanges + docChanges > 0 || stopsChanged;
 
@@ -152,6 +152,7 @@ export function MovementReview({ action, form, original, lines, originalLines, s
           {stops.map((st) => (
             <li key={st.id} style={{ padding: '2px 0' }}>
               <span style={{ fontWeight: 600 }}>{st.location}</span>
+              <span style={{ fontWeight: 600 }}>{' · '}{st.odo ? `${st.odo.toLocaleString('en-IN')} km` : 'no reading'}</span>
               {st.note && <span style={{ color: 'var(--color-neutral-700)' }}> — {st.note}</span>}
             </li>
           ))}
@@ -159,7 +160,7 @@ export function MovementReview({ action, form, original, lines, originalLines, s
       )}
       {stopsChanged && (
         <div style={{ padding: '0 12px 10px', fontSize: 11, ...muted }}>
-          was {originalStops.length === 0 ? 'no stops' : originalStops.map((st) => st.location).join(' → ')}
+          was {originalStops.length === 0 ? 'no stops' : originalStops.map((st) => `${st.location}${st.odo ? ` (${st.odo.toLocaleString('en-IN')} km)` : ''}`).join(' → ')}
         </div>
       )}
 

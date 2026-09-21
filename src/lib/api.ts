@@ -108,6 +108,10 @@ const CATEGORY_FROM_API: Record<string, ExpenseCategory> = Object.fromEntries(
 function orUndefined(value: string): string | undefined {
   return value && value !== '—' ? value : undefined;
 }
+function stopToApi(st: TripStop) {
+  return { location: st.location, odo: st.odo || undefined, note: st.note || undefined };
+}
+
 // For PATCH: undefined = leave alone, null = clear, string = set.
 function orNullOpt(value: string | undefined): string | null | undefined {
   return value === undefined ? undefined : orUndefined(value) ?? null;
@@ -284,7 +288,7 @@ interface ApiTrip {
   odoStart: number | null; odoEnd: number | null; revenuePaise: number; status: 'draft' | 'pending' | 'approved' | 'void';
   expenses: ApiTripExpense[];
   documents?: ApiTripDocument[];
-  stops?: { id: string; location: string; note: string | null }[];
+  stops?: { id: string; location: string; odo: number | null; note: string | null }[];
   remarks?: string | null;
 }
 
@@ -299,7 +303,7 @@ function tripFromApi(t: ApiTrip): Trip {
       id: e.id, date: formatDisplayDate(e.spentOn), kind: e.kind, litres: e.litres ?? undefined,
       ratePerLitre: e.ratePaise != null ? paiseToRupees(e.ratePaise) : undefined, amount: paiseToRupees(e.amountPaise), details: e.details ?? undefined
     })),
-    stops: (t.stops ?? []).map((st) => ({ id: st.id, location: st.location, note: st.note ?? undefined })),
+    stops: (t.stops ?? []).map((st) => ({ id: st.id, location: st.location, odo: st.odo ?? undefined, note: st.note ?? undefined })),
     documents: (t.documents ?? []).map((d) => ({ id: d.id, filename: d.filename, mimeType: d.mimeType ?? undefined }))
   };
 }
@@ -331,7 +335,7 @@ export async function createTrip(t: NewTripInput): Promise<Trip> {
       fromLoc: orUndefined(t.from), toLoc: orUndefined(t.to), weightKg: Math.round(t.tons * 1000) || undefined,
       odoStart: t.odoStart || undefined, odoEnd: t.odoEnd || undefined, revenuePaise: rupeesToPaise(t.revenue),
       remarks: t.remarks || undefined, draft: t.draft || undefined,
-      stops: (t.stops ?? []).map((st) => ({ location: st.location, note: st.note || undefined })),
+      stops: (t.stops ?? []).map(stopToApi),
       expenses: t.expenses.map((l) => ({
         spentOn: l.date, kind: l.kind, litres: l.litres, ratePaise: l.ratePerLitre != null ? rupeesToPaise(l.ratePerLitre) : undefined,
         amountPaise: rupeesToPaise(l.amount), details: l.details
@@ -345,6 +349,7 @@ export async function createTrip(t: NewTripInput): Promise<Trip> {
 export interface TripPatchInput {
   vehicle?: string; driver?: string; waybillNo?: string; itemNo?: string; loadDate?: string; unloadDate?: string;
   from?: string; to?: string; tons?: number; odoStart?: number; odoEnd?: number; revenue?: number; remarks?: string;
+  stops?: TripStop[]; // when present, replaces the whole ordered list
 }
 
 export async function updateTrip(id: string, patch: TripPatchInput): Promise<Trip> {
@@ -355,7 +360,8 @@ export async function updateTrip(id: string, patch: TripPatchInput): Promise<Tri
       loadDate: patch.loadDate, unloadDate: orNullOpt(patch.unloadDate), fromLoc: orNullOpt(patch.from),
       toLoc: orNullOpt(patch.to), weightKg: patch.tons != null ? Math.round(patch.tons * 1000) : undefined,
       odoStart: patch.odoStart, odoEnd: patch.odoEnd, revenuePaise: patch.revenue != null ? rupeesToPaise(patch.revenue) : undefined,
-      remarks: orNullOpt(patch.remarks)
+      remarks: orNullOpt(patch.remarks),
+      stops: patch.stops?.map(stopToApi)
     })
   });
   return tripFromApi({ ...res, expenses: [] });
@@ -376,13 +382,6 @@ export async function addTripExpense(tripId: string, line: TripExpenseLine): Pro
       ratePaise: line.ratePerLitre != null ? rupeesToPaise(line.ratePerLitre) : undefined,
       amountPaise: rupeesToPaise(line.amount), details: line.details
     })
-  });
-}
-
-export async function setTripStops(tripId: string, stops: TripStop[]): Promise<void> {
-  await request(`/trips/${encodeURIComponent(tripId)}/stops`, {
-    method: 'PUT',
-    body: JSON.stringify({ stops: stops.map((st) => ({ location: st.location, note: st.note || undefined })) })
   });
 }
 

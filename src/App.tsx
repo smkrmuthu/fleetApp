@@ -136,15 +136,14 @@ export function App() {
         const originalDocIds = new Set((editingTrip?.documents ?? []).map((d) => d.id));
         const newDocs = trip.documents.filter((d) => !originalDocIds.has(d.id));
         const removedDocs = (editingTrip?.documents ?? []).filter((d) => !trip.documents.some((td) => td.id === d.id));
+        const stopSig = (list: { location: string; odo?: number; note?: string }[]) => JSON.stringify(list.map((st) => [st.location, st.odo ?? null, st.note ?? '']));
+        const stopsChanged = stopSig(trip.stops) !== stopSig(editingTrip?.stops ?? []);
         await api.updateTrip(trip.id, {
           vehicle: trip.vehicle, driver: trip.driver, waybillNo: trip.waybillNo, itemNo: trip.itemNo, loadDate: trip.loadDate,
           unloadDate: trip.unloadDate, from: trip.from, to: trip.to, tons: trip.tons, odoStart: trip.odoStart,
-          odoEnd: trip.odoEnd, revenue: trip.revenue, remarks: trip.remarks
+          odoEnd: trip.odoEnd, revenue: trip.revenue, remarks: trip.remarks,
+          stops: stopsChanged ? trip.stops : undefined
         });
-        const stopSig = (list: { location: string; note?: string }[]) => JSON.stringify(list.map((st) => [st.location, st.note ?? '']));
-        if (stopSig(trip.stops) !== stopSig(editingTrip?.stops ?? [])) {
-          await api.setTripStops(trip.id, trip.stops);
-        }
         for (const line of removedLines) {
           await api.deleteTripExpense(trip.id, line.id);
         }
