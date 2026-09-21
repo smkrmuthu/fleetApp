@@ -1,9 +1,9 @@
 import { Hono } from 'hono';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Env, Vars } from '../types';
 import { getDb } from '../db';
-import { drivers } from '../../drizzle/schema';
+import { drivers, vehicles } from '../../drizzle/schema';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { writeAudit } from '../lib/audit';
 
@@ -16,7 +16,8 @@ driverRoutes.get('/', async (c) => {
   const includeInactive = c.req.query('include_inactive') === 'true';
   const conditions = [eq(drivers.orgId, orgId)];
   if (!includeInactive) conditions.push(eq(drivers.active, true));
-  const rows = await db.select().from(drivers).where(and(...conditions));
+  // Insertion order (rowid) — without an ORDER BY, editing a row can move it.
+  const rows = await db.select().from(drivers).where(and(...conditions)).orderBy(sql`rowid`);
 
   const in60Days = new Date(Date.now() + 60 * 86400_000).toISOString().slice(0, 10);
   return c.json({
@@ -72,17 +73,36 @@ driverRoutes.post('/', requireRole('office', 'manager'), async (c) => {
   return c.json(row, 201);
 });
 
+// A driver's name is their identity (trips, filters, reports all key on it),
+// so it can't be edited — only the details around it.
+const patchSchema = z.object({
+  phone: z.string().nullable().optional(),
+  licenceNo: z.string().nullable().optional(),
+  licenceExpiry: z.string().nullable().optional(),
+  credential: z.string().nullable().optional(),
+  defaultVehicle: z.string().nullable().optional()
+});
+
 driverRoutes.patch('/:id', requireRole('office', 'manager'), async (c) => {
   const auth = c.get('auth');
   const id = c.req.param('id')!;
   const body = await c.req.json().catch(() => null);
-  const parsed = createSchema.partial().safeParse(body);
+  const parsed = patchSchema.safeParse(body);
   if (!parsed.success) return c.json({ error: { code: 'validation_error', message: parsed.error.message } }, 422);
 
+  // A cleared field arrives as '' — store it as null, not an empty string.
+  const changes: Record<string, string | null> = {};
+  for (const [k, v] of Object.entries(parsed.data)) if (v !== undefined) changes[k] = v && v.trim() ? v.trim() : null;
+  if (Object.keys(changes).length === 0) return c.json({ error: { code: 'validation_error', message: 'Nothing to update' } }, 422);
+
   const db = getDb(c.env);
-  const result = await db.update(drivers).set(parsed.data).where(and(eq(drivers.id, id), eq(drivers.orgId, auth.orgId)));
+  if (changes.defaultVehicle) {
+    const [veh] = await db.select().from(vehicles).where(and(eq(vehicles.id, changes.defaultVehicle), eq(vehicles.orgId, auth.orgId))).limit(1);
+    if (!veh) return c.json({ error: { code: 'validation_error', message: `Truck ${changes.defaultVehicle} doesn't exist`, field: 'defaultVehicle' } }, 422);
+  }
+  const result = await db.update(drivers).set(changes).where(and(eq(drivers.id, id), eq(drivers.orgId, auth.orgId)));
   if (result.meta.changes === 0) return c.json({ error: { code: 'not_found', message: 'Driver not found' } }, 404);
-  await writeAudit(db, auth.orgId, 'drivers', id, 'update', parsed.data, auth.userId);
+  await writeAudit(db, auth.orgId, 'drivers', id, 'update', changes, auth.userId);
 
   const [row] = await db.select().from(drivers).where(eq(drivers.id, id)).limit(1);
   return c.json(row);

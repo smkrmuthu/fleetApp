@@ -44,6 +44,8 @@ export interface UserAccount {
   access: string;
   seen: string;
   isManager: boolean;
+  roleKey?: 'driver' | 'office' | 'manager';
+  branchId?: string;
 }
 
 // A trip can run several days with several fuel/AdBlue stops along the way —

@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Env, Vars } from '../types';
 import { getDb } from '../db';
@@ -16,7 +16,8 @@ vehicleRoutes.get('/', async (c) => {
   const includeInactive = c.req.query('include_inactive') === 'true';
   const conditions = [eq(vehicles.orgId, orgId)];
   if (!includeInactive) conditions.push(eq(vehicles.active, true));
-  const rows = await db.select().from(vehicles).where(and(...conditions));
+  // Insertion order (rowid) — without an ORDER BY, editing a row can move it.
+  const rows = await db.select().from(vehicles).where(and(...conditions)).orderBy(sql`rowid`);
 
   const in60Days = new Date(Date.now() + 60 * 86400_000).toISOString().slice(0, 10);
   return c.json({
@@ -64,6 +65,35 @@ vehicleRoutes.post('/', requireRole('office', 'manager'), async (c) => {
 
   const [row] = await db.select().from(vehicles).where(eq(vehicles.id, id)).limit(1);
   return c.json(row, 201);
+});
+
+// The registration number is the truck's identity everywhere (trips, filters,
+// reports), so it can't be edited — only the details around it.
+const patchSchema = z.object({
+  model: z.string().nullable().optional(),
+  fcDate: z.string().nullable().optional(),
+  fcRenewalDue: z.string().nullable().optional()
+});
+
+vehicleRoutes.patch('/:id', requireRole('office', 'manager'), async (c) => {
+  const auth = c.get('auth');
+  const id = c.req.param('id')!;
+  const body = await c.req.json().catch(() => null);
+  const parsed = patchSchema.safeParse(body);
+  if (!parsed.success) return c.json({ error: { code: 'validation_error', message: parsed.error.message } }, 422);
+
+  // A cleared field arrives as '' — store it as null, not an empty string.
+  const changes: Record<string, string | null> = {};
+  for (const [k, v] of Object.entries(parsed.data)) if (v !== undefined) changes[k] = v && v.trim() ? v.trim() : null;
+  if (Object.keys(changes).length === 0) return c.json({ error: { code: 'validation_error', message: 'Nothing to update' } }, 422);
+
+  const db = getDb(c.env);
+  const result = await db.update(vehicles).set(changes).where(and(eq(vehicles.id, id), eq(vehicles.orgId, auth.orgId)));
+  if (result.meta.changes === 0) return c.json({ error: { code: 'not_found', message: 'Vehicle not found' } }, 404);
+  await writeAudit(db, auth.orgId, 'vehicles', id, 'update', changes, auth.userId);
+
+  const [row] = await db.select().from(vehicles).where(eq(vehicles.id, id)).limit(1);
+  return c.json(row);
 });
 
 // Soft delete — a vehicle with existing trips is deactivated, never removed,

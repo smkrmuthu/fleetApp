@@ -118,6 +118,8 @@ const BRANCH_NAME: Record<string, string> = {
   'branch-hosur': 'Hosur'
 };
 
+export const BRANCH_OPTIONS = Object.entries(BRANCH_NAME).map(([id, name]) => ({ id, name }));
+
 // ── auth ─────────────────────────────────────────────────────────────────
 export async function login(phone: string, password: string): Promise<{ role: Role; name: string }> {
   const res = await request<{ access: string; user: { name: string; role: ApiRole } }>('/auth/password', {
@@ -160,6 +162,13 @@ export async function createVehicle(v: { id: string; model: string; fcDate: stri
   });
 }
 
+export async function updateVehicle(id: string, v: { model: string; fcDate: string; renewalDate: string }): Promise<void> {
+  await request(`/vehicles/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ model: v.model, fcDate: v.fcDate, fcRenewalDue: v.renewalDate })
+  });
+}
+
 export async function deleteVehicle(id: string): Promise<void> {
   await request(`/vehicles/${encodeURIComponent(id)}`, { method: 'DELETE' });
 }
@@ -185,6 +194,13 @@ export async function createDriver(d: { name: string; licence: string; expiry: s
   });
 }
 
+export async function updateDriver(name: string, d: { licence: string; expiry: string; vehicle: string; credential: string }): Promise<void> {
+  await request(`/drivers/${encodeURIComponent(name)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ licenceNo: d.licence, licenceExpiry: d.expiry, defaultVehicle: d.vehicle, credential: d.credential })
+  });
+}
+
 export async function deleteDriver(name: string): Promise<void> {
   await request(`/drivers/${encodeURIComponent(name)}`, { method: 'DELETE' });
 }
@@ -199,13 +215,21 @@ function userFromApi(u: ApiUser): UserAccount & { id: string } {
   return {
     id: u.id, name: u.fullName, role: roleLabel, phone: u.phone,
     branch: (u.branchId && BRANCH_NAME[u.branchId]) ?? '—',
-    access: ROLE_ACCESS[u.role], seen: formatSeen(u.lastSeenAt), isManager: u.role === 'manager'
+    access: ROLE_ACCESS[u.role], seen: formatSeen(u.lastSeenAt), isManager: u.role === 'manager',
+    roleKey: u.role, branchId: u.branchId ?? ''
   };
 }
 
 export async function fetchUsers(): Promise<(UserAccount & { id: string })[]> {
   const res = await request<{ users: ApiUser[] }>('/users');
   return res.users.map(userFromApi);
+}
+
+export async function updateUser(id: string, u: { name: string; phone: string; role: string; branchId: string }): Promise<void> {
+  await request(`/users/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ fullName: u.name, phone: u.phone, role: u.role, branchId: u.branchId })
+  });
 }
 
 export async function deleteUser(id: string): Promise<void> {

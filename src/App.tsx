@@ -233,6 +233,36 @@ export function App() {
     }
   }
 
+  async function editVehicle(id: string, v: { model: string; fcDate: string; renewalDate: string }): Promise<string | null> {
+    try {
+      await api.updateVehicle(id, v);
+      setVehicles(await api.fetchVehicles());
+      return null;
+    } catch (e) {
+      return e instanceof Error ? e.message : 'Could not save truck';
+    }
+  }
+
+  async function editDriver(name: string, d: { licence: string; expiry: string; vehicle: string; credential: string }): Promise<string | null> {
+    try {
+      await api.updateDriver(name, d);
+      setDrivers(await api.fetchDrivers());
+      return null;
+    } catch (e) {
+      return e instanceof Error ? e.message : 'Could not save driver';
+    }
+  }
+
+  async function editUser(id: string, u: { name: string; phone: string; role: string; branchId: string }): Promise<string | null> {
+    try {
+      await api.updateUser(id, u);
+      setUsers(await api.fetchUsers());
+      return null;
+    } catch (e) {
+      return e instanceof Error ? e.message : 'Could not save account';
+    }
+  }
+
   async function removeVehicle(id: string) {
     try {
       await api.deleteVehicle(id);
@@ -380,9 +410,13 @@ export function App() {
           onAddVehicle={addVehicle}
           onRemoveVehicle={removeVehicle}
           onAddDriver={addDriver}
+          onUpdateVehicle={editVehicle}
+          onUpdateDriver={editDriver}
+          onUpdateUser={editUser}
           onRemoveDriver={removeDriver}
           onRemoveUser={removeUser}
           canDeleteAccounts={role === 'Manager'}
+          canEditAccounts={role === 'Manager'}
         />
       )}
       {tab === 'schema' && <DataModel />}
