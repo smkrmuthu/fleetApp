@@ -30,6 +30,16 @@ const documentInputSchema = z.object({
   base64: z.string().min(1)
 });
 
+// A movement can only be complete once it has its loading weight and both
+// odometer readings, end above start. Returns the first thing missing.
+function completionProblem(t: { weightKg?: number | null; odoStart?: number | null; odoEnd?: number | null }): { message: string; field: string } | null {
+  if (!t.weightKg) return { message: 'Loading weight is required to complete this movement', field: 'weightKg' };
+  if (!t.odoStart) return { message: 'Odometer start is required to complete this movement', field: 'odoStart' };
+  if (!t.odoEnd) return { message: 'Odometer end is required to complete this movement', field: 'odoEnd' };
+  if (t.odoEnd <= t.odoStart) return { message: 'Odometer end must be greater than odometer start', field: 'odoEnd' };
+  return null;
+}
+
 const createTripSchema = z.object({
   id: z.string().min(1),
   vehicleId: z.string().min(1),
@@ -125,6 +135,11 @@ tripRoutes.post('/', async (c) => {
   // POST /:id/complete, which office/manager alone may call.
   const status = isDriver ? 'draft' : 'approved';
   const now = nowIso();
+
+  if (!isDriver) {
+    const problem = completionProblem(data);
+    if (problem) return c.json({ error: { code: 'validation_error', ...problem } }, 422);
+  }
 
   if (data.odoEnd != null && data.odoStart != null && data.odoEnd <= data.odoStart) {
     return c.json({ error: { code: 'validation_error', message: 'Odometer end must be greater than odometer start', field: 'odoEnd' } }, 422);
@@ -398,6 +413,14 @@ tripRoutes.patch('/:id', async (c) => {
     return c.json({ error: { code: 'validation_error', message: 'Odometer end must be greater than odometer start', field: 'odoEnd' } }, 422);
   }
 
+  if (existing.status === 'approved') {
+    const problem = completionProblem({
+      weightKg: 'weightKg' in parsed.data ? parsed.data.weightKg : existing.weightKg,
+      odoStart, odoEnd
+    });
+    if (problem) return c.json({ error: { code: 'validation_error', ...problem } }, 422);
+  }
+
   await db.update(trips).set({ ...parsed.data, updatedAt: nowIso() }).where(eq(trips.id, id));
   await writeAudit(db, auth.orgId, 'trips', id, 'update', parsed.data, auth.userId);
 
@@ -424,10 +447,8 @@ tripRoutes.post('/:id/complete', requireRole('office', 'manager'), async (c) => 
   const parsed = completeSchema.safeParse(body);
   if (!parsed.success) return c.json({ error: { code: 'validation_error', message: parsed.error.message } }, 422);
 
-  const odoStart = existing.odoStart ?? 0;
-  if (parsed.data.odoEnd <= odoStart) {
-    return c.json({ error: { code: 'validation_error', message: 'Odometer end must be greater than odometer start', field: 'odoEnd' } }, 422);
-  }
+  const problem = completionProblem({ weightKg: existing.weightKg, odoStart: existing.odoStart, odoEnd: parsed.data.odoEnd });
+  if (problem) return c.json({ error: { code: 'validation_error', ...problem } }, 422);
 
   const now = nowIso();
   await db.update(trips).set({
@@ -501,18 +522,8 @@ tripRoutes.post('/:id/approve', requireRole('office', 'manager'), async (c) => {
   if (existing.status === 'approved') {
     return c.json({ error: { code: 'invalid_state', message: 'This movement is already approved' } }, 409);
   }
-  if (existing.weightKg == null) {
-    return c.json({ error: { code: 'validation_error', message: 'Loading weight is required to complete this movement', field: 'weightKg' } }, 422);
-  }
-  if (existing.odoStart == null) {
-    return c.json({ error: { code: 'validation_error', message: 'Odometer start is required to complete this movement', field: 'odoStart' } }, 422);
-  }
-  if (existing.odoEnd == null) {
-    return c.json({ error: { code: 'validation_error', message: 'Odometer end is required to complete this movement', field: 'odoEnd' } }, 422);
-  }
-  if (existing.odoEnd <= existing.odoStart) {
-    return c.json({ error: { code: 'validation_error', message: 'Odometer end must be greater than odometer start', field: 'odoEnd' } }, 422);
-  }
+  const problem = completionProblem(existing);
+  if (problem) return c.json({ error: { code: 'validation_error', ...problem } }, 422);
 
   await db.update(trips).set({ status: 'approved', updatedAt: nowIso() }).where(and(eq(trips.id, id), eq(trips.orgId, auth.orgId)));
   await writeAudit(db, auth.orgId, 'trips', id, 'approve', {}, auth.userId);

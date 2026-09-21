@@ -31,11 +31,11 @@ interface Props {
 
 type FieldKind = 'date' | 'text' | 'tons' | 'km' | 'money';
 const FIELDS: { key: keyof TripFormState; label: string; kind: FieldKind; financial?: boolean }[] = [
+  { key: 'waybillNo', label: 'Trip number', kind: 'text' },
   { key: 'loadDate', label: 'Loading date', kind: 'date' },
   { key: 'unloadDate', label: 'Unloading date', kind: 'date' },
   { key: 'vehicle', label: 'Vehicle', kind: 'text' },
   { key: 'driver', label: 'Driver', kind: 'text' },
-  { key: 'waybillNo', label: 'Invoice no.', kind: 'text' },
   { key: 'itemNo', label: 'Item no.', kind: 'text' },
   { key: 'from', label: 'Loading location', kind: 'text' },
   { key: 'to', label: 'Unloading location', kind: 'text' },

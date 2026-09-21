@@ -21,7 +21,7 @@ function normalizeReg(v: string): string {
   return v.replace(/\s+/g, '').toUpperCase();
 }
 
-function generateInvoiceNo(vehicleId: string, loadDate: string): string {
+function generateTripNo(vehicleId: string, loadDate: string): string {
   const now = new Date();
   const pad = (n: number) => String(n).padStart(2, '0');
   // date portion follows the trip's own loading date (falls back to today if
@@ -97,7 +97,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, fuelRates
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [confirmAction, setConfirmAction] = useState<SubmitAction | null>(null);
   const [toast, setToast] = useState<string | null>(null);
-  const [invoiceTouched, setInvoiceTouched] = useState(false);
+  const [tripNoTouched, setTripNoTouched] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scanFileInputRef = useRef<HTMLInputElement>(null);
   const errorBoxRef = useRef<HTMLDivElement>(null);
@@ -124,7 +124,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, fuelRates
     return name && drivers.some((d) => d.name === name) ? name : '';
   };
 
-  // Invoice numbers follow the vehicle + loading date and keep re-deriving
+  // Trip numbers follow the vehicle + loading date and keep re-deriving
   // as either one changes — right up until the user types into the field
   // themselves, at which point their own value sticks for good.
   const onVehicleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -134,7 +134,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, fuelRates
       ...f,
       vehicle: vehicleId,
       driver: defaultDriver || f.driver,
-      waybillNo: !invoiceTouched && vehicleId ? generateInvoiceNo(vehicleId, f.loadDate) : f.waybillNo
+      waybillNo: !tripNoTouched && vehicleId ? generateTripNo(vehicleId, f.loadDate) : f.waybillNo
     }));
     setErrors({});
   };
@@ -144,13 +144,13 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, fuelRates
     setForm((f) => ({
       ...f,
       loadDate,
-      waybillNo: !invoiceTouched && f.vehicle ? generateInvoiceNo(f.vehicle, loadDate) : f.waybillNo
+      waybillNo: !tripNoTouched && f.vehicle ? generateTripNo(f.vehicle, loadDate) : f.waybillNo
     }));
     setErrors({});
   };
 
-  const onInvoiceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setInvoiceTouched(true);
+  const onTripNoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setTripNoTouched(true);
     setForm((f) => ({ ...f, waybillNo: e.target.value }));
     setErrors({});
   };
@@ -230,11 +230,11 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, fuelRates
     const errs: Record<string, string> = {};
     if (!form.vehicle) errs.vehicle = 'Select a vehicle.';
     if (!form.driver) errs.driver = 'Select a driver.';
-    if (!form.waybillNo.trim()) errs.waybillNo = 'Invoice number is required.';
+    if (!form.waybillNo.trim()) errs.waybillNo = 'Trip number is required.';
     if (completing) {
-      if (!form.tons) errs.tons = 'Loading weight is required to complete this movement.';
-      if (!form.odoStart) errs.odoStart = 'Odometer start is required to complete this movement.';
-      if (!form.odoEnd) errs.odoEnd = 'Odometer end is required to complete this movement.';
+      if (toNumber(form.tons) <= 0) errs.tons = 'Loading weight is required to complete this movement.';
+      if (toNumber(form.odoStart) <= 0) errs.odoStart = 'Odometer start is required to complete this movement.';
+      if (toNumber(form.odoEnd) <= 0) errs.odoEnd = 'Odometer end is required to complete this movement.';
     }
     if (form.odoEnd && toNumber(form.odoEnd) <= toNumber(form.odoStart)) {
       errs.odoEnd = 'Odometer end must be greater than odometer start.';
@@ -285,7 +285,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, fuelRates
     }
     setErrors({});
     setConfirmAction(null);
-    setInvoiceTouched(false);
+    setTripNoTouched(false);
   }
 
   async function onScanFileChosen(e: React.ChangeEvent<HTMLInputElement>) {
@@ -379,7 +379,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, fuelRates
                 {drivers.map((d) => <option key={d.name} value={d.name}>{d.name}</option>)}
               </select>
             </div>
-            <div className="field"><label>Invoice number *</label><input className={errorClass('waybillNo')} type="text" placeholder="Auto-generated from vehicle" value={form.waybillNo} onChange={onInvoiceChange} /></div>
+            <div className="field"><label>Trip number *</label><input className={errorClass('waybillNo')} type="text" placeholder="Auto-generated from vehicle" value={form.waybillNo} onChange={onTripNoChange} /></div>
             <div className="field"><label>Item no</label><input className="input" type="text" placeholder="ITM-0000" value={form.itemNo} onChange={set('itemNo')} /></div>
             <div className="field"><label>Loading location</label><input className="input" type="text" placeholder="Yard / factory" value={form.from} onChange={set('from')} /></div>
             <div className="field"><label>Unloading location</label><input className="input" type="text" placeholder="Warehouse / yard" value={form.to} onChange={set('to')} /></div>

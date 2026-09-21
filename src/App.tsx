@@ -187,7 +187,7 @@ export function App() {
   }
 
   async function deleteTrip(trip: Trip) {
-    if (!window.confirm(`Delete the movement for ${trip.vehicle} (invoice ${trip.waybillNo})? This cannot be undone.`)) return;
+    if (!window.confirm(`Delete the movement for ${trip.vehicle} (trip ${trip.waybillNo})? This cannot be undone.`)) return;
     try {
       await api.deleteTrip(trip.id);
       if (editingTrip?.id === trip.id) setEditingTrip(null);
