@@ -397,8 +397,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, fuelRates
               Fuel &amp; expense entries
             </div>
             <div className="field" style={{ marginBottom: 14 }}>
-              <label>Kind</label>
-              <div style={{ display: 'flex', border: '2px solid var(--color-text)', width: 'fit-content' }}>
+              <div role="group" aria-label="Kind" style={{ display: 'flex', border: '2px solid var(--color-text)', width: 'fit-content' }}>
                 {EXPENSE_KINDS.map((k, i) => (
                   <button
                     key={k}
