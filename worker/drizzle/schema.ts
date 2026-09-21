@@ -108,7 +108,9 @@ export const trips = sqliteTable(
     loadDate: text('load_date').notNull(),
     unloadDate: text('unload_date'),
     fromLoc: text('from_loc'),
+    fromNote: text('from_note'), // note on the loading point
     toLoc: text('to_loc'),
+    toNote: text('to_note'), // note on the final unloading point
     weightKg: integer('weight_kg'),
     odoStart: integer('odo_start'),
     odoEnd: integer('odo_end'),

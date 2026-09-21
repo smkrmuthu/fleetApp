@@ -284,7 +284,7 @@ interface ApiTripDocument {
 }
 interface ApiTrip {
   id: string; vehicleId: string; driverId: string | null; waybillNo: string | null; itemNo: string | null;
-  loadDate: string; unloadDate: string | null; fromLoc: string | null; toLoc: string | null; weightKg: number | null;
+  loadDate: string; unloadDate: string | null; fromLoc: string | null; fromNote?: string | null; toLoc: string | null; toNote?: string | null; weightKg: number | null;
   odoStart: number | null; odoEnd: number | null; revenuePaise: number; status: 'draft' | 'pending' | 'approved' | 'void';
   expenses: ApiTripExpense[];
   documents?: ApiTripDocument[];
@@ -296,7 +296,7 @@ function tripFromApi(t: ApiTrip): Trip {
   return {
     id: t.id, loadDate: formatDisplayDate(t.loadDate), unloadDate: formatDisplayDate(t.unloadDate),
     vehicle: t.vehicleId, driver: t.driverId ?? '—', waybillNo: t.waybillNo ?? '—', itemNo: t.itemNo ?? '—',
-    from: t.fromLoc ?? '—', to: t.toLoc ?? '—', tons: (t.weightKg ?? 0) / 1000, km: Math.max(0, (t.odoEnd ?? 0) - (t.odoStart ?? 0)),
+    from: t.fromLoc ?? '—', fromNote: t.fromNote ?? undefined, to: t.toLoc ?? '—', toNote: t.toNote ?? undefined, tons: (t.weightKg ?? 0) / 1000, km: Math.max(0, (t.odoEnd ?? 0) - (t.odoStart ?? 0)),
     odoStart: t.odoStart ?? undefined, odoEnd: t.odoEnd ?? undefined,
     revenue: paiseToRupees(t.revenuePaise), status: t.status === 'void' ? 'approved' : t.status, remarks: t.remarks ?? undefined,
     expenses: t.expenses.map((e) => ({
@@ -319,7 +319,7 @@ export async function fetchTrips(params: { vehicleId?: string; status?: string }
 
 export interface NewTripInput {
   id: string; vehicle: string; driver: string; waybillNo: string; itemNo: string; loadDate: string; unloadDate: string;
-  from: string; to: string; tons: number; odoStart: number; odoEnd: number; revenue: number; remarks?: string;
+  from: string; fromNote?: string; to: string; toNote?: string; tons: number; odoStart: number; odoEnd: number; revenue: number; remarks?: string;
   expenses: TripExpenseLine[];
   stops?: TripStop[];
   documents?: TripDocument[];
@@ -332,7 +332,7 @@ export async function createTrip(t: NewTripInput): Promise<Trip> {
     body: JSON.stringify({
       id: t.id, vehicleId: t.vehicle, driverId: orUndefined(t.driver), waybillNo: orUndefined(t.waybillNo),
       itemNo: orUndefined(t.itemNo), loadDate: t.loadDate, unloadDate: orUndefined(t.unloadDate),
-      fromLoc: orUndefined(t.from), toLoc: orUndefined(t.to), weightKg: Math.round(t.tons * 1000) || undefined,
+      fromLoc: orUndefined(t.from), fromNote: t.fromNote || undefined, toLoc: orUndefined(t.to), toNote: t.toNote || undefined, weightKg: Math.round(t.tons * 1000) || undefined,
       odoStart: t.odoStart || undefined, odoEnd: t.odoEnd || undefined, revenuePaise: rupeesToPaise(t.revenue),
       remarks: t.remarks || undefined, draft: t.draft || undefined,
       stops: (t.stops ?? []).map(stopToApi),
@@ -348,7 +348,7 @@ export async function createTrip(t: NewTripInput): Promise<Trip> {
 
 export interface TripPatchInput {
   vehicle?: string; driver?: string; waybillNo?: string; itemNo?: string; loadDate?: string; unloadDate?: string;
-  from?: string; to?: string; tons?: number; odoStart?: number; odoEnd?: number; revenue?: number; remarks?: string;
+  from?: string; fromNote?: string; to?: string; toNote?: string; tons?: number; odoStart?: number; odoEnd?: number; revenue?: number; remarks?: string;
   stops?: TripStop[]; // when present, replaces the whole ordered list
 }
 
@@ -357,8 +357,8 @@ export async function updateTrip(id: string, patch: TripPatchInput): Promise<Tri
     method: 'PATCH',
     body: JSON.stringify({
       vehicleId: patch.vehicle, driverId: orUndefined(patch.driver ?? ''), waybillNo: orUndefinedOpt(patch.waybillNo), itemNo: orNullOpt(patch.itemNo),
-      loadDate: patch.loadDate, unloadDate: orNullOpt(patch.unloadDate), fromLoc: orNullOpt(patch.from),
-      toLoc: orNullOpt(patch.to), weightKg: patch.tons != null ? Math.round(patch.tons * 1000) : undefined,
+      loadDate: patch.loadDate, unloadDate: orNullOpt(patch.unloadDate), fromLoc: orNullOpt(patch.from), fromNote: orNullOpt(patch.fromNote),
+      toLoc: orNullOpt(patch.to), toNote: orNullOpt(patch.toNote), weightKg: patch.tons != null ? Math.round(patch.tons * 1000) : undefined,
       odoStart: patch.odoStart, odoEnd: patch.odoEnd, revenuePaise: patch.revenue != null ? rupeesToPaise(patch.revenue) : undefined,
       remarks: orNullOpt(patch.remarks),
       stops: patch.stops?.map(stopToApi)

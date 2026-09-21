@@ -125,7 +125,7 @@ export function App() {
       if (action === 'create' || action === 'start') {
         await api.createTrip({
           id: trip.id, vehicle: trip.vehicle, driver: trip.driver, waybillNo: trip.waybillNo, itemNo: trip.itemNo,
-          loadDate: trip.loadDate, unloadDate: trip.unloadDate, from: trip.from, to: trip.to, tons: trip.tons,
+          loadDate: trip.loadDate, unloadDate: trip.unloadDate, from: trip.from, fromNote: trip.fromNote, to: trip.to, toNote: trip.toNote, tons: trip.tons,
           odoStart: trip.odoStart ?? 0, odoEnd: trip.odoEnd ?? 0, revenue: trip.revenue, remarks: trip.remarks,
           expenses: trip.expenses, stops: trip.stops, documents: trip.documents, draft: action === 'start'
         });
@@ -140,7 +140,7 @@ export function App() {
         const stopsChanged = stopSig(trip.stops) !== stopSig(editingTrip?.stops ?? []);
         await api.updateTrip(trip.id, {
           vehicle: trip.vehicle, driver: trip.driver, waybillNo: trip.waybillNo, itemNo: trip.itemNo, loadDate: trip.loadDate,
-          unloadDate: trip.unloadDate, from: trip.from, to: trip.to, tons: trip.tons, odoStart: trip.odoStart,
+          unloadDate: trip.unloadDate, from: trip.from, fromNote: trip.fromNote, to: trip.to, toNote: trip.toNote, tons: trip.tons, odoStart: trip.odoStart,
           odoEnd: trip.odoEnd, revenue: trip.revenue, remarks: trip.remarks,
           stops: stopsChanged ? trip.stops : undefined
         });

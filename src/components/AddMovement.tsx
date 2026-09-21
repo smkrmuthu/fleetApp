@@ -28,7 +28,7 @@ function mapFuelType(fuelType?: string): TripExpenseKind {
 function blankForm(driver = '', from = ''): TripFormState {
   return {
     loadDate: todayIso(), unloadDate: '', vehicle: '', driver,
-    waybillNo: '', itemNo: '', from, to: '', tons: '', odoStart: '', odoEnd: '',
+    waybillNo: '', itemNo: '', from, fromNote: '', to: '', toNote: '', tons: '', odoStart: '', odoEnd: '',
     revenue: '0', remarks: ''
   };
 }
@@ -37,7 +37,7 @@ export function formFromTrip(trip: Trip): TripFormState {
   const clear = (v: string) => (v === '—' ? '' : v);
   return {
     loadDate: parseDisplayDate(trip.loadDate) || todayIso(), unloadDate: parseDisplayDate(clear(trip.unloadDate)), vehicle: trip.vehicle, driver: trip.driver,
-    waybillNo: clear(trip.waybillNo), itemNo: clear(trip.itemNo), from: clear(trip.from), to: clear(trip.to),
+    waybillNo: clear(trip.waybillNo), itemNo: clear(trip.itemNo), from: clear(trip.from), fromNote: trip.fromNote ?? '', to: clear(trip.to), toNote: trip.toNote ?? '',
     tons: trip.tons ? String(trip.tons) : '', odoStart: trip.odoStart != null ? String(trip.odoStart) : '',
     odoEnd: trip.odoEnd != null ? String(trip.odoEnd) : '', revenue: String(trip.revenue ?? 0), remarks: trip.remarks ?? ''
   };
@@ -328,6 +328,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, d
       odoStart: form.odoStart ? toNumber(form.odoStart) : undefined,
       odoEnd: form.odoEnd ? toNumber(form.odoEnd) : undefined,
       revenue: toNumber(form.revenue),
+      fromNote: form.fromNote.trim(), toNote: form.toNote.trim(),
       remarks: form.remarks.trim(),
       status: editingTrip?.status ?? 'pending',
       expenses: lines,
@@ -483,7 +484,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, d
                 <span style={routeBadge('start')} aria-hidden="true">A</span>
                 <input className="input" type="text" aria-label="Loading point" placeholder="Loading point (yard / factory)" value={form.from} onChange={(e) => { setFromTouched(true); set('from')(e); }} style={{ flex: ROUTE_PLACE, minWidth: 0 }} />
                 <input className={errorClass('odoStart')} type="number" inputMode="numeric" aria-label="Odometer at start (km)" placeholder="Start odo" value={form.odoStart} onChange={set('odoStart')} style={{ flex: ROUTE_ODO, minWidth: 0 }} />
-                <span className="route-spacer" style={{ flex: ROUTE_NOTE }} />
+                <input className="input" type="text" aria-label="Loading point note" placeholder="Note (optional)" value={form.fromNote} onChange={set('fromNote')} style={{ flex: ROUTE_NOTE, minWidth: 0 }} />
                 <span className="route-spacer" style={{ width: ROUTE_ACTIONS, flex: 'none' }} />
               </div>
 
@@ -518,7 +519,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, d
                 <span style={routeBadge('end')} aria-hidden="true">B</span>
                 <input className="input" type="text" aria-label="Final unloading point" placeholder="Final unloading point (warehouse / yard)" value={form.to} onChange={set('to')} style={{ flex: ROUTE_PLACE, minWidth: 0 }} />
                 <input className={errorClass('odoEnd')} type="number" inputMode="numeric" aria-label="Odometer at trip end (km)" placeholder="End odo" value={form.odoEnd} onChange={set('odoEnd')} style={{ flex: ROUTE_ODO, minWidth: 0 }} />
-                <span className="route-spacer" style={{ flex: ROUTE_NOTE }} />
+                <input className="input" type="text" aria-label="Final unloading point note" placeholder="Note (optional)" value={form.toNote} onChange={set('toNote')} style={{ flex: ROUTE_NOTE, minWidth: 0 }} />
                 <span className="route-spacer" style={{ width: ROUTE_ACTIONS, flex: 'none' }} />
               </div>
             </div>

@@ -97,7 +97,9 @@ export interface Trip {
   waybillNo: string;
   itemNo: string;
   from: string;
+  fromNote?: string;
   to: string;
+  toNote?: string;
   tons: number;
   km: number;
   odoStart?: number;
@@ -141,7 +143,9 @@ export interface TripFormState {
   waybillNo: string;
   itemNo: string;
   from: string;
+  fromNote: string;
   to: string;
+  toNote: string;
   tons: string;
   odoStart: string;
   odoEnd: string;

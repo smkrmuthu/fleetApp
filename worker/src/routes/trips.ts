@@ -80,7 +80,9 @@ const createTripSchema = z.object({
   loadDate: z.string().min(1),
   unloadDate: z.string().optional(),
   fromLoc: z.string().optional(),
+  fromNote: z.string().trim().max(200).optional(),
   toLoc: z.string().optional(),
+  toNote: z.string().trim().max(200).optional(),
   weightKg: z.number().int().nonnegative().optional(),
   odoStart: z.number().int().nonnegative().optional(),
   odoEnd: z.number().int().nonnegative().optional(),
@@ -192,7 +194,9 @@ tripRoutes.post('/', async (c) => {
     loadDate: data.loadDate,
     unloadDate: data.unloadDate,
     fromLoc: data.fromLoc,
+    fromNote: data.fromNote,
     toLoc: data.toLoc,
+    toNote: data.toNote,
     weightKg: data.weightKg,
     odoStart: data.odoStart,
     odoEnd: data.odoEnd,
@@ -474,7 +478,7 @@ tripRoutes.patch('/:id', async (c) => {
   // Optional text fields can be cleared on edit by sending null.
   const clearable = z.string().nullable().optional();
   // stops, when present, replace the whole ordered list (checked together with the odometers below).
-  const schema = baseSchema.extend({ itemNo: clearable, unloadDate: clearable, fromLoc: clearable, toLoc: clearable, remarks: clearable, stops: z.array(stopSchema).max(MAX_STOPS).optional() });
+  const schema = baseSchema.extend({ itemNo: clearable, unloadDate: clearable, fromLoc: clearable, fromNote: clearable, toLoc: clearable, toNote: clearable, remarks: clearable, stops: z.array(stopSchema).max(MAX_STOPS).optional() });
   const parsed = schema.safeParse(body);
   if (!parsed.success) return c.json({ error: { code: 'validation_error', message: parsed.error.message } }, 422);
   if (parsed.data.driverId && parsed.data.driverId !== existing.driverId) {

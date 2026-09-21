@@ -32,7 +32,7 @@ interface Props {
 }
 
 type FieldKind = 'date' | 'text' | 'tons' | 'km' | 'money';
-const FIELDS: { key: keyof TripFormState; label: string; kind: FieldKind; financial?: boolean }[] = [
+const FIELDS: { key: keyof TripFormState; label: string; kind: FieldKind; financial?: boolean; onlyIfSet?: boolean }[] = [
   { key: 'waybillNo', label: 'Trip number', kind: 'text' },
   { key: 'loadDate', label: 'Loading date', kind: 'date' },
   { key: 'unloadDate', label: 'Unloading date', kind: 'date' },
@@ -40,7 +40,9 @@ const FIELDS: { key: keyof TripFormState; label: string; kind: FieldKind; financ
   { key: 'driver', label: 'Driver', kind: 'text' },
   { key: 'itemNo', label: 'Item no.', kind: 'text' },
   { key: 'from', label: 'Loading point', kind: 'text' },
+  { key: 'fromNote', label: 'Loading point note', kind: 'text', onlyIfSet: true },
   { key: 'to', label: 'Final unloading point', kind: 'text' },
+  { key: 'toNote', label: 'Final unloading note', kind: 'text', onlyIfSet: true },
   { key: 'tons', label: 'Loading weight', kind: 'tons' },
   { key: 'odoStart', label: 'Odometer start', kind: 'km' },
   { key: 'odoEnd', label: 'Odometer end', kind: 'km' },
@@ -89,7 +91,8 @@ export function MovementReview({ action, form, original, lines, originalLines, s
   }, [standalone]);
 
   const editing = original !== null;
-  const fields = FIELDS.filter((f) => showFinancials || !f.financial);
+  // Note rows only appear when there is a note now, or there was one before.
+  const fields = FIELDS.filter((f) => (showFinancials || !f.financial) && (!f.onlyIfSet || form[f.key] || (original && original[f.key])));
   const changedCount = editing ? fields.filter((f) => form[f.key] !== original[f.key]).length : 0;
 
   const originalLineIds = new Set(originalLines.map((l) => l.id));
