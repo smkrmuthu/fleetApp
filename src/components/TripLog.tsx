@@ -3,6 +3,8 @@ import type { DriverMaster, Role, Trip, Vehicle } from '../types';
 import { formFromTrip } from './AddMovement';
 import { MovementReview } from './MovementReview';
 import { DualScroll } from './DualScroll';
+import { exportTripLog } from '../lib/reports';
+import { useExport } from '../lib/useExport';
 import { dateInRange, formatDateRange, formatNum, rupees, tripCost } from '../utils/calc';
 
 interface Props {
@@ -31,6 +33,7 @@ export function TripLog({ trips, vehicles, drivers, vehicleFilter, driverFilter,
   const isManager = role === 'Manager';
   const showFinancials = !isDriver;
   const showActions = !isDriver;
+  const { busy: exporting, error: exportError, run: runExport } = useExport();
   const [completing, setCompleting] = useState<Trip | null>(null);
   const [completingBusy, setCompletingBusy] = useState(false);
 
@@ -74,10 +77,22 @@ export function TripLog({ trips, vehicles, drivers, vehicleFilter, driverFilter,
           <p style={{ color: 'var(--color-neutral-700)', marginTop: 6, fontSize: 13 }}>Every movement in one place — open a draft to complete it, or delete what's still open. Office and Managers can also open completed movements to view or correct them.</p>
         </div>
         {showActions && (
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button type="button" className="btn btn-secondary">Export Excel</button>
+          <div style={{ display: 'grid', gap: 6, justifyItems: 'end' }}>
+            <div style={{ display: 'flex', gap: 10 }}>
+            <button
+              type="button" className="btn btn-secondary" disabled={!!exporting}
+              onClick={() => runExport('xlsx', () => exportTripLog(
+                rows, showFinancials,
+                { from: dateFrom, to: dateTo, label: formatDateRange(dateFrom, dateTo) },
+                `Vehicle: ${vehicleFilter === 'all' ? 'all' : vehicleFilter}   Driver: ${driverFilter || 'all'}`
+              ))}
+            >
+              {exporting ? 'Preparing…' : 'Export Excel'}
+            </button>
             <button type="button" className="btn btn-secondary">Backup data</button>
             <button type="button" className="btn btn-primary" onClick={onAddMovement}>Add movement</button>
+            </div>
+            {exportError && <div role="alert" style={{ color: 'var(--color-accent-700)', fontSize: 12 }}>{exportError}</div>}
           </div>
         )}
       </div>

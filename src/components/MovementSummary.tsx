@@ -1,6 +1,8 @@
 import type { DriverMaster, MonthlyExpense, Trip, Vehicle } from '../types';
 import { aggregateByVehicle } from '../utils/aggregate';
 import { dateInRange, formatDateRange, formatNum, rupees, tripCost } from '../utils/calc';
+import { exportSummaryExcel, exportSummaryPdf, type Stat, type SummaryData } from '../lib/reports';
+import { useExport } from '../lib/useExport';
 
 interface Props {
   trips: Trip[];
@@ -41,20 +43,29 @@ export function MovementSummary({ trips, expenses, vehicles, drivers, vehicleFil
 
   const byVehicle = aggregateByVehicle(rows, expenseRows, vehicles);
 
-  const stats = [
-    { label: 'Movements', value: formatNum(rows.length), note: 'gated this month' },
-    { label: 'Vehicles', value: formatNum(byVehicle.filter((b) => b.trips).length), note: `active of ${vehicles.length}` },
-    { label: 'Total km', value: formatNum(totals.km), note: 'odometer based' },
-    { label: 'Total tons', value: formatNum(totals.tons, 1), note: 'loading weight' },
-    { label: 'Trip expense', value: rupees(totals.exp), note: 'diesel, toll, other' },
-    { label: 'Fixed costs', value: rupees(monthlyTotal), note: 'permits, insurance, EMI' },
-    { label: 'Avg ₹/km', value: totals.km ? rupees(totals.exp / totals.km) : '₹0', note: 'running cost' },
-    { label: 'Revenue', value: rupees(totals.rev), note: 'billed to consignee' },
-    { label: 'Profit', value: rupees(totals.rev - totals.exp - monthlyTotal), note: 'after monthly expenses' }
+  const avgPerKm = totals.km ? totals.exp / totals.km : 0;
+  const profit = totals.rev - totals.exp - monthlyTotal;
+  const stats: Stat[] = [
+    { label: 'Movements', value: formatNum(rows.length), raw: rows.length, fmt: 'int', note: 'gated this month' },
+    { label: 'Vehicles', value: formatNum(byVehicle.filter((b) => b.trips).length), raw: byVehicle.filter((b) => b.trips).length, fmt: 'int', note: `active of ${vehicles.length}` },
+    { label: 'Total km', value: formatNum(totals.km), raw: totals.km, fmt: 'int', note: 'odometer based' },
+    { label: 'Total tons', value: formatNum(totals.tons, 1), raw: totals.tons, fmt: 'dec', note: 'loading weight' },
+    { label: 'Trip expense', value: rupees(totals.exp), raw: totals.exp, fmt: 'money', note: 'diesel, toll, other' },
+    { label: 'Fixed costs', value: rupees(monthlyTotal), raw: monthlyTotal, fmt: 'money', note: 'permits, insurance, EMI' },
+    { label: 'Avg ₹/km', value: totals.km ? rupees(avgPerKm) : '₹0', raw: avgPerKm, fmt: 'money', note: 'running cost' },
+    { label: 'Revenue', value: rupees(totals.rev), raw: totals.rev, fmt: 'money', note: 'billed to consignee' },
+    { label: 'Profit', value: rupees(profit), raw: profit, fmt: 'money', note: 'after monthly expenses' }
   ];
 
   const rangeLabel = formatDateRange(dateFrom, dateTo);
   const filterNote = vehicleFilter === 'all' ? `All vehicles, ${rangeLabel}` : `${vehicleFilter}, ${rangeLabel}`;
+
+  const { busy, error, run } = useExport();
+  const exportData = (): SummaryData => ({
+    period: { from: dateFrom, to: dateTo, label: rangeLabel },
+    filterNote: `Vehicle: ${vehicleFilter === 'all' ? 'all' : vehicleFilter}   Driver: ${driverFilter || 'all'}`,
+    stats, byVehicle, trips: rows, expenses: expenseRows
+  });
 
   return (
     <section>
@@ -64,9 +75,16 @@ export function MovementSummary({ trips, expenses, vehicles, drivers, vehicleFil
           <h1 style={{ fontSize: 34, letterSpacing: '-0.02em' }}>Movement Summary</h1>
           <p style={{ color: 'var(--color-neutral-700)', marginTop: 6, fontSize: 13 }}>Fleet-wide totals — movements, distance, cost and profit — for the selected period.</p>
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button type="button" className="btn btn-secondary">Export Excel</button>
-          <button type="button" className="btn btn-primary">Print / Save PDF</button>
+        <div style={{ display: 'grid', gap: 6, justifyItems: 'end' }}>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button type="button" className="btn btn-secondary" disabled={!!busy} onClick={() => run('xlsx', () => exportSummaryExcel(exportData()))}>
+              {busy === 'xlsx' ? 'Preparing…' : 'Export Excel'}
+            </button>
+            <button type="button" className="btn btn-primary" disabled={!!busy} onClick={() => run('pdf', () => exportSummaryPdf(exportData()))}>
+              {busy === 'pdf' ? 'Preparing…' : 'Print / Save PDF'}
+            </button>
+          </div>
+          {error && <div role="alert" style={{ color: 'var(--color-accent-700)', fontSize: 12 }}>{error}</div>}
         </div>
       </div>
 

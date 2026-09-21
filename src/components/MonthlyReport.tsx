@@ -1,6 +1,8 @@
 import type { MonthlyExpense, Trip, Vehicle } from '../types';
 import { aggregateByVehicle } from '../utils/aggregate';
 import { dateInRange, formatDateRange, formatNum, rupees, tripCost } from '../utils/calc';
+import { exportReportExcel, exportReportPdf, type ReportData, type Stat } from '../lib/reports';
+import { useExport } from '../lib/useExport';
 
 interface Props {
   trips: Trip[];
@@ -34,12 +36,20 @@ export function MonthlyReport({ trips: allTrips, expenses: allExpenses, vehicles
   const byVehicle = aggregateByVehicle(trips, expenses, vehicles);
   const maxPerKm = Math.max(...byVehicle.map((b) => (b.km ? b.cost / b.km : 0)), 1);
 
-  const headline = [
-    { label: 'Revenue', value: rupees(totals.rev), note: `${trips.length} movements billed` },
-    { label: 'Total cost', value: rupees(totals.exp + monthlyTotal), note: 'haulage + fixed' },
-    { label: 'Profit', value: rupees(profit), note: 'before overheads', pos: profit >= 0 },
-    { label: 'Cost / ton', value: totals.tons ? rupees((totals.exp + monthlyTotal) / totals.tons) : '₹0', note: 'all-in' }
+  const totalCost = totals.exp + monthlyTotal;
+  const costPerTon = totals.tons ? totalCost / totals.tons : 0;
+  const headline: (Stat & { pos?: boolean })[] = [
+    { label: 'Revenue', value: rupees(totals.rev), raw: totals.rev, fmt: 'money', note: `${trips.length} movements billed` },
+    { label: 'Total cost', value: rupees(totalCost), raw: totalCost, fmt: 'money', note: 'haulage + fixed' },
+    { label: 'Profit', value: rupees(profit), raw: profit, fmt: 'money', note: 'before overheads', pos: profit >= 0 },
+    { label: 'Cost / ton', value: totals.tons ? rupees(costPerTon) : '₹0', raw: costPerTon, fmt: 'money', note: 'all-in' }
   ];
+
+  const { busy, error, run } = useExport();
+  const exportData = (): ReportData => ({
+    period: { from: dateFrom, to: dateTo, label: rangeLabel },
+    headline, byVehicle, trips, expenses
+  });
 
   return (
     <section>
@@ -49,9 +59,16 @@ export function MonthlyReport({ trips: allTrips, expenses: allExpenses, vehicles
           <h1 style={{ fontSize: 34, letterSpacing: '-0.02em' }}>Monthly Report</h1>
           <p style={{ color: 'var(--color-neutral-700)', marginTop: 6, fontSize: 13 }}>The full financial picture — revenue, cost, profit and per-vehicle economics.</p>
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button type="button" className="btn btn-secondary">Export Excel</button>
-          <button type="button" className="btn btn-primary">Print / Save PDF</button>
+        <div style={{ display: 'grid', gap: 6, justifyItems: 'end' }}>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button type="button" className="btn btn-secondary" disabled={!!busy} onClick={() => run('xlsx', () => exportReportExcel(exportData()))}>
+              {busy === 'xlsx' ? 'Preparing…' : 'Export Excel'}
+            </button>
+            <button type="button" className="btn btn-primary" disabled={!!busy} onClick={() => run('pdf', () => exportReportPdf(exportData()))}>
+              {busy === 'pdf' ? 'Preparing…' : 'Print / Save PDF'}
+            </button>
+          </div>
+          {error && <div role="alert" style={{ color: 'var(--color-accent-700)', fontSize: 12 }}>{error}</div>}
         </div>
       </div>
 
