@@ -17,9 +17,10 @@ export interface Vehicle {
   defaultDriver?: string;
 }
 
-export interface FuelRates {
+export interface MasterSettings {
   dieselRate: number | null;
   adblueRate: number | null;
+  loadingPoint: string | null; // where new movements start from
 }
 
 export interface DriverMaster {

@@ -1,23 +1,28 @@
 import { useEffect, useState } from 'react';
-import type { DriverMaster, FuelRates, Vehicle } from '../types';
+import type { DriverMaster, MasterSettings, Vehicle } from '../types';
 
 interface Props {
   vehicles: Vehicle[];
   drivers: DriverMaster[];
-  rates: FuelRates;
-  onSaveRates: (r: FuelRates) => Promise<string | null>;
+  settings: MasterSettings;
+  onSave: (patch: Partial<MasterSettings>) => Promise<string | null>;
   onSetDefaultDriver: (vehicleId: string, driver: string) => Promise<string | null>;
 }
 
 const fmt = (n: number | null) => (n === null ? '' : String(n));
 
-export function Master({ vehicles, drivers, rates, onSaveRates, onSetDefaultDriver }: Props) {
+export function Master({ vehicles, drivers, settings, onSave, onSetDefaultDriver }: Props) {
+  const rates = settings;
   const [diesel, setDiesel] = useState(fmt(rates.dieselRate));
   const [adblue, setAdblue] = useState(fmt(rates.adblueRate));
   const [rateError, setRateError] = useState('');
   const [rateSaved, setRateSaved] = useState(false);
   const [savingRates, setSavingRates] = useState(false);
   const [rowStatus, setRowStatus] = useState<Record<string, string>>({});
+  const [point, setPoint] = useState(settings.loadingPoint ?? '');
+  const [pointError, setPointError] = useState('');
+  const [pointSaved, setPointSaved] = useState(false);
+  const [savingPoint, setSavingPoint] = useState(false);
 
   // Rates arrive after the first render (they're fetched with everything
   // else), so the form has to follow them in.
@@ -25,6 +30,22 @@ export function Master({ vehicles, drivers, rates, onSaveRates, onSetDefaultDriv
     setDiesel(fmt(rates.dieselRate));
     setAdblue(fmt(rates.adblueRate));
   }, [rates.dieselRate, rates.adblueRate]);
+
+  useEffect(() => {
+    setPoint(settings.loadingPoint ?? '');
+  }, [settings.loadingPoint]);
+
+  const pointDirty = point.trim() !== (settings.loadingPoint ?? '');
+
+  async function savePoint() {
+    setPointError('');
+    setPointSaved(false);
+    setSavingPoint(true);
+    const err = await onSave({ loadingPoint: point.trim() || null });
+    setSavingPoint(false);
+    if (err) setPointError(err);
+    else setPointSaved(true);
+  }
 
   const dirty = diesel.trim() !== fmt(rates.dieselRate) || adblue.trim() !== fmt(rates.adblueRate);
 
@@ -46,7 +67,7 @@ export function Master({ vehicles, drivers, rates, onSaveRates, onSetDefaultDriv
     setRateError('');
     setRateSaved(false);
     setSavingRates(true);
-    const err = await onSaveRates({ dieselRate: d.value, adblueRate: a.value });
+    const err = await onSave({ dieselRate: d.value, adblueRate: a.value });
     setSavingRates(false);
     if (err) setRateError(err);
     else setRateSaved(true);
@@ -99,6 +120,28 @@ export function Master({ vehicles, drivers, rates, onSaveRates, onSetDefaultDriv
           Used as the starting rate whenever someone adds a Diesel or AdBlue entry in Add Movement. It can still be changed on an
           individual entry (a different pump, say). Entries already saved keep the rate they were saved with, so changing a
           rate here never alters past movements. Clear a box to remove that rate.
+        </p>
+      </div>
+
+      <h2 style={{ fontSize: 20, marginBottom: 12 }}>Default loading point</h2>
+      <div style={{ border: '2px solid var(--color-divider)', padding: 16, marginBottom: 30 }}>
+        <form className="filters-grid" onSubmit={(e) => { e.preventDefault(); savePoint(); }}>
+          <div className="field field-span-2">
+            <label htmlFor="default-loading-point">Loading point</label>
+            <input
+              id="default-loading-point" className="input" type="text" placeholder="e.g. Bharathi Cements" maxLength={200}
+              value={point} onChange={(e) => { setPoint(e.target.value); setPointSaved(false); }}
+            />
+          </div>
+          <button type="submit" className="btn btn-primary" style={{ justifySelf: 'start' }} disabled={!pointDirty || savingPoint}>
+            {savingPoint ? 'Saving…' : 'Save loading point'}
+          </button>
+          {pointError && <div role="alert" style={{ color: 'var(--color-accent-700)', fontSize: 13 }}>{pointError}</div>}
+          {pointSaved && !pointError && <div role="status" style={{ color: 'var(--color-profit)', fontSize: 13, fontWeight: 600 }}>Saved — new movements will start from this place.</div>}
+        </form>
+        <p style={{ color: 'var(--color-neutral-700)', fontSize: 12, marginTop: 12, marginBottom: 0, maxWidth: '74ch', lineHeight: 1.6 }}>
+          Filled in as the route's starting point (A) on every new movement. It's only a starting value — whoever adds the
+          movement can change it or erase it. Clear the box to have no default.
         </p>
       </div>
 

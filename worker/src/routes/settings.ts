@@ -10,7 +10,13 @@ import { writeAudit } from '../lib/audit';
 export const settingsRoutes = new Hono<{ Bindings: Env; Variables: Vars }>();
 settingsRoutes.use('*', requireAuth);
 
-const KEY = { dieselRate: 'diesel_rate', adblueRate: 'adblue_rate' } as const;
+const KEY = { dieselRate: 'diesel_rate', adblueRate: 'adblue_rate', loadingPoint: 'default_loading_point' } as const;
+
+function payload(rows: { key: string; value: string }[]) {
+  const byKey = new Map(rows.map((r) => [r.key, r.value]));
+  const num = (k: string) => (byKey.has(k) ? Number(byKey.get(k)) : null);
+  return { dieselRate: num(KEY.dieselRate), adblueRate: num(KEY.adblueRate), loadingPoint: byKey.get(KEY.loadingPoint) ?? null };
+}
 
 // Every role reads these — a driver logging fuel in Add Movement needs the
 // current price — but only Office/Manager change them.
@@ -18,9 +24,7 @@ settingsRoutes.get('/', async (c) => {
   const { orgId } = c.get('auth');
   const db = getDb(c.env);
   const rows = await db.select().from(settings).where(eq(settings.orgId, orgId));
-  const byKey = new Map(rows.map((r) => [r.key, r.value]));
-  const num = (k: string) => (byKey.has(k) ? Number(byKey.get(k)) : null);
-  return c.json({ dieselRate: num(KEY.dieselRate), adblueRate: num(KEY.adblueRate) });
+  return c.json(payload(rows));
 });
 
 const rate = z
@@ -31,22 +35,26 @@ const rate = z
   .nullable()
   .optional();
 
-const patchSchema = z.object({ dieselRate: rate, adblueRate: rate });
+// The place new movements start from; blank clears it.
+const loadingPoint = z.string().trim().max(200).nullable().optional();
+
+const patchSchema = z.object({ dieselRate: rate, adblueRate: rate, loadingPoint });
 
 settingsRoutes.patch('/', requireRole('office', 'manager'), async (c) => {
   const auth = c.get('auth');
   const body = await c.req.json().catch(() => null);
   const parsed = patchSchema.safeParse(body);
   if (!parsed.success) {
-    return c.json({ error: { code: 'validation_error', message: 'Enter a rate above 0, with at most 2 decimal places' } }, 422);
+    return c.json({ error: { code: 'validation_error', message: 'Rates must be above 0 with at most 2 decimal places, and the loading point at most 200 characters' } }, 422);
   }
 
   const db = getDb(c.env);
   const now = nowIso();
-  const changes: Record<string, number | null> = {};
+  const changes: Record<string, number | string | null> = {};
   for (const [field, key] of Object.entries(KEY) as [keyof typeof KEY, string][]) {
-    const v = parsed.data[field];
-    if (v === undefined) continue;
+    const raw = parsed.data[field];
+    if (raw === undefined) continue;
+    const v = raw === '' ? null : raw;
     changes[field] = v;
     if (v === null) {
       await db.delete(settings).where(and(eq(settings.orgId, auth.orgId), eq(settings.key, key)));
@@ -58,10 +66,8 @@ settingsRoutes.patch('/', requireRole('office', 'manager'), async (c) => {
     }
   }
   if (Object.keys(changes).length === 0) return c.json({ error: { code: 'validation_error', message: 'Nothing to update' } }, 422);
-  await writeAudit(db, auth.orgId, 'settings', 'rates', 'update', changes, auth.userId);
+  await writeAudit(db, auth.orgId, 'settings', 'master', 'update', changes, auth.userId);
 
   const rows = await db.select().from(settings).where(eq(settings.orgId, auth.orgId));
-  const byKey = new Map(rows.map((r) => [r.key, r.value]));
-  const num = (k: string) => (byKey.has(k) ? Number(byKey.get(k)) : null);
-  return c.json({ dieselRate: num(KEY.dieselRate), adblueRate: num(KEY.adblueRate) });
+  return c.json(payload(rows));
 });

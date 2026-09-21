@@ -196,4 +196,7 @@ input, select, textarea { font-family: var(--font-body); }
 
   .table { font-size: 13px; }
   .table th, .table td { padding: 6px; }
+
+  /* Route rows wrap on a phone: no column captions or alignment spacers */
+  .route-head, .route-spacer { display: none !important; }
 }

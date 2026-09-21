@@ -1,5 +1,5 @@
 import type {
-  AppNotification, DriverMaster, ExpenseCategory, FuelRates, MonthlyExpense, NotificationKind,
+  AppNotification, DriverMaster, ExpenseCategory, MasterSettings, MonthlyExpense, NotificationKind,
   Role, TabId, Trip, TripDocument, TripExpenseKind, TripExpenseLine, TripStop, UserAccount, Vehicle
 } from '../types';
 
@@ -460,10 +460,10 @@ export async function markAllNotificationsRead(): Promise<void> {
 }
 
 // ── master values ────────────────────────────────────────────────────────
-export async function fetchFuelRates(): Promise<FuelRates> {
-  return request<FuelRates>('/settings');
+export async function fetchMasterSettings(): Promise<MasterSettings> {
+  return request<MasterSettings>('/settings');
 }
 
-export async function updateFuelRates(r: { dieselRate?: number | null; adblueRate?: number | null }): Promise<FuelRates> {
-  return request<FuelRates>('/settings', { method: 'PATCH', body: JSON.stringify(r) });
+export async function updateMasterSettings(r: Partial<MasterSettings>): Promise<MasterSettings> {
+  return request<MasterSettings>('/settings', { method: 'PATCH', body: JSON.stringify(r) });
 }

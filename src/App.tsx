@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { AppNotification, DriverMaster, FuelRates, MonthlyExpense, Role, TabId, Trip, UserAccount, Vehicle } from './types';
+import type { AppNotification, DriverMaster, MasterSettings, MonthlyExpense, Role, TabId, Trip, UserAccount, Vehicle } from './types';
 import { DEMO_ACCOUNTS, ROLE_TABS } from './data/mockData';
 import { toIsoDate } from './utils/calc';
 import * as api from './lib/api';
@@ -38,7 +38,7 @@ export function App() {
   const [drivers, setDrivers] = useState<DriverMaster[]>([]);
   const [users, setUsers] = useState<PersonUser[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
-  const [fuelRates, setFuelRates] = useState<FuelRates>({ dieselRate: null, adblueRate: null });
+  const [master, setMaster] = useState<MasterSettings>({ dieselRate: null, adblueRate: null, loadingPoint: null });
   const [vehicleFilter, setVehicleFilter] = useState('all');
   const [driverFilter, setDriverFilter] = useState('');
   const [dateFrom, setDateFrom] = useState(() => currentMonthRange().from);
@@ -49,12 +49,12 @@ export function App() {
     setLoading(true);
     setError('');
     try {
-      const [v, d, t, e, r] = await Promise.all([api.fetchVehicles(), api.fetchDrivers(), api.fetchTrips(), api.fetchMonthlyExpenses(), api.fetchFuelRates()]);
+      const [v, d, t, e, r] = await Promise.all([api.fetchVehicles(), api.fetchDrivers(), api.fetchTrips(), api.fetchMonthlyExpenses(), api.fetchMasterSettings()]);
       setVehicles(v);
       setDrivers(d);
       setTrips(t);
       setExpenses(e);
-      setFuelRates(r);
+      setMaster(r);
       if (currentRole !== 'Driver') {
         const [u, n] = await Promise.all([api.fetchUsers(), api.fetchNotifications()]);
         setUsers(u);
@@ -253,9 +253,9 @@ export function App() {
     }
   }
 
-  async function saveFuelRates(r: FuelRates): Promise<string | null> {
+  async function saveMasterSettings(r: Partial<MasterSettings>): Promise<string | null> {
     try {
-      setFuelRates(await api.updateFuelRates(r));
+      setMaster(await api.updateMasterSettings(r));
       return null;
     } catch (e) {
       return e instanceof Error ? e.message : 'Could not save rates';
@@ -371,7 +371,7 @@ export function App() {
           driverOnly={role === 'Driver'}
           vehicles={vehicles}
           drivers={drivers}
-          fuelRates={fuelRates}
+          master={master}
           defaultDriverName={role === 'Driver' ? currentUserName : undefined}
           editingTrip={editingTrip}
           onCancelEdit={cancelEditingTrip}
@@ -445,8 +445,8 @@ export function App() {
         <Master
           vehicles={vehicles}
           drivers={drivers}
-          rates={fuelRates}
-          onSaveRates={saveFuelRates}
+          settings={master}
+          onSave={saveMasterSettings}
           onSetDefaultDriver={(vehicleId, driver) => editVehicle(vehicleId, { defaultDriver: driver })}
         />
       )}
