@@ -370,6 +370,10 @@ export async function addTripExpense(tripId: string, line: TripExpenseLine): Pro
   });
 }
 
+export async function deleteTripExpense(tripId: string, expenseId: string): Promise<void> {
+  await request(`/trips/${encodeURIComponent(tripId)}/expenses/${encodeURIComponent(expenseId)}`, { method: 'DELETE' });
+}
+
 export async function approveTrip(id: string): Promise<void> {
   await request(`/trips/${encodeURIComponent(id)}/approve`, { method: 'POST' });
 }

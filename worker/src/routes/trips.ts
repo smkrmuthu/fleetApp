@@ -265,6 +265,30 @@ tripRoutes.post('/:id/expenses', async (c) => {
   return c.json(row, 201);
 });
 
+// Removes one fuel/expense line. Same rule as adding: a driver only on their
+// own open movement, office/manager on any trip (including approved ones —
+// that's how a wrong entry on a completed movement gets corrected).
+tripRoutes.delete('/:id/expenses/:expenseId', async (c) => {
+  const auth = c.get('auth');
+  const id = c.req.param('id')!;
+  const expenseId = c.req.param('expenseId')!;
+  const db = getDb(c.env);
+
+  const [trip] = await db.select().from(trips).where(and(eq(trips.id, id), eq(trips.orgId, auth.orgId))).limit(1);
+  if (!trip) return c.json({ error: { code: 'not_found', message: 'Trip not found' } }, 404);
+  if (auth.role === 'driver' && (trip.createdBy !== auth.userId || trip.status === 'approved')) {
+    return c.json({ error: { code: 'forbidden', message: 'Can only change your own open movement' } }, 403);
+  }
+
+  const [line] = await db.select().from(tripExpenses)
+    .where(and(eq(tripExpenses.id, expenseId), eq(tripExpenses.tripId, id), eq(tripExpenses.orgId, auth.orgId))).limit(1);
+  if (!line) return c.json({ error: { code: 'not_found', message: 'Expense line not found' } }, 404);
+
+  await db.delete(tripExpenses).where(eq(tripExpenses.id, expenseId));
+  await writeAudit(db, auth.orgId, 'trip_expenses', expenseId, 'delete', { tripId: id, kind: line.kind, amountPaise: line.amountPaise }, auth.userId);
+  return c.json({ ok: true });
+});
+
 // Same ownership/open-trip rule as expense lines above: a driver can only
 // attach files to their own trip while it's still a draft.
 tripRoutes.post('/:id/documents', async (c) => {

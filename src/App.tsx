@@ -132,6 +132,7 @@ export function App() {
       } else {
         const originalIds = new Set((editingTrip?.expenses ?? []).map((e) => e.id));
         const newLines = trip.expenses.filter((e) => !originalIds.has(e.id));
+        const removedLines = (editingTrip?.expenses ?? []).filter((e) => !trip.expenses.some((l) => l.id === e.id));
         const originalDocIds = new Set((editingTrip?.documents ?? []).map((d) => d.id));
         const newDocs = trip.documents.filter((d) => !originalDocIds.has(d.id));
         const removedDocs = (editingTrip?.documents ?? []).filter((d) => !trip.documents.some((td) => td.id === d.id));
@@ -140,6 +141,9 @@ export function App() {
           unloadDate: trip.unloadDate, from: trip.from, to: trip.to, tons: trip.tons, odoStart: trip.odoStart,
           odoEnd: trip.odoEnd, revenue: trip.revenue, remarks: trip.remarks
         });
+        for (const line of removedLines) {
+          await api.deleteTripExpense(trip.id, line.id);
+        }
         for (const line of newLines) {
           await api.addTripExpense(trip.id, line);
         }

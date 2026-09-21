@@ -83,6 +83,7 @@ interface Props {
 export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, fuelRates, defaultDriverName, editingTrip, onCancelEdit }: Props) {
   const showFinancials = !driverOnly;
   const isEditing = !!editingTrip;
+  const isCompleted = editingTrip?.status === 'approved';
   const [form, setForm] = useState<TripFormState>(() => (editingTrip ? formFromTrip(editingTrip) : blankForm(defaultDriverName)));
   const [lines, setLines] = useState<TripExpenseLine[]>(() => editingTrip?.expenses ?? []);
   const [newLine, setNewLine] = useState<NewLine>(blankLine());
@@ -352,7 +353,9 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, fuelRates
         <div className="kicker">Driver or documentation resource</div>
         <h1 style={{ fontSize: 34, letterSpacing: '-0.02em' }}>{isEditing ? 'Edit Movement' : 'Add Movement'}</h1>
         <p style={{ color: 'var(--color-neutral-700)', marginTop: 6, fontSize: 13 }}>
-          {isEditing ? 'Update an open movement, add entries to it, or mark it complete.' : 'Start a new movement, or scan/enter its fuel and expense entries as you go.'}
+          {isCompleted
+            ? 'This movement is complete. Changes you save replace what is recorded and are kept in the audit log.'
+            : isEditing ? 'Update an open movement, add entries to it, or mark it complete.' : 'Start a new movement, or scan/enter its fuel and expense entries as you go.'}
         </p>
       </div>
       <div className="movement-grid">
@@ -607,8 +610,8 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, fuelRates
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, paddingTop: 16, marginTop: 16, borderTop: '2px solid var(--color-divider)' }}>
               {isEditing ? (
                 <>
-                  <button type="button" className="btn btn-primary" onClick={() => tryAction('save', false)}>Save changes</button>
-                  {!driverOnly && (
+                  <button type="button" className="btn btn-primary" onClick={() => tryAction('save', isCompleted)}>Save changes</button>
+                  {!driverOnly && !isCompleted && (
                     <button type="button" className="btn btn-secondary" onClick={() => tryAction('complete', true)}>Complete movement</button>
                   )}
                   <button type="button" className="btn btn-ghost" onClick={onCancelEdit}>Cancel edit</button>
