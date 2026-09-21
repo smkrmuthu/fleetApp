@@ -116,6 +116,9 @@ driverRoutes.delete('/:id', requireRole('office', 'manager'), async (c) => {
   const db = getDb(c.env);
   const result = await db.update(drivers).set({ active: false }).where(and(eq(drivers.id, id), eq(drivers.orgId, auth.orgId)));
   if (result.meta.changes === 0) return c.json({ error: { code: 'not_found', message: 'Driver not found' } }, 404);
+  // A removed driver can't stay a truck's default — Add Movement would
+  // pre-fill someone who's no longer in the Driver list.
+  await db.update(vehicles).set({ defaultDriver: null }).where(and(eq(vehicles.defaultDriver, id), eq(vehicles.orgId, auth.orgId)));
   await writeAudit(db, auth.orgId, 'drivers', id, 'deactivate', {}, auth.userId);
   return c.json({ ok: true });
 });

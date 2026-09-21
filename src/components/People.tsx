@@ -14,7 +14,7 @@ interface Props {
   onAddDriver: (d: DriverMaster) => Promise<string | null>;
   onRemoveDriver: (name: string) => void;
   onRemoveUser: (id: string) => void;
-  onUpdateVehicle: (id: string, v: { model: string; fcDate: string; renewalDate: string }) => Promise<string | null>;
+  onUpdateVehicle: (id: string, v: { model?: string; fcDate?: string; renewalDate?: string; defaultDriver?: string }) => Promise<string | null>;
   onUpdateDriver: (name: string, d: { licence: string; expiry: string; vehicle: string; credential: string }) => Promise<string | null>;
   onUpdateUser: (id: string, u: { name: string; phone: string; role: string; branchId: string }) => Promise<string | null>;
   canDeleteAccounts: boolean;
@@ -103,12 +103,17 @@ export function People({
         { key: 'reg', label: 'Registration no', display: v.id, value: v.id, locked: true, hint: "The registration number is how trips refer to this truck, so it can't be changed. To correct it, add the right one and delete this one." },
         { key: 'model', label: 'Model', display: v.model, value: blank(v.model) },
         { key: 'fcDate', label: 'FC date', type: 'date', display: v.fcDate, value: parseDisplayDate(v.fcDate) },
-        { key: 'renewalDate', label: 'Renewal date', type: 'date', display: v.renewalDate, value: parseDisplayDate(v.renewalDate) }
+        { key: 'renewalDate', label: 'Renewal date', type: 'date', display: v.renewalDate, value: parseDisplayDate(v.renewalDate) },
+        {
+          key: 'defaultDriver', label: 'Default driver', type: 'select', display: v.defaultDriver ?? '', value: v.defaultDriver ?? '',
+          options: [{ value: '', label: 'No default driver' }, ...drivers.map((d) => ({ value: d.name, label: d.name }))],
+          hint: 'Filled in automatically when this truck is picked in Add Movement. Also editable under Master.'
+        }
       ];
       return (
         <RecordDialog
           key={`truck-${v.id}-${dialog.edit}`} title={v.id} subtitle="Truck" fields={fields} startInEdit={dialog.edit} canEdit onClose={close}
-          onSave={(x) => onUpdateVehicle(v.id, { model: x.model, fcDate: x.fcDate, renewalDate: x.renewalDate })}
+          onSave={(x) => onUpdateVehicle(v.id, { model: x.model, fcDate: x.fcDate, renewalDate: x.renewalDate, defaultDriver: x.defaultDriver })}
         />
       );
     }

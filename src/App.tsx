@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { AppNotification, DriverMaster, MonthlyExpense, Role, TabId, Trip, UserAccount, Vehicle } from './types';
+import type { AppNotification, DriverMaster, FuelRates, MonthlyExpense, Role, TabId, Trip, UserAccount, Vehicle } from './types';
 import { DEMO_ACCOUNTS, ROLE_TABS } from './data/mockData';
 import { toIsoDate } from './utils/calc';
 import * as api from './lib/api';
@@ -11,6 +11,7 @@ import { TripLog } from './components/TripLog';
 import { MonthlyExpenses } from './components/MonthlyExpenses';
 import { MonthlyReport } from './components/MonthlyReport';
 import { People } from './components/People';
+import { Master } from './components/Master';
 import { DataModel } from './components/DataModel';
 
 type PersonUser = UserAccount & { id: string };
@@ -37,6 +38,7 @@ export function App() {
   const [drivers, setDrivers] = useState<DriverMaster[]>([]);
   const [users, setUsers] = useState<PersonUser[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [fuelRates, setFuelRates] = useState<FuelRates>({ dieselRate: null, adblueRate: null });
   const [vehicleFilter, setVehicleFilter] = useState('all');
   const [driverFilter, setDriverFilter] = useState('');
   const [dateFrom, setDateFrom] = useState(() => currentMonthRange().from);
@@ -47,11 +49,12 @@ export function App() {
     setLoading(true);
     setError('');
     try {
-      const [v, d, t, e] = await Promise.all([api.fetchVehicles(), api.fetchDrivers(), api.fetchTrips(), api.fetchMonthlyExpenses()]);
+      const [v, d, t, e, r] = await Promise.all([api.fetchVehicles(), api.fetchDrivers(), api.fetchTrips(), api.fetchMonthlyExpenses(), api.fetchFuelRates()]);
       setVehicles(v);
       setDrivers(d);
       setTrips(t);
       setExpenses(e);
+      setFuelRates(r);
       if (currentRole !== 'Driver') {
         const [u, n] = await Promise.all([api.fetchUsers(), api.fetchNotifications()]);
         setUsers(u);
@@ -233,13 +236,22 @@ export function App() {
     }
   }
 
-  async function editVehicle(id: string, v: { model: string; fcDate: string; renewalDate: string }): Promise<string | null> {
+  async function editVehicle(id: string, v: { model?: string; fcDate?: string; renewalDate?: string; defaultDriver?: string }): Promise<string | null> {
     try {
       await api.updateVehicle(id, v);
       setVehicles(await api.fetchVehicles());
       return null;
     } catch (e) {
       return e instanceof Error ? e.message : 'Could not save truck';
+    }
+  }
+
+  async function saveFuelRates(r: FuelRates): Promise<string | null> {
+    try {
+      setFuelRates(await api.updateFuelRates(r));
+      return null;
+    } catch (e) {
+      return e instanceof Error ? e.message : 'Could not save rates';
     }
   }
 
@@ -286,7 +298,9 @@ export function App() {
   async function removeDriver(name: string) {
     try {
       await api.deleteDriver(name);
-      setDrivers(await api.fetchDrivers());
+      const [d, v] = await Promise.all([api.fetchDrivers(), api.fetchVehicles()]);
+      setDrivers(d);
+      setVehicles(v);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not delete driver');
     }
@@ -350,6 +364,7 @@ export function App() {
           driverOnly={role === 'Driver'}
           vehicles={vehicles}
           drivers={drivers}
+          fuelRates={fuelRates}
           defaultDriverName={role === 'Driver' ? currentUserName : undefined}
           editingTrip={editingTrip}
           onCancelEdit={cancelEditingTrip}
@@ -417,6 +432,15 @@ export function App() {
           onRemoveUser={removeUser}
           canDeleteAccounts={role === 'Manager'}
           canEditAccounts={role === 'Manager'}
+        />
+      )}
+      {tab === 'master' && (
+        <Master
+          vehicles={vehicles}
+          drivers={drivers}
+          rates={fuelRates}
+          onSaveRates={saveFuelRates}
+          onSetDefaultDriver={(vehicleId, driver) => editVehicle(vehicleId, { defaultDriver: driver })}
         />
       )}
       {tab === 'schema' && <DataModel />}

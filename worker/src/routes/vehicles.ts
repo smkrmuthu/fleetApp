@@ -3,7 +3,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Env, Vars } from '../types';
 import { getDb } from '../db';
-import { vehicles } from '../../drizzle/schema';
+import { drivers, vehicles } from '../../drizzle/schema';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { writeAudit } from '../lib/audit';
 
@@ -72,7 +72,8 @@ vehicleRoutes.post('/', requireRole('office', 'manager'), async (c) => {
 const patchSchema = z.object({
   model: z.string().nullable().optional(),
   fcDate: z.string().nullable().optional(),
-  fcRenewalDue: z.string().nullable().optional()
+  fcRenewalDue: z.string().nullable().optional(),
+  defaultDriver: z.string().nullable().optional()
 });
 
 vehicleRoutes.patch('/:id', requireRole('office', 'manager'), async (c) => {
@@ -88,6 +89,10 @@ vehicleRoutes.patch('/:id', requireRole('office', 'manager'), async (c) => {
   if (Object.keys(changes).length === 0) return c.json({ error: { code: 'validation_error', message: 'Nothing to update' } }, 422);
 
   const db = getDb(c.env);
+  if (changes.defaultDriver) {
+    const [drv] = await db.select().from(drivers).where(and(eq(drivers.id, changes.defaultDriver), eq(drivers.orgId, auth.orgId), eq(drivers.active, true))).limit(1);
+    if (!drv) return c.json({ error: { code: 'validation_error', message: `${changes.defaultDriver} isn't an active driver`, field: 'defaultDriver' } }, 422);
+  }
   const result = await db.update(vehicles).set(changes).where(and(eq(vehicles.id, id), eq(vehicles.orgId, auth.orgId)));
   if (result.meta.changes === 0) return c.json({ error: { code: 'not_found', message: 'Vehicle not found' } }, 404);
   await writeAudit(db, auth.orgId, 'vehicles', id, 'update', changes, auth.userId);

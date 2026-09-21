@@ -8,6 +8,13 @@
       "when": 1789349992726,
       "tag": "0000_spooky_jubilee",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1789957750572,
+      "tag": "0001_master_data",
+      "breakpoints": true
     }
   ]
 }

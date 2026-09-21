@@ -1,6 +1,6 @@
 export type Role = 'Driver' | 'Office' | 'Manager';
 
-export type TabId = 'summary' | 'addtrip' | 'triplog' | 'expenses' | 'report' | 'people' | 'schema';
+export type TabId = 'summary' | 'addtrip' | 'triplog' | 'expenses' | 'report' | 'people' | 'master' | 'schema';
 
 // 'draft' is a trip a driver has started but not yet completed — a
 // multi-day trip logs fuel stops against it before Complete flips it to
@@ -13,6 +13,13 @@ export interface Vehicle {
   fcDate: string;
   renewalDate: string;
   renewalDue: boolean;
+  // '' when the truck has no default driver.
+  defaultDriver?: string;
+}
+
+export interface FuelRates {
+  dieselRate: number | null;
+  adblueRate: number | null;
 }
 
 export interface DriverMaster {

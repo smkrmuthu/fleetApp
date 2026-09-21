@@ -1,5 +1,5 @@
 import type {
-  AppNotification, DriverMaster, ExpenseCategory, MonthlyExpense, NotificationKind,
+  AppNotification, DriverMaster, ExpenseCategory, FuelRates, MonthlyExpense, NotificationKind,
   Role, TabId, Trip, TripDocument, TripExpenseKind, TripExpenseLine, UserAccount, Vehicle
 } from '../types';
 
@@ -143,11 +143,11 @@ export async function restoreSession(): Promise<{ role: Role; name: string } | n
 
 // ── vehicles ─────────────────────────────────────────────────────────────
 interface ApiVehicle {
-  id: string; model: string | null; fcDate: string | null; fcRenewalDue: string | null; renewalDue: boolean;
+  id: string; model: string | null; fcDate: string | null; fcRenewalDue: string | null; renewalDue: boolean; defaultDriver: string | null;
 }
 
 function vehicleFromApi(v: ApiVehicle): Vehicle {
-  return { id: v.id, model: v.model ?? '—', fcDate: formatDisplayDate(v.fcDate), renewalDate: formatDisplayDate(v.fcRenewalDue), renewalDue: v.renewalDue };
+  return { id: v.id, model: v.model ?? '—', fcDate: formatDisplayDate(v.fcDate), renewalDate: formatDisplayDate(v.fcRenewalDue), renewalDue: v.renewalDue, defaultDriver: v.defaultDriver ?? '' };
 }
 
 export async function fetchVehicles(): Promise<Vehicle[]> {
@@ -162,11 +162,15 @@ export async function createVehicle(v: { id: string; model: string; fcDate: stri
   });
 }
 
-export async function updateVehicle(id: string, v: { model: string; fcDate: string; renewalDate: string }): Promise<void> {
-  await request(`/vehicles/${encodeURIComponent(id)}`, {
-    method: 'PATCH',
-    body: JSON.stringify({ model: v.model, fcDate: v.fcDate, fcRenewalDue: v.renewalDate })
-  });
+export async function updateVehicle(id: string, v: { model?: string; fcDate?: string; renewalDate?: string; defaultDriver?: string }): Promise<void> {
+  // Only send what was given — the API treats a missing key as "leave alone"
+  // and '' as "clear it".
+  const body: Record<string, string> = {};
+  if (v.model !== undefined) body.model = v.model;
+  if (v.fcDate !== undefined) body.fcDate = v.fcDate;
+  if (v.renewalDate !== undefined) body.fcRenewalDue = v.renewalDate;
+  if (v.defaultDriver !== undefined) body.defaultDriver = v.defaultDriver;
+  await request(`/vehicles/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(body) });
 }
 
 export async function deleteVehicle(id: string): Promise<void> {
@@ -434,4 +438,13 @@ export async function markNotificationRead(id: string): Promise<void> {
 
 export async function markAllNotificationsRead(): Promise<void> {
   await request('/notifications/read-all', { method: 'POST' });
+}
+
+// ── master values ────────────────────────────────────────────────────────
+export async function fetchFuelRates(): Promise<FuelRates> {
+  return request<FuelRates>('/settings');
+}
+
+export async function updateFuelRates(r: { dieselRate?: number | null; adblueRate?: number | null }): Promise<FuelRates> {
+  return request<FuelRates>('/settings', { method: 'PATCH', body: JSON.stringify(r) });
 }

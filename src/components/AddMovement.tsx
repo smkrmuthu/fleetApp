@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { DriverMaster, Trip, TripDocument, TripExpenseKind, TripExpenseLine, TripFormState, Vehicle } from '../types';
+import type { DriverMaster, FuelRates, Trip, TripDocument, TripExpenseKind, TripExpenseLine, TripFormState, Vehicle } from '../types';
 import { TRIP_EXPENSE_LABEL } from '../data/mockData';
 import { dieselLitres, rupees, todayIso, toNumber } from '../utils/calc';
 import { fetchDocumentBlobUrl, parseDisplayDate, scanReceipt, type ScannedReceipt } from '../lib/api';
@@ -56,8 +56,13 @@ function formFromTrip(trip: Trip): TripFormState {
 
 type FuelEntryMode = 'litres' | 'amount';
 
-function blankLine(): { date: string; kind: TripExpenseKind; entryMode: FuelEntryMode; litres: string; ratePerLitre: string; amount: string; details: string } {
-  return { date: todayIso(), kind: 'diesel', entryMode: 'litres', litres: '', ratePerLitre: '95', amount: '0', details: '' };
+// rateOverride is null until someone types a rate of their own — until then
+// the field shows the Master rate for the chosen kind, so a rate that loads
+// late (or changes kind) is picked up instead of frozen at first render.
+interface NewLine { date: string; kind: TripExpenseKind; entryMode: FuelEntryMode; litres: string; rateOverride: string | null; amount: string; details: string }
+
+function blankLine(): NewLine {
+  return { date: todayIso(), kind: 'diesel', entryMode: 'litres', litres: '', rateOverride: null, amount: '0', details: '' };
 }
 
 const EXPENSE_KINDS: TripExpenseKind[] = ['diesel', 'adblue', 'toll', 'other'];
@@ -69,17 +74,18 @@ interface Props {
   driverOnly: boolean;
   vehicles: Vehicle[];
   drivers: DriverMaster[];
+  fuelRates: FuelRates;
   defaultDriverName?: string;
   editingTrip?: Trip | null;
   onCancelEdit?: () => void;
 }
 
-export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, defaultDriverName, editingTrip, onCancelEdit }: Props) {
+export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, fuelRates, defaultDriverName, editingTrip, onCancelEdit }: Props) {
   const showFinancials = !driverOnly;
   const isEditing = !!editingTrip;
   const [form, setForm] = useState<TripFormState>(() => (editingTrip ? formFromTrip(editingTrip) : blankForm(defaultDriverName)));
   const [lines, setLines] = useState<TripExpenseLine[]>(() => editingTrip?.expenses ?? []);
-  const [newLine, setNewLine] = useState(blankLine());
+  const [newLine, setNewLine] = useState<NewLine>(blankLine());
   const [documents, setDocuments] = useState<TripDocument[]>(() => editingTrip?.documents ?? []);
   const [scanning, setScanning] = useState(false);
   const [scanResult, setScanResult] = useState<ScannedReceipt | null>(null);
@@ -108,14 +114,24 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, defaultDr
     setErrors({});
   };
 
+  // A truck's default driver is only a starting point on a new movement — the
+  // dropdown stays editable. It isn't applied when editing a saved movement,
+  // so changing the truck there can't quietly swap who drove it.
+  const defaultDriverFor = (vehicleId: string): string => {
+    const name = vehicles.find((v) => v.id === vehicleId)?.defaultDriver;
+    return name && drivers.some((d) => d.name === name) ? name : '';
+  };
+
   // Invoice numbers follow the vehicle + loading date and keep re-deriving
   // as either one changes — right up until the user types into the field
   // themselves, at which point their own value sticks for good.
   const onVehicleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const vehicleId = e.target.value;
+    const defaultDriver = isEditing ? '' : defaultDriverFor(vehicleId);
     setForm((f) => ({
       ...f,
       vehicle: vehicleId,
+      driver: defaultDriver || f.driver,
       waybillNo: !invoiceTouched && vehicleId ? generateInvoiceNo(vehicleId, f.loadDate) : f.waybillNo
     }));
     setErrors({});
@@ -140,7 +156,9 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, defaultDr
   const needsFuelFields = newLine.kind === 'diesel' || newLine.kind === 'adblue';
   const needsDetails = newLine.kind === 'other';
   const byLitres = needsFuelFields && newLine.entryMode === 'litres';
-  const computedAmount = byLitres ? toNumber(newLine.litres) * toNumber(newLine.ratePerLitre) : toNumber(newLine.amount);
+  const masterRate = newLine.kind === 'adblue' ? fuelRates.adblueRate : fuelRates.dieselRate;
+  const rateText = newLine.rateOverride ?? (masterRate === null ? '' : String(masterRate));
+  const computedAmount = byLitres ? toNumber(newLine.litres) * toNumber(rateText) : toNumber(newLine.amount);
 
   function addLine() {
     const amount = byLitres ? computedAmount : toNumber(newLine.amount);
@@ -151,7 +169,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, defaultDr
       date: newLine.date,
       kind: newLine.kind,
       amount,
-      ...(byLitres ? { litres: toNumber(newLine.litres), ratePerLitre: toNumber(newLine.ratePerLitre) } : {}),
+      ...(byLitres ? { litres: toNumber(newLine.litres), ratePerLitre: toNumber(rateText) } : {}),
       ...(needsDetails ? { details: newLine.details.trim() } : {})
     };
     setLines((prev) => [...prev, line]);
@@ -282,7 +300,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, defaultDr
       setScanFile({ base64, mimeType, filename: file.name });
       if (!form.vehicle && result.vehicleNo) {
         const match = vehicles.find((v) => normalizeReg(v.id) === normalizeReg(result.vehicleNo!));
-        if (match) setForm((f) => ({ ...f, vehicle: match.id }));
+        if (match) setForm((f) => ({ ...f, vehicle: match.id, driver: f.driver || (isEditing ? '' : defaultDriverFor(match.id)) }));
       }
     } catch (err) {
       setScanErrorMsg(err instanceof Error ? err.message : 'Could not read the receipt — try again or enter it manually');
@@ -380,7 +398,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, defaultDr
                   <button
                     key={k}
                     type="button"
-                    onClick={() => setNewLine((l) => ({ ...l, kind: k }))}
+                    onClick={() => setNewLine((l) => ({ ...l, kind: k, rateOverride: null }))}
                     style={{
                       appearance: 'none', border: 0, borderLeft: i > 0 ? '2px solid var(--color-text)' : 'none',
                       background: newLine.kind === k ? 'var(--color-accent)' : 'transparent',
@@ -432,7 +450,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, defaultDr
                   </div>
                   <div className="field" style={{ opacity: byLitres ? 1 : 0.45 }}>
                     <label>Rate / litre (₹)</label>
-                    <input className="input" type="number" step="any" inputMode="decimal" disabled={!byLitres} value={newLine.ratePerLitre} onChange={(e) => setNewLine((l) => ({ ...l, ratePerLitre: e.target.value }))} />
+                    <input className="input" type="number" step="any" inputMode="decimal" disabled={!byLitres} placeholder="Rate" value={rateText} onChange={(e) => setNewLine((l) => ({ ...l, rateOverride: e.target.value }))} />
                   </div>
                   {byLitres ? (
                     <div>

@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { sqliteTable, text, integer, real, index, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, real, index, uniqueIndex, primaryKey } from 'drizzle-orm/sqlite-core';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Money is stored in paise (integer). Never a float — SQLite's REAL is a
@@ -63,6 +63,8 @@ export const vehicles = sqliteTable(
     fcDate: text('fc_date'),
     fcRenewalDue: text('fc_renewal_due'),
     active: integer('active', { mode: 'boolean' }).notNull().default(true),
+    // Pre-fills the Driver field in Add Movement when this truck is picked.
+    defaultDriver: text('default_driver').references((): any => drivers.id),
     customFields: text('custom_fields', { mode: 'json' }).$type<Record<string, unknown>>()
   },
   (t) => ({
@@ -238,5 +240,22 @@ export const auditLog = sqliteTable(
   },
   (t) => ({
     entityIdx: index('audit_entity').on(t.orgId, t.entity, t.entityId, t.at)
+  })
+);
+
+// Org-wide master values that other screens read (e.g. today's diesel and
+// AdBlue price per litre). One row per key so new master values don't need a
+// migration each time.
+export const settings = sqliteTable(
+  'settings',
+  {
+    orgId: text('org_id').notNull().references(() => orgs.id, { onDelete: 'cascade' }),
+    key: text('key').notNull(),
+    value: text('value').notNull(),
+    updatedAt: text('updated_at').notNull(),
+    updatedBy: text('updated_by').references(() => users.id)
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.orgId, t.key] })
   })
 );
