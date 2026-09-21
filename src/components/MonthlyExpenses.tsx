@@ -21,7 +21,8 @@ interface Props {
 
 export function MonthlyExpenses({ expenses: allExpenses, vehicles, drivers, dateFrom, dateTo, onDateFrom, onDateTo, onResetFilters, onAdd }: Props) {
   const [exp, setExp] = useState<ExpenseFormState>(() => blankExpense(vehicles[0]?.id ?? ''));
-  const expenses = allExpenses.filter((e) => dateInRange(e.date, dateFrom, dateTo));
+  const [truckFilter, setTruckFilter] = useState('all');
+  const expenses = allExpenses.filter((e) => dateInRange(e.date, dateFrom, dateTo) && (truckFilter === 'all' || e.vehicle === truckFilter));
 
   const set = (k: keyof ExpenseFormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setExp((f) => ({ ...f, [k]: e.target.value } as ExpenseFormState));
@@ -74,30 +75,39 @@ export function MonthlyExpenses({ expenses: allExpenses, vehicles, drivers, date
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 2, background: 'var(--color-divider)', border: '2px solid var(--color-divider)', marginBottom: 24 }}>
-        {Array.from(byKind.entries()).map(([label, value]) => (
-          <div key={label} style={{ background: 'var(--color-bg)', padding: '14px 16px', display: 'flex', gap: 12 }}>
-            <div style={{ width: 6, flex: 'none', background: CATEGORY_TINT[label] }} />
-            <div>
-              <div className="stat-label">{label}</div>
-              <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 22 }}>{rupees(value)}</div>
-            </div>
-          </div>
-        ))}
-      </div>
-
       <div style={{ border: '2px solid var(--color-divider)', padding: 16, marginBottom: 20 }}>
         <div className="filters-grid">
           <div className="field"><label>Date from</label><input className="input" type="date" value={dateFrom} onChange={(e) => onDateFrom(e.target.value)} /></div>
           <div className="field"><label>Date to</label><input className="input" type="date" value={dateTo} onChange={(e) => onDateTo(e.target.value)} /></div>
-          <button type="button" className="btn btn-ghost" style={{ justifySelf: 'start' }} onClick={onResetFilters}>Reset filters</button>
+          <div className="field">
+            <label>Truck no</label>
+            <select className="input" value={truckFilter} onChange={(e) => setTruckFilter(e.target.value)}>
+              <option value="all">All trucks</option>
+              {vehicles.map((v) => <option key={v.id} value={v.id}>{v.id}</option>)}
+            </select>
+          </div>
+          <button type="button" className="btn btn-ghost" style={{ justifySelf: 'start' }} onClick={() => { setTruckFilter('all'); onResetFilters(); }}>Reset filters</button>
         </div>
       </div>
+
+      {byKind.size > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', borderTop: '2px solid var(--color-divider)', borderLeft: '2px solid var(--color-divider)', marginBottom: 24 }}>
+          {Array.from(byKind.entries()).map(([label, value]) => (
+            <div key={label} style={{ background: 'var(--color-bg)', padding: '14px 16px', display: 'flex', gap: 12, borderRight: '2px solid var(--color-divider)', borderBottom: '2px solid var(--color-divider)' }}>
+              <div style={{ width: 6, flex: 'none', background: CATEGORY_TINT[label] }} />
+              <div>
+                <div className="stat-label">{label}</div>
+                <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 22 }}>{rupees(value)}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <h2 style={{ fontSize: 20, marginBottom: 12 }}>Monthly Expenses Log</h2>
       {expenses.length === 0 ? (
         <div style={{ border: '2px solid var(--color-divider)', padding: 16, color: 'var(--color-neutral-700)' }}>
-          No expenses recorded for this date range.
+          {truckFilter === 'all' ? 'No expenses recorded for this date range.' : `No expenses recorded for ${truckFilter} in this date range.`}
         </div>
       ) : (
       <div className="scroll-x" style={{ border: '2px solid var(--color-divider)' }}>
