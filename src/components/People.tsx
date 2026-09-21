@@ -7,9 +7,9 @@ interface Props {
   vehicles: Vehicle[];
   drivers: DriverMaster[];
   users: (UserAccount & { id: string })[];
-  onAddVehicle: (v: Vehicle) => void;
+  onAddVehicle: (v: Vehicle) => Promise<string | null>;
   onRemoveVehicle: (id: string) => void;
-  onAddDriver: (d: DriverMaster) => void;
+  onAddDriver: (d: DriverMaster) => Promise<string | null>;
   onRemoveDriver: (name: string) => void;
   onRemoveUser: (id: string) => void;
   canDeleteAccounts: boolean;
@@ -20,22 +20,33 @@ export function People({
 }: Props) {
   const [newVehicle, setNewVehicle] = useState({ id: '', model: '', fcDate: '', renewalDate: '' });
   const [newDriver, setNewDriver] = useState({ name: '', licence: '', expiry: '', vehicle: vehicles[0]?.id ?? '' });
+  const [vehicleError, setVehicleError] = useState('');
+  const [driverError, setDriverError] = useState('');
 
-  function addVehicle() {
-    if (!newVehicle.id.trim()) return;
-    onAddVehicle({
+  async function addVehicle() {
+    if (!newVehicle.id.trim()) {
+      setVehicleError('Enter the truck\'s registration number.');
+      return;
+    }
+    setVehicleError('');
+    const err = await onAddVehicle({
       id: newVehicle.id.trim(),
       model: newVehicle.model.trim() || '—',
       fcDate: newVehicle.fcDate || '—',
       renewalDate: newVehicle.renewalDate || '—',
       renewalDue: false
     });
-    setNewVehicle({ id: '', model: '', fcDate: '', renewalDate: '' });
+    if (err) setVehicleError(err);
+    else setNewVehicle({ id: '', model: '', fcDate: '', renewalDate: '' });
   }
 
-  function addDriver() {
-    if (!newDriver.name.trim()) return;
-    onAddDriver({
+  async function addDriver() {
+    if (!newDriver.name.trim()) {
+      setDriverError('Enter the driver\'s name.');
+      return;
+    }
+    setDriverError('');
+    const err = await onAddDriver({
       name: newDriver.name.trim(),
       licence: newDriver.licence.trim() || '—',
       expiry: newDriver.expiry || '—',
@@ -43,7 +54,8 @@ export function People({
       vehicle: newDriver.vehicle || '—',
       credential: '—'
     });
-    setNewDriver({ name: '', licence: '', expiry: '', vehicle: vehicles[0]?.id ?? '' });
+    if (err) setDriverError(err);
+    else setNewDriver({ name: '', licence: '', expiry: '', vehicle: vehicles[0]?.id ?? '' });
   }
 
   const driverRows = drivers.map((d) => {
@@ -118,6 +130,7 @@ export function People({
           <div className="field"><label>FC date</label><input className="input" type="date" value={newVehicle.fcDate} onChange={(e) => setNewVehicle((v) => ({ ...v, fcDate: e.target.value }))} /></div>
           <div className="field"><label>Renewal date</label><input className="input" type="date" value={newVehicle.renewalDate} onChange={(e) => setNewVehicle((v) => ({ ...v, renewalDate: e.target.value }))} /></div>
           <button type="button" className="btn btn-primary" style={{ justifySelf: 'start' }} onClick={addVehicle}>Add truck</button>
+          {vehicleError && <div role="alert" style={{ color: 'var(--color-accent-700)', fontSize: 13 }}>{vehicleError}</div>}
         </div>
       </div>
       <div className="scroll-x" style={{ border: '2px solid var(--color-divider)', marginBottom: 30 }}>
@@ -159,6 +172,7 @@ export function People({
             </select>
           </div>
           <button type="button" className="btn btn-primary" style={{ justifySelf: 'start' }} onClick={addDriver}>Add driver</button>
+          {driverError && <div role="alert" style={{ color: 'var(--color-accent-700)', fontSize: 13 }}>{driverError}</div>}
         </div>
       </div>
       <div className="scroll-x" style={{ border: '2px solid var(--color-divider)' }}>

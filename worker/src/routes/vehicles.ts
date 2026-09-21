@@ -42,9 +42,25 @@ vehicleRoutes.post('/', requireRole('office', 'manager'), async (c) => {
   // The registration number *is* the id — every screen already treats a
   // vehicle's plate number as its identity, so a separate surrogate id
   // would just be a join everyone has to remember to do.
-  const id = parsed.data.regNo;
-  await db.insert(vehicles).values({ id, orgId: auth.orgId, active: true, ...parsed.data });
-  await writeAudit(db, auth.orgId, 'vehicles', id, 'insert', parsed.data, auth.userId);
+  const id = parsed.data.regNo.trim();
+  const [existing] = await db.select().from(vehicles).where(eq(vehicles.id, id)).limit(1);
+  if (existing && (existing.orgId !== auth.orgId || existing.active)) {
+    return c.json({ error: { code: 'conflict', message: `A truck with registration ${id} already exists` } }, 409);
+  }
+  if (existing) {
+    // Deleting a truck only deactivates it, so adding the same registration
+    // again brings the old record back rather than colliding with it.
+    await db.update(vehicles).set({
+      active: true,
+      model: parsed.data.model ?? existing.model,
+      fcDate: parsed.data.fcDate ?? existing.fcDate,
+      fcRenewalDue: parsed.data.fcRenewalDue ?? existing.fcRenewalDue
+    }).where(eq(vehicles.id, id));
+    await writeAudit(db, auth.orgId, 'vehicles', id, 'reactivate', parsed.data, auth.userId);
+  } else {
+    await db.insert(vehicles).values({ ...parsed.data, id, regNo: id, orgId: auth.orgId, active: true });
+    await writeAudit(db, auth.orgId, 'vehicles', id, 'insert', parsed.data, auth.userId);
+  }
 
   const [row] = await db.select().from(vehicles).where(eq(vehicles.id, id)).limit(1);
   return c.json(row, 201);

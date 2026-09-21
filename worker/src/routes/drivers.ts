@@ -46,9 +46,27 @@ driverRoutes.post('/', requireRole('office', 'manager'), async (c) => {
   // same simplification already made for vehicles/reg_no. Names colliding
   // across a large roster is the real risk this trades away; a surrogate
   // id plus a display name is the fix if that ever bites.
-  const id = parsed.data.fullName;
-  await db.insert(drivers).values({ id, orgId: auth.orgId, active: true, ...parsed.data });
-  await writeAudit(db, auth.orgId, 'drivers', id, 'insert', parsed.data, auth.userId);
+  const id = parsed.data.fullName.trim();
+  const [existing] = await db.select().from(drivers).where(eq(drivers.id, id)).limit(1);
+  if (existing && (existing.orgId !== auth.orgId || existing.active)) {
+    return c.json({ error: { code: 'conflict', message: `A driver named ${id} already exists` } }, 409);
+  }
+  if (existing) {
+    // Deleting a driver only deactivates them, so adding the same name again
+    // brings the old record back rather than colliding with it.
+    await db.update(drivers).set({
+      active: true,
+      phone: parsed.data.phone ?? existing.phone,
+      licenceNo: parsed.data.licenceNo ?? existing.licenceNo,
+      licenceExpiry: parsed.data.licenceExpiry ?? existing.licenceExpiry,
+      credential: parsed.data.credential ?? existing.credential,
+      defaultVehicle: parsed.data.defaultVehicle ?? existing.defaultVehicle
+    }).where(eq(drivers.id, id));
+    await writeAudit(db, auth.orgId, 'drivers', id, 'reactivate', parsed.data, auth.userId);
+  } else {
+    await db.insert(drivers).values({ ...parsed.data, id, fullName: id, orgId: auth.orgId, active: true });
+    await writeAudit(db, auth.orgId, 'drivers', id, 'insert', parsed.data, auth.userId);
+  }
 
   const [row] = await db.select().from(drivers).where(eq(drivers.id, id)).limit(1);
   return c.json(row, 201);

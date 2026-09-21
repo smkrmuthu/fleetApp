@@ -220,12 +220,16 @@ export function App() {
     }
   }
 
-  async function addVehicle(vehicle: Vehicle) {
+  // Add-truck / add-driver report failures back to the form itself (returned
+  // as a message) rather than the page-top banner, which sits off-screen
+  // while someone is filling in a form further down the People page.
+  async function addVehicle(vehicle: Vehicle): Promise<string | null> {
     try {
       await api.createVehicle(vehicle);
       setVehicles(await api.fetchVehicles());
+      return null;
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not add truck');
+      return e instanceof Error ? e.message : 'Could not add truck';
     }
   }
 
@@ -239,12 +243,13 @@ export function App() {
     }
   }
 
-  async function addDriver(driver: DriverMaster) {
+  async function addDriver(driver: DriverMaster): Promise<string | null> {
     try {
       await api.createDriver(driver);
       setDrivers(await api.fetchDrivers());
+      return null;
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not add driver');
+      return e instanceof Error ? e.message : 'Could not add driver';
     }
   }
 
