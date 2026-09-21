@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { DriverMaster, Role, Trip, Vehicle } from '../types';
 import { formFromTrip } from './AddMovement';
 import { MovementReview } from './MovementReview';
+import { DualScroll } from './DualScroll';
 import { dateInRange, formatDateRange, formatNum, rupees, tripCost } from '../utils/calc';
 
 interface Props {
@@ -110,11 +111,11 @@ export function TripLog({ trips, vehicles, drivers, vehicleFilter, driverFilter,
           No movements match the selected filters.
         </div>
       ) : (
-        <div className="scroll-x" style={{ border: '2px solid var(--color-divider)' }}>
+        <DualScroll>
           <table className="table" style={{ minWidth: 1680 }}>
             <thead>
               <tr>
-                <th>Trip No.</th><th>Gated</th><th>Item</th><th>Vehicle</th><th>Driver</th><th>Route</th>
+                <th className="col-first">Trip No.</th><th>Gated</th><th>Item</th><th>Vehicle</th><th>Driver</th><th>Route</th>
                 <th style={{ textAlign: 'right' }}>Tons</th><th style={{ textAlign: 'right' }}>KM</th><th style={{ textAlign: 'right' }}>Diesel</th>
                 <th style={{ textAlign: 'right' }}>AdBlue</th><th style={{ textAlign: 'right' }}>Toll</th><th style={{ textAlign: 'right' }}>Other</th><th style={{ textAlign: 'right' }}>Expense</th>
                 {showFinancials && <th style={{ textAlign: 'right' }}>Revenue</th>}
@@ -128,7 +129,7 @@ export function TripLog({ trips, vehicles, drivers, vehicleFilter, driverFilter,
                 const c = tripCost(t);
                 return (
                   <tr key={t.id}>
-                    <td style={{ fontFamily: 'ui-monospace, monospace', fontSize: 12, whiteSpace: 'nowrap', fontWeight: 600 }}>{t.waybillNo}</td>
+                    <td className="col-first" style={{ fontFamily: 'ui-monospace, monospace', fontSize: 12, whiteSpace: 'nowrap', fontWeight: 600 }}>{t.waybillNo}</td>
                     <td style={{ whiteSpace: 'nowrap' }}>{t.loadDate} → {t.unloadDate}</td>
                     <td style={{ fontFamily: 'ui-monospace, monospace', fontSize: 12, whiteSpace: 'nowrap', color: 'var(--color-neutral-700)' }}>{t.itemNo}</td>
                     <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{t.vehicle}</td>
@@ -189,7 +190,7 @@ export function TripLog({ trips, vehicles, drivers, vehicleFilter, driverFilter,
               })}
             </tbody>
           </table>
-        </div>
+        </DualScroll>
       )}
 
       {completing && (() => {

@@ -120,6 +120,11 @@ input, select, textarea { font-family: var(--font-body); }
   padding: var(--space-2);
   border-bottom: 1px solid var(--color-divider);
 }
+/* First column that stays in view while a wide table scrolls sideways. */
+.table th.col-first, .table td.col-first {
+  position: sticky; left: 0; z-index: 1; background: var(--color-bg);
+  box-shadow: 10px 0 8px -8px color-mix(in srgb, var(--color-text) 22%, transparent);
+}
 /* Row-action column that stays in view while a wide table scrolls sideways. */
 .table th.col-actions, .table td.col-actions {
   position: sticky; right: 0; background: var(--color-bg);
@@ -146,6 +151,20 @@ input, select, textarea { font-family: var(--font-body); }
 .field-span-2 { grid-column: span 2; }
 
 .scroll-x { overflow-x: auto; }
+
+/* Second scrollbar above a wide table (see DualScroll). It stays pinned to the
+   top of the screen while a long table scrolls beneath it. */
+.scroll-top {
+  overflow-x: auto; overflow-y: hidden; height: 16px;
+  position: sticky; top: 0; z-index: 5;
+  background: var(--color-bg);
+  border: 2px solid var(--color-divider); border-bottom: 0;
+}
+/* Always-visible scrollbars (macOS otherwise hides them until you scroll) */
+.scroll-top::-webkit-scrollbar, .scroll-body::-webkit-scrollbar { height: 12px; }
+.scroll-top::-webkit-scrollbar-track, .scroll-body::-webkit-scrollbar-track { background: var(--color-neutral-200); }
+.scroll-top::-webkit-scrollbar-thumb, .scroll-body::-webkit-scrollbar-thumb { background: var(--color-neutral-600); border-radius: 0; }
+.scroll-top::-webkit-scrollbar-thumb:hover, .scroll-body::-webkit-scrollbar-thumb:hover { background: var(--color-neutral-800); }
 
 .app-shell-main { padding: 24px; max-width: 1680px; margin: 0 auto; }
 .app-shell-bar { padding: 14px 24px; }
@@ -196,6 +215,9 @@ input, select, textarea { font-family: var(--font-body); }
 
   .table { font-size: 13px; }
   .table th, .table td { padding: 6px; }
+
+  /* No frozen column on a phone — it would take half the screen */
+  .table th.col-first, .table td.col-first { position: static; box-shadow: none; }
 
   /* Route rows wrap on a phone: no column captions or alignment spacers */
   .route-head, .route-spacer { display: none !important; }
