@@ -39,7 +39,7 @@ export function TripLog({ trips, vehicles, drivers, vehicleFilter, driverFilter,
         <div>
           <div className="kicker">{rows.length} movements · {formatDateRange(dateFrom, dateTo)}</div>
           <h1 style={{ fontSize: 34, letterSpacing: '-0.02em' }}>Trip Log</h1>
-          <p style={{ color: 'var(--color-neutral-700)', marginTop: 6, fontSize: 13 }}>Every movement in one place — open a draft to complete it, or delete what's still open. Managers can also open completed movements to view or correct them.</p>
+          <p style={{ color: 'var(--color-neutral-700)', marginTop: 6, fontSize: 13 }}>Every movement in one place — open a draft to complete it, or delete what's still open. Office and Managers can also open completed movements to view or correct them.</p>
         </div>
         {showActions && (
           <div style={{ display: 'flex', gap: 10 }}>
@@ -142,7 +142,7 @@ export function TripLog({ trips, vehicles, drivers, vehicleFilter, driverFilter,
                       ) : (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <span className="tag tag-outline">Approved</span>
-                          {isManager && (
+                          {(isOffice || isManager) && (
                             <button type="button" className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => onEdit(t)}>
                               View / Edit
                             </button>
