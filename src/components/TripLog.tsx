@@ -1,11 +1,95 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import type { DriverMaster, Role, Trip, Vehicle } from '../types';
 import { formFromTrip } from './AddMovement';
 import { MovementReview } from './MovementReview';
 import { DualScroll } from './DualScroll';
 import { exportTripLog } from '../lib/reports';
 import { useExport } from '../lib/useExport';
+import { TRIP_EXPENSE_LABEL } from '../data/mockData';
 import { dateInRange, formatDateRange, formatNum, rupees, tripCost } from '../utils/calc';
+
+const DETAIL_COLUMNS = 8; // Trip No., Start date, Vehicle, Driver, Route, Tons, KM, Status
+
+// Everything that used to sit in its own column — item no., the fuel/expense
+// breakdown, revenue/profit, odometer, docs, remarks — now lives here,
+// opened per trip instead of stretching the table sideways for everyone.
+function TripDetail({ t, showFinancials }: { t: Trip; showFinancials: boolean }) {
+  const c = tripCost(t);
+  const dash = (v: string) => (v === '—' ? '' : v);
+  const stat = (label: string, value: string) => (
+    <div>
+      <div className="stat-label" style={{ marginBottom: 2 }}>{label}</div>
+      <div style={{ fontWeight: 600 }}>{value}</div>
+    </div>
+  );
+  return (
+    <tr>
+      <td colSpan={DETAIL_COLUMNS} style={{ background: 'var(--color-surface)', padding: '16px 20px 20px' }}>
+        <div style={{ display: 'grid', gap: 18 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 14 }}>
+            {stat('Trip no.', t.waybillNo)}
+            {stat('Unloading date', t.unloadDate)}
+            {stat('Item no.', dash(t.itemNo) || '—')}
+            {stat('Odometer', t.odoStart != null && t.odoEnd != null ? `${formatNum(t.odoStart)} → ${formatNum(t.odoEnd)} km` : '—')}
+            {stat('Diesel', rupees(c.diesel))}
+            {stat('AdBlue', c.adblue ? rupees(c.adblue) : '—')}
+            {stat('Toll', rupees(c.toll))}
+            {stat('Other', rupees(c.other))}
+            {stat('Trip expense', rupees(c.expense))}
+            {showFinancials && stat('Revenue', rupees(t.revenue))}
+            {showFinancials && stat('Profit', rupees(c.profit))}
+            {stat('Documents', t.documents.length ? String(t.documents.length) : '—')}
+          </div>
+
+          <div>
+            <div className="stat-label" style={{ marginBottom: 6 }}>Route</div>
+            <div style={{ display: 'grid', gap: 4, fontSize: 13 }}>
+              <div><strong>A</strong> — {dash(t.from) || '—'}{t.fromNote && <span style={{ color: 'var(--color-neutral-700)' }}> ({t.fromNote})</span>}</div>
+              {t.stops.map((st, i) => (
+                <div key={st.id}>
+                  <strong>{i + 1}</strong> — {st.location}{st.odo ? ` · ${formatNum(st.odo)} km` : ''}{st.note && <span style={{ color: 'var(--color-neutral-700)' }}> ({st.note})</span>}
+                </div>
+              ))}
+              <div><strong>B</strong> — {dash(t.to) || '—'}{t.toNote && <span style={{ color: 'var(--color-neutral-700)' }}> ({t.toNote})</span>}</div>
+            </div>
+          </div>
+
+          {t.expenses.length > 0 && (
+            <div>
+              <div className="stat-label" style={{ marginBottom: 6 }}>Fuel &amp; expense entries</div>
+              <div style={{ display: 'grid', gap: 3, fontSize: 13 }}>
+                {t.expenses.map((l) => (
+                  <div key={l.id} style={{ color: 'var(--color-neutral-700)' }}>
+                    {l.date} — {TRIP_EXPENSE_LABEL[l.kind]}
+                    {l.litres != null ? ` · ${l.litres} L${l.ratePerLitre != null ? ` × ₹${l.ratePerLitre}` : ''}` : ''}
+                    {l.details ? ` — ${l.details}` : ''}
+                    {' — '}<strong style={{ color: 'var(--color-text)' }}>{rupees(l.amount)}</strong>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {t.documents.length > 0 && (
+            <div>
+              <div className="stat-label" style={{ marginBottom: 6 }}>Documents</div>
+              <div style={{ display: 'grid', gap: 2, fontSize: 13, color: 'var(--color-neutral-700)' }}>
+                {t.documents.map((d) => <div key={d.id}>{d.filename}</div>)}
+              </div>
+            </div>
+          )}
+
+          {dash(t.remarks ?? '') && (
+            <div>
+              <div className="stat-label" style={{ marginBottom: 4 }}>Remarks</div>
+              <div style={{ fontSize: 13 }}>{t.remarks}</div>
+            </div>
+          )}
+        </div>
+      </td>
+    </tr>
+  );
+}
 
 interface Props {
   trips: Trip[];
@@ -37,6 +121,16 @@ export function TripLog({ trips, vehicles, drivers, vehicleFilter, driverFilter,
   const { busy: exporting, error: exportError, run: runExport } = useExport();
   const [completing, setCompleting] = useState<Trip | null>(null);
   const [completingBusy, setCompletingBusy] = useState(false);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  function toggleExpanded(id: string) {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   useEffect(() => {
     if (!completing) return;
@@ -130,80 +224,77 @@ export function TripLog({ trips, vehicles, drivers, vehicleFilter, driverFilter,
         </div>
       ) : (
         <DualScroll>
-          <table className="table" style={{ minWidth: 1680 }}>
+          <table className="table" style={{ minWidth: 1180 }}>
             <thead>
               <tr>
-                <th className="col-first">Trip No.</th><th>Gated</th><th>Item</th><th>Vehicle</th><th>Driver</th><th>Route</th>
-                <th style={{ textAlign: 'right' }}>Tons</th><th style={{ textAlign: 'right' }}>KM</th><th style={{ textAlign: 'right' }}>Diesel</th>
-                <th style={{ textAlign: 'right' }}>AdBlue</th><th style={{ textAlign: 'right' }}>Toll</th><th style={{ textAlign: 'right' }}>Other</th><th style={{ textAlign: 'right' }}>Expense</th>
-                {showFinancials && <th style={{ textAlign: 'right' }}>Revenue</th>}
-                {showFinancials && <th style={{ textAlign: 'right' }}>Profit</th>}
-                <th>Docs</th>
+                <th className="col-first">Trip No.</th><th>Start date</th><th>Vehicle</th><th>Driver</th><th>Route</th>
+                <th style={{ textAlign: 'right' }}>Tons</th><th style={{ textAlign: 'right' }}>KM</th>
                 <th>Status</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((t) => {
-                const c = tripCost(t);
+                const isOpen = expanded.has(t.id);
                 return (
-                  <tr key={t.id}>
-                    <td className="col-first" style={{ fontFamily: 'ui-monospace, monospace', fontSize: 12, whiteSpace: 'nowrap', fontWeight: 600 }}>{t.waybillNo}</td>
-                    <td style={{ whiteSpace: 'nowrap' }}>{t.loadDate} → {t.unloadDate}</td>
-                    <td style={{ fontFamily: 'ui-monospace, monospace', fontSize: 12, whiteSpace: 'nowrap', color: 'var(--color-neutral-700)' }}>{t.itemNo}</td>
-                    <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{t.vehicle}</td>
-                    <td>{t.driver}</td>
-                    <td style={{ color: 'var(--color-neutral-700)', whiteSpace: 'nowrap' }}>
-                      {[t.from, ...t.stops.map((st) => st.location), t.to].join(' → ')}
-                      {t.stops.length > 0 && <span style={{ marginLeft: 6, fontSize: 11 }}>({t.stops.length} {t.stops.length === 1 ? 'stop' : 'stops'})</span>}
-                    </td>
-                    <td style={{ textAlign: 'right' }}>{formatNum(t.tons, 1)}</td>
-                    <td style={{ textAlign: 'right' }}>{formatNum(t.km)}</td>
-                    <td style={{ textAlign: 'right' }}>{rupees(c.diesel)}</td>
-                    <td style={{ textAlign: 'right' }}>{c.adblue ? rupees(c.adblue) : '—'}</td>
-                    <td style={{ textAlign: 'right' }}>{rupees(c.toll)}</td>
-                    <td style={{ textAlign: 'right' }}>{rupees(c.other)}</td>
-                    <td style={{ textAlign: 'right' }}>{rupees(c.expense)}</td>
-                    {showFinancials && <td style={{ textAlign: 'right' }}>{rupees(t.revenue)}</td>}
-                    {showFinancials && (
-                      <td style={{ textAlign: 'right' }}>
-                        <span style={{ color: c.profit >= 0 ? 'var(--color-profit)' : 'var(--color-accent-700)', fontWeight: 700 }}>{rupees(c.profit)}</span>
+                  <Fragment key={t.id}>
+                    <tr>
+                      <td className="col-first" style={{ whiteSpace: 'nowrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <button
+                            type="button" className="btn btn-ghost" onClick={() => toggleExpanded(t.id)}
+                            aria-expanded={isOpen} aria-label={`${isOpen ? 'Hide' : 'Show'} details for ${t.waybillNo}`}
+                            style={{ padding: '2px 6px', fontSize: 12, lineHeight: 1 }}
+                          >
+                            {isOpen ? '▾' : '▸'}
+                          </button>
+                          <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: 12, fontWeight: 600 }}>{t.waybillNo}</span>
+                        </div>
                       </td>
-                    )}
-                    <td style={{ textAlign: 'right', color: 'var(--color-neutral-700)' }}>{t.documents.length || '—'}</td>
-                    <td style={{ whiteSpace: 'nowrap' }}>
-                      {t.status !== 'approved' ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span className={t.status === 'pending' ? 'tag tag-accent' : 'tag tag-outline'}>
-                            {t.status === 'pending' ? 'Pending' : 'Draft'}
-                          </span>
-                          {(isDriver || isOffice || isManager) && (
-                            <button type="button" className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => onEdit(t)}>
-                              Edit
-                            </button>
-                          )}
-                          {!isDriver && (
-                            <button type="button" className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => setCompleting(t)}>
-                              Complete Trip
-                            </button>
-                          )}
-                          {(t.status === 'draft' || !isDriver) && (
-                            <button type="button" className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 12, color: 'var(--color-accent-700)' }} onClick={() => onDelete(t)}>
-                              Delete
-                            </button>
-                          )}
-                        </div>
-                      ) : (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span className="tag tag-outline">Approved</span>
-                          {(isOffice || isManager) && (
-                            <button type="button" className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => onEdit(t)}>
-                              View / Edit
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </td>
-                  </tr>
+                      <td style={{ whiteSpace: 'nowrap' }}>{t.loadDate}</td>
+                      <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{t.vehicle}</td>
+                      <td>{t.driver}</td>
+                      <td style={{ color: 'var(--color-neutral-700)', whiteSpace: 'nowrap' }}>
+                        {[t.from, ...t.stops.map((st) => st.location), t.to].join(' → ')}
+                        {t.stops.length > 0 && <span style={{ marginLeft: 6, fontSize: 11 }}>({t.stops.length} {t.stops.length === 1 ? 'stop' : 'stops'})</span>}
+                      </td>
+                      <td style={{ textAlign: 'right' }}>{formatNum(t.tons, 1)}</td>
+                      <td style={{ textAlign: 'right' }}>{formatNum(t.km)}</td>
+                      <td style={{ whiteSpace: 'nowrap' }}>
+                        {t.status !== 'approved' ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span className={t.status === 'pending' ? 'tag tag-accent' : 'tag tag-outline'}>
+                              {t.status === 'pending' ? 'Pending' : 'Draft'}
+                            </span>
+                            {(isDriver || isOffice || isManager) && (
+                              <button type="button" className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => onEdit(t)}>
+                                Edit
+                              </button>
+                            )}
+                            {!isDriver && (
+                              <button type="button" className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => setCompleting(t)}>
+                                Complete Trip
+                              </button>
+                            )}
+                            {(t.status === 'draft' || !isDriver) && (
+                              <button type="button" className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 12, color: 'var(--color-accent-700)' }} onClick={() => onDelete(t)}>
+                                Delete
+                              </button>
+                            )}
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span className="tag tag-outline">Approved</span>
+                            {(isOffice || isManager) && (
+                              <button type="button" className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => onEdit(t)}>
+                                View / Edit
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                    {isOpen && <TripDetail t={t} showFinancials={showFinancials} />}
+                  </Fragment>
                 );
               })}
             </tbody>
