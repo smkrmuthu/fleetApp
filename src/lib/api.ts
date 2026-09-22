@@ -337,6 +337,13 @@ export async function fetchAllTrips(): Promise<Trip[]> {
   return all;
 }
 
+// A preview only — see the route's own comment. The real number is
+// assigned atomically inside createTrip and can differ from this.
+export async function fetchNextTripNumberPreview(): Promise<string> {
+  const res = await request<{ number: string }>('/trips/next-number');
+  return res.number;
+}
+
 export interface NewTripInput {
   id: string; vehicle: string; driver: string; waybillNo: string; itemNo: string; loadDate: string; unloadDate: string;
   from: string; fromNote?: string; to: string; toNote?: string; tons: number; odoStart: number; odoEnd: number; revenue: number; remarks?: string;

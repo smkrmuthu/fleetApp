@@ -3,7 +3,7 @@ import type { DriverMaster, MasterSettings, Trip, TripDocument, TripExpenseKind,
 import { TRIP_EXPENSE_LABEL } from '../data/mockData';
 import { dieselLitres, rupees, todayIso, toNumber } from '../utils/calc';
 import { MovementReview } from './MovementReview';
-import { fetchDocumentBlobUrl, parseDisplayDate, scanReceipt, type ScannedReceipt } from '../lib/api';
+import { fetchDocumentBlobUrl, fetchNextTripNumberPreview, parseDisplayDate, scanReceipt, type ScannedReceipt } from '../lib/api';
 
 function fileToBase64(file: File): Promise<{ base64: string; mimeType: string }> {
   return new Promise((resolve, reject) => {
@@ -102,6 +102,17 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, d
   // user types (or erases) it themselves, and follows the setting if that
   // arrives after the form has opened.
   const [fromTouched, setFromTouched] = useState(false);
+  // A preview only, for a new movement — harmless to drop into the form since
+  // the server assigns the real number itself and ignores whatever this
+  // sends. Can differ from what's actually assigned if someone else's trip
+  // is saved first.
+  function loadTripNoPreview() {
+    fetchNextTripNumberPreview().then((n) => setForm((f) => (f.waybillNo ? f : { ...f, waybillNo: n }))).catch(() => { /* leave blank — it's shown for real once saved */ });
+  }
+  useEffect(() => {
+    if (!isEditing) loadTripNoPreview();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [scanning, setScanning] = useState(false);
   const [scanResult, setScanResult] = useState<ScannedReceipt | null>(null);
   const [scanFile, setScanFile] = useState<{ base64: string; mimeType: string; filename: string } | null>(null);
@@ -334,6 +345,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, d
       setLines([]);
       setDocuments([]);
       setStops([]);
+      loadTripNoPreview();
     }
     setErrors({});
     setConfirmAction(null);
@@ -416,11 +428,11 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, d
           <div className="filters-grid" style={{ alignItems: 'stretch' }}>
             <div className="field"><label>Trip number</label>
               <input
-                className="input" type="text" placeholder="Assigned once you save" value={form.waybillNo === '—' ? '' : form.waybillNo}
+                className="input" type="text" placeholder="Loading…" value={form.waybillNo === '—' ? '' : form.waybillNo}
                 disabled title="Assigned automatically by the server — it can't be changed"
               />
               <div style={{ fontSize: 11, color: 'var(--color-neutral-700)', marginTop: 4 }}>
-                {isEditing ? "Assigned automatically — can't be changed." : 'Assigned automatically once you save.'}
+                {isEditing ? "Assigned automatically — can't be changed." : 'Preview — confirmed once you save.'}
               </div>
             </div>
             <div className="field"><label>Loading date</label><input className="input" type="date" value={form.loadDate} onChange={onLoadDateChange} /></div>

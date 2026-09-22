@@ -309,6 +309,19 @@ tripRoutes.get('/', async (c) => {
   return c.json({ trips: rows.map((t) => ({ ...t, expenses: byTrip.get(t.id) ?? [], stops: stopsByTrip.get(t.id) ?? [], documents: docsByTrip.get(t.id) ?? [] })), nextCursor });
 });
 
+// A read-only preview of the number the *next* trip will get — shown in the
+// Add Movement form so the field isn't blank while the movement is drafted.
+// It never writes, so it never consumes a number; the real one is only
+// assigned (atomically) inside POST / itself, and can differ from this
+// preview if another trip is saved in between.
+tripRoutes.get('/next-number', async (c) => {
+  const auth = c.get('auth');
+  const db = getDb(c.env);
+  const [row] = await db.select({ value: counters.value }).from(counters)
+    .where(and(eq(counters.orgId, auth.orgId), eq(counters.key, 'trip_no'))).limit(1);
+  return c.json({ number: `SMT-${String((row?.value ?? 0) + 1).padStart(5, '0')}` });
+});
+
 tripRoutes.get('/:id', async (c) => {
   const auth = c.get('auth');
   const id = c.req.param('id')!;
