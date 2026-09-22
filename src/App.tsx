@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { AppNotification, DriverMaster, MasterSettings, MonthlyExpense, Role, TabId, Trip, UserAccount, Vehicle } from './types';
 import { DEMO_ACCOUNTS, ROLE_TABS } from './data/mockData';
-import { toIsoDate } from './utils/calc';
+import { rupees, toIsoDate } from './utils/calc';
 import { exportBackup } from './lib/reports';
 import * as api from './lib/api';
 import { SignIn } from './components/SignIn';
@@ -230,6 +230,16 @@ export function App() {
     }
   }
 
+  async function deleteMonthlyExpense(expense: MonthlyExpense) {
+    if (!window.confirm(`Delete this expense — ${expense.category} for ${expense.vehicle}, ${rupees(expense.amount)}? This cannot be undone.`)) return;
+    try {
+      await api.deleteMonthlyExpense(expense.id);
+      setExpenses(await api.fetchMonthlyExpenses());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not delete expense');
+    }
+  }
+
   async function addExpense(expense: MonthlyExpense) {
     try {
       await api.createMonthlyExpense(expense);
@@ -419,6 +429,7 @@ export function App() {
           onDateTo={setDateTo}
           onResetFilters={resetFilters}
           onAdd={addExpense}
+          onDelete={deleteMonthlyExpense}
         />
       )}
       {tab === 'report' && (

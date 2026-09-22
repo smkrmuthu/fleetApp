@@ -17,9 +17,10 @@ interface Props {
   onDateTo: (v: string) => void;
   onResetFilters: () => void;
   onAdd: (e: MonthlyExpense) => void;
+  onDelete: (e: MonthlyExpense) => void;
 }
 
-export function MonthlyExpenses({ expenses: allExpenses, vehicles, drivers, dateFrom, dateTo, onDateFrom, onDateTo, onResetFilters, onAdd }: Props) {
+export function MonthlyExpenses({ expenses: allExpenses, vehicles, drivers, dateFrom, dateTo, onDateFrom, onDateTo, onResetFilters, onAdd, onDelete }: Props) {
   const [exp, setExp] = useState<ExpenseFormState>(() => blankExpense(vehicles[0]?.id ?? ''));
   const [truckFilter, setTruckFilter] = useState('all');
   const expenses = allExpenses.filter((e) => dateInRange(e.date, dateFrom, dateTo) && (truckFilter === 'all' || e.vehicle === truckFilter));
@@ -114,7 +115,7 @@ export function MonthlyExpenses({ expenses: allExpenses, vehicles, drivers, date
         <table className="table" style={{ minWidth: 860 }}>
           <thead>
             <tr>
-              <th>Date</th><th>Vehicle</th><th>Driver</th><th>Description</th><th>Remarks</th><th style={{ textAlign: 'right' }}>Amount</th>
+              <th>Date</th><th>Vehicle</th><th>Driver</th><th>Description</th><th>Remarks</th><th style={{ textAlign: 'right' }}>Amount</th><th></th>
             </tr>
           </thead>
           <tbody>
@@ -131,6 +132,11 @@ export function MonthlyExpenses({ expenses: allExpenses, vehicles, drivers, date
                 </td>
                 <td style={{ color: 'var(--color-neutral-700)' }}>{e.remarks}</td>
                 <td style={{ textAlign: 'right', fontWeight: 700 }}>{rupees(e.amount)}</td>
+                <td style={{ textAlign: 'right' }}>
+                  <button type="button" className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 12, color: 'var(--color-accent-700)' }} onClick={() => onDelete(e)}>
+                    Delete
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>

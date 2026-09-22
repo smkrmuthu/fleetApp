@@ -260,6 +260,10 @@ function monthlyExpenseFromApi(e: ApiMonthlyExpense): MonthlyExpense {
   };
 }
 
+export async function deleteMonthlyExpense(id: string): Promise<void> {
+  await request(`/monthly-expenses/${encodeURIComponent(id)}`, { method: 'DELETE' });
+}
+
 export async function fetchMonthlyExpenses(): Promise<MonthlyExpense[]> {
   const res = await request<{ monthlyExpenses: ApiMonthlyExpense[] }>('/monthly-expenses');
   return res.monthlyExpenses.map(monthlyExpenseFromApi);
