@@ -131,7 +131,9 @@ export function MovementReview({ action, form, original, lines, originalLines, s
             <div key={f.key} style={{ display: 'flex', justifyContent: 'space-between', gap: 16, padding: '7px 0', borderBottom: '1px solid var(--color-neutral-300)' }}>
               <dt style={muted}>{f.label}{changed && tag('Changed', changedColor)}</dt>
               <dd style={{ margin: 0, textAlign: 'right', overflowWrap: 'anywhere' }}>
-                <span style={{ fontWeight: 600, color: changed ? changedColor : undefined }}>{show(f.kind, form[f.key])}</span>
+                <span style={{ fontWeight: 600, color: changed ? changedColor : undefined }}>
+                  {f.key === 'waybillNo' && !editing && !form.waybillNo.trim() ? 'Assigned automatically once you save' : show(f.kind, form[f.key])}
+                </span>
                 {changed && (
                   <div style={{ fontSize: 11, ...muted, fontWeight: 400 }}>was {show(f.kind, original[f.key])}</div>
                 )}

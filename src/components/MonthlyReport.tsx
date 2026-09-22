@@ -1,4 +1,4 @@
-import type { MonthlyExpense, Trip, Vehicle } from '../types';
+import type { DriverMaster, MonthlyExpense, Trip, Vehicle } from '../types';
 import { aggregateByVehicle } from '../utils/aggregate';
 import { dateInRange, formatDateRange, formatNum, rupees, tripCost } from '../utils/calc';
 import { exportReportExcel, exportReportPdf, type ReportData, type Stat } from '../lib/reports';
@@ -8,15 +8,24 @@ interface Props {
   trips: Trip[];
   expenses: MonthlyExpense[];
   vehicles: Vehicle[];
+  drivers: DriverMaster[];
+  vehicleFilter: string;
+  driverFilter: string;
   dateFrom: string;
   dateTo: string;
+  onVehicleFilter: (v: string) => void;
+  onDriverFilter: (v: string) => void;
   onDateFrom: (v: string) => void;
   onDateTo: (v: string) => void;
   onResetFilters: () => void;
 }
 
-export function MonthlyReport({ trips: allTrips, expenses: allExpenses, vehicles, dateFrom, dateTo, onDateFrom, onDateTo, onResetFilters }: Props) {
-  const trips = allTrips.filter((t) => dateInRange(t.loadDate, dateFrom, dateTo));
+export function MonthlyReport({ trips: allTrips, expenses: allExpenses, vehicles, drivers, vehicleFilter, driverFilter, dateFrom, dateTo, onVehicleFilter, onDriverFilter, onDateFrom, onDateTo, onResetFilters }: Props) {
+  const trips = allTrips.filter(
+    (t) => (vehicleFilter === 'all' || t.vehicle === vehicleFilter) &&
+      (!driverFilter || t.driver === driverFilter) &&
+      dateInRange(t.loadDate, dateFrom, dateTo)
+  );
   const expenses = allExpenses.filter((e) => dateInRange(e.date, dateFrom, dateTo));
   const rangeLabel = formatDateRange(dateFrom, dateTo);
 
@@ -76,6 +85,20 @@ export function MonthlyReport({ trips: allTrips, expenses: allExpenses, vehicles
         <div className="filters-grid">
           <div className="field"><label>Loading date from</label><input className="input" type="date" value={dateFrom} onChange={(e) => onDateFrom(e.target.value)} /></div>
           <div className="field"><label>Loading date to</label><input className="input" type="date" value={dateTo} onChange={(e) => onDateTo(e.target.value)} /></div>
+          <div className="field">
+            <label>Vehicle</label>
+            <select className="input" value={vehicleFilter} onChange={(e) => onVehicleFilter(e.target.value)}>
+              <option value="all">All vehicles</option>
+              {vehicles.map((v) => <option key={v.id} value={v.id}>{v.id}</option>)}
+            </select>
+          </div>
+          <div className="field">
+            <label>Driver</label>
+            <select className="input" value={driverFilter} onChange={(e) => onDriverFilter(e.target.value)}>
+              <option value="">All drivers</option>
+              {drivers.map((d) => <option key={d.name} value={d.name}>{d.name}</option>)}
+            </select>
+          </div>
           <button type="button" className="btn btn-ghost" style={{ justifySelf: 'start' }} onClick={onResetFilters}>Reset filters</button>
         </div>
       </div>

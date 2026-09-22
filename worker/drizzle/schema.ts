@@ -266,6 +266,21 @@ export const auditLog = sqliteTable(
 );
 
 // Org-wide master values that other screens read (e.g. today's diesel and
+// Atomic per-org counters (currently just the trip-number sequence). One row
+// per key, incremented with an upsert so two simultaneous trip creations can
+// never land on the same number.
+export const counters = sqliteTable(
+  'counters',
+  {
+    orgId: text('org_id').notNull().references(() => orgs.id, { onDelete: 'cascade' }),
+    key: text('key').notNull(),
+    value: integer('value').notNull().default(0)
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.orgId, t.key] })
+  })
+);
+
 // AdBlue price per litre). One row per key so new master values don't need a
 // migration each time.
 export const settings = sqliteTable(

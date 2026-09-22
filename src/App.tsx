@@ -437,8 +437,13 @@ export function App() {
           trips={trips}
           expenses={expenses}
           vehicles={vehicles}
+          drivers={drivers}
+          vehicleFilter={vehicleFilter}
+          driverFilter={driverFilter}
           dateFrom={dateFrom}
           dateTo={dateTo}
+          onVehicleFilter={setVehicleFilter}
+          onDriverFilter={setDriverFilter}
           onDateFrom={setDateFrom}
           onDateTo={setDateTo}
           onResetFilters={resetFilters}

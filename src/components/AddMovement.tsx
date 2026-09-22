@@ -3,7 +3,7 @@ import type { DriverMaster, MasterSettings, Trip, TripDocument, TripExpenseKind,
 import { TRIP_EXPENSE_LABEL } from '../data/mockData';
 import { dieselLitres, rupees, todayIso, toNumber } from '../utils/calc';
 import { MovementReview } from './MovementReview';
-import { fetchDocumentBlobUrl, fetchNextTripNumber, parseDisplayDate, scanReceipt, type ScannedReceipt } from '../lib/api';
+import { fetchDocumentBlobUrl, parseDisplayDate, scanReceipt, type ScannedReceipt } from '../lib/api';
 
 function fileToBase64(file: File): Promise<{ base64: string; mimeType: string }> {
   return new Promise((resolve, reject) => {
@@ -141,42 +141,18 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, d
     return name && drivers.some((d) => d.name === name) ? name : '';
   };
 
-  // Trip numbers are "<truck>-<4 digits>", the next free one for that truck. It
-  // follows the truck as it's picked — right up until the user types into the
-  // field themselves, at which point their own value sticks for good.
-  const tripNoTouchedRef = useRef(false);
-  // A saved movement keeps its trip number for good (it's how the trip is
-  // identified). Only an old record that never had one can still be given one.
-  const tripNoLocked = isEditing && editingTrip.waybillNo !== '—';
-  const refreshTripNo = (vehicleId: string) => {
-    if (!vehicleId || tripNoTouchedRef.current || tripNoLocked) return;
-    fetchNextTripNumber(vehicleId)
-      .then((n) => setForm((f) => (f.vehicle === vehicleId && !tripNoTouchedRef.current ? { ...f, waybillNo: n } : f)))
-      .catch(() => { /* leave it blank — it can be typed in */ });
-  };
-
+  // Trip numbers are assigned by the server (SMT-00001, SMT-00002, ...) the
+  // moment a movement is created, and never editable from here — the field
+  // just displays whatever the trip already has, or is blank until saved.
   const onVehicleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const vehicleId = e.target.value;
     const defaultDriver = isEditing ? '' : defaultDriverFor(vehicleId);
-    setForm((f) => ({
-      ...f,
-      vehicle: vehicleId,
-      driver: defaultDriver || f.driver,
-      // blank until the lookup answers, so a stale number never shows for the new truck
-      waybillNo: !tripNoTouchedRef.current && vehicleId && !tripNoLocked ? '' : f.waybillNo
-    }));
-    refreshTripNo(vehicleId);
+    setForm((f) => ({ ...f, vehicle: vehicleId, driver: defaultDriver || f.driver }));
     setErrors({});
   };
 
   const onLoadDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm((f) => ({ ...f, loadDate: e.target.value }));
-    setErrors({});
-  };
-
-  const onTripNoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    tripNoTouchedRef.current = true;
-    setForm((f) => ({ ...f, waybillNo: e.target.value }));
     setErrors({});
   };
 
@@ -302,7 +278,6 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, d
     }
     if (!form.vehicle) errs.vehicle = 'Select a vehicle.';
     if (!form.driver) errs.driver = 'Select a driver.';
-    if (!form.waybillNo.trim()) errs.waybillNo = 'Trip number is required.';
     if (completing) {
       if (toNumber(form.tons) <= 0) errs.tons = 'Loading weight is required to complete this movement.';
       if (toNumber(form.odoStart) <= 0) errs.odoStart = 'Odometer start is required to complete this movement.';
@@ -362,7 +337,6 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, d
     }
     setErrors({});
     setConfirmAction(null);
-    tripNoTouchedRef.current = false;
   }
 
   async function onScanFileChosen(e: React.ChangeEvent<HTMLInputElement>) {
@@ -380,7 +354,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, d
       setScanFile({ base64, mimeType, filename: file.name });
       if (!form.vehicle && result.vehicleNo) {
         const match = vehicles.find((v) => normalizeReg(v.id) === normalizeReg(result.vehicleNo!));
-        if (match) { setForm((f) => ({ ...f, vehicle: match.id, driver: f.driver || (isEditing ? '' : defaultDriverFor(match.id)) })); refreshTripNo(match.id); }
+        if (match) setForm((f) => ({ ...f, vehicle: match.id, driver: f.driver || (isEditing ? '' : defaultDriverFor(match.id)) }));
       }
     } catch (err) {
       setScanErrorMsg(err instanceof Error ? err.message : 'Could not read the receipt — try again or enter it manually');
@@ -440,8 +414,14 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, d
       <div className="movement-grid">
         <div style={{ background: 'var(--color-bg)', padding: 20, border: '2px solid var(--color-divider)' }}>
           <div className="filters-grid" style={{ alignItems: 'stretch' }}>
-            <div className="field"><label>Trip number *</label><input className={errorClass('waybillNo')} type="text" placeholder="Pick a truck — number fills in" value={form.waybillNo} onChange={onTripNoChange} disabled={tripNoLocked} title={tripNoLocked ? 'Assigned automatically — it can\'t be changed' : undefined} />
-              {tripNoLocked && <div style={{ fontSize: 11, color: 'var(--color-neutral-700)', marginTop: 4 }}>Assigned automatically — can't be changed.</div>}
+            <div className="field"><label>Trip number</label>
+              <input
+                className="input" type="text" placeholder="Assigned once you save" value={form.waybillNo === '—' ? '' : form.waybillNo}
+                disabled title="Assigned automatically by the server — it can't be changed"
+              />
+              <div style={{ fontSize: 11, color: 'var(--color-neutral-700)', marginTop: 4 }}>
+                {isEditing ? "Assigned automatically — can't be changed." : 'Assigned automatically once you save.'}
+              </div>
             </div>
             <div className="field"><label>Loading date</label><input className="input" type="date" value={form.loadDate} onChange={onLoadDateChange} /></div>
             <div className="field"><label>Unloading date</label><input className={errorClass('unloadDate')} type="date" min={form.loadDate} value={form.unloadDate} onChange={set('unloadDate')} /></div>

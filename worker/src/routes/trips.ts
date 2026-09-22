@@ -1,9 +1,9 @@
 import { Hono } from 'hono';
-import { and, desc, eq, lt, or, gt } from 'drizzle-orm';
+import { and, desc, eq, lt, or, gt, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Env, Vars } from '../types';
 import { getDb, newId, nowIso } from '../db';
-import { trips, tripExpenses, notifications, receipts, tripDocuments, tripStops, drivers } from '../../drizzle/schema';
+import { trips, tripExpenses, notifications, receipts, tripDocuments, tripStops, drivers, counters } from '../../drizzle/schema';
 import { base64ToBytes, filenameFromKey, storageKeyFor } from '../lib/storage';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { buildFilters, combine, parsePagination } from '../lib/filters';
@@ -62,6 +62,17 @@ function completionProblem(t: { weightKg?: number | null; odoStart?: number | nu
   const missing = stops.findIndex((st) => !st.odo);
   if (missing >= 0) return { message: `Odometer reading is required at stop ${missing + 1} to complete this movement`, field: 'stops' };
   return stopOdometerProblem(t.odoStart, t.odoEnd, stops);
+}
+
+// Every trip gets one of these, in order, org-wide — never per-truck, never
+// user-editable. The upsert-with-RETURNING is a single statement, so two
+// trips created at the same moment still can't be handed the same number.
+async function nextTripNumber(db: ReturnType<typeof getDb>, orgId: string): Promise<string> {
+  const [row] = await db.insert(counters)
+    .values({ orgId, key: 'trip_no', value: 1 })
+    .onConflictDoUpdate({ target: [counters.orgId, counters.key], set: { value: sql`${counters.value} + 1` } })
+    .returning({ value: counters.value });
+  return `SMT-${String(row.value).padStart(5, '0')}`;
 }
 
 const stopSchema = z.object({
@@ -160,12 +171,6 @@ tripRoutes.post('/', async (c) => {
     return c.json({ ...existing, stops, documents: docs }, 200);
   }
 
-  if (data.waybillNo) {
-    const [clash] = await db.select({ id: trips.id }).from(trips)
-      .where(and(eq(trips.orgId, auth.orgId), eq(trips.waybillNo, data.waybillNo))).limit(1);
-    if (clash) return c.json({ error: { code: 'conflict', message: `Trip number ${data.waybillNo} is already used by another movement`, field: 'waybillNo' } }, 409);
-  }
-
   const isDriver = auth.role === 'driver';
   // A driver's own login is the account used to enter the trip, but the
   // driver named on it may be someone else — an office assistant keying
@@ -184,12 +189,16 @@ tripRoutes.post('/', async (c) => {
     return c.json({ error: { code: 'validation_error', message: 'Odometer end must be greater than odometer start', field: 'odoEnd' } }, 422);
   }
 
+  // Trip numbers are always assigned here, never taken from the client —
+  // that's the only way they can stay unique and unchangeable.
+  const waybillNo = await nextTripNumber(db, auth.orgId);
+
   const tripValues = {
     id: data.id,
     orgId: auth.orgId,
     vehicleId: data.vehicleId,
     driverId,
-    waybillNo: data.waybillNo,
+    waybillNo,
     itemNo: data.itemNo,
     loadDate: data.loadDate,
     unloadDate: data.unloadDate,
@@ -298,27 +307,6 @@ tripRoutes.get('/', async (c) => {
   }
 
   return c.json({ trips: rows.map((t) => ({ ...t, expenses: byTrip.get(t.id) ?? [], stops: stopsByTrip.get(t.id) ?? [], documents: docsByTrip.get(t.id) ?? [] })), nextCursor });
-});
-
-// The next free trip number for a truck: "<TRUCK>-<4 digits>", one more than
-// the highest number already used for that truck (older numbers in any other
-// format are ignored). Must be registered before GET /:id.
-tripRoutes.get('/next-number', async (c) => {
-  const auth = c.get('auth');
-  const vehicleId = new URL(c.req.url).searchParams.get('vehicle_id')?.trim();
-  if (!vehicleId) return c.json({ error: { code: 'validation_error', message: 'vehicle_id is required' } }, 422);
-
-  const db = getDb(c.env);
-  const rows = await db.select({ n: trips.waybillNo }).from(trips)
-    .where(and(eq(trips.orgId, auth.orgId), eq(trips.vehicleId, vehicleId)));
-  const prefix = `${vehicleId}-`;
-  let highest = 0;
-  for (const { n } of rows) {
-    if (!n || !n.startsWith(prefix)) continue;
-    const tail = n.slice(prefix.length);
-    if (/^\d{4,}$/.test(tail)) highest = Math.max(highest, Number(tail));
-  }
-  return c.json({ number: `${prefix}${String(highest + 1).padStart(4, '0')}` });
 });
 
 tripRoutes.get('/:id', async (c) => {
@@ -471,7 +459,8 @@ tripRoutes.patch('/:id', async (c) => {
   }
 
   const body = await c.req.json().catch(() => null);
-  const baseSchema = createTripSchema.omit({ id: true, expenses: true, draft: true, documents: true, stops: true }).partial();
+  // waybillNo is excluded — it's assigned once at creation and never editable.
+  const baseSchema = createTripSchema.omit({ id: true, expenses: true, draft: true, documents: true, stops: true, waybillNo: true }).partial();
   // The driver named on a trip can be changed by whoever may edit it — as at
   // creation, a driver login is often an office assistant keying data for
   // whoever is actually driving. (Ownership, createdBy, never changes.)
@@ -491,17 +480,6 @@ tripRoutes.patch('/:id', async (c) => {
   const odoEnd = ('odoEnd' in parsed.data ? parsed.data.odoEnd : undefined) ?? existing.odoEnd;
   if (odoEnd != null && odoStart != null && odoEnd <= odoStart) {
     return c.json({ error: { code: 'validation_error', message: 'Odometer end must be greater than odometer start', field: 'odoEnd' } }, 422);
-  }
-
-  // The trip number is assigned once and then fixed — it identifies the trip.
-  // (A record that somehow has none may still be given one, if it's unused.)
-  if (parsed.data.waybillNo !== undefined && parsed.data.waybillNo !== existing.waybillNo) {
-    if (existing.waybillNo) {
-      return c.json({ error: { code: 'validation_error', message: "A trip number can't be changed once it's assigned", field: 'waybillNo' } }, 422);
-    }
-    const [clash] = await db.select({ id: trips.id }).from(trips)
-      .where(and(eq(trips.orgId, auth.orgId), eq(trips.waybillNo, parsed.data.waybillNo))).limit(1);
-    if (clash) return c.json({ error: { code: 'conflict', message: `Trip number ${parsed.data.waybillNo} is already used by another movement`, field: 'waybillNo' } }, 409);
   }
 
   const { stops: newStops, ...tripPatch } = parsed.data;
