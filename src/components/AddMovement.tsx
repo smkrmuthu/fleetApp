@@ -145,13 +145,11 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, d
   // follows the truck as it's picked — right up until the user types into the
   // field themselves, at which point their own value sticks for good.
   const tripNoTouchedRef = useRef(false);
+  // A saved movement keeps its trip number for good (it's how the trip is
+  // identified). Only an old record that never had one can still be given one.
+  const tripNoLocked = isEditing && editingTrip.waybillNo !== '—';
   const refreshTripNo = (vehicleId: string) => {
-    if (!vehicleId || tripNoTouchedRef.current) return;
-    if (editingTrip && vehicleId === editingTrip.vehicle) {
-      // back on the truck it was saved with: keep the number it already has
-      setForm((f) => ({ ...f, waybillNo: editingTrip.waybillNo === '—' ? '' : editingTrip.waybillNo }));
-      return;
-    }
+    if (!vehicleId || tripNoTouchedRef.current || tripNoLocked) return;
     fetchNextTripNumber(vehicleId)
       .then((n) => setForm((f) => (f.vehicle === vehicleId && !tripNoTouchedRef.current ? { ...f, waybillNo: n } : f)))
       .catch(() => { /* leave it blank — it can be typed in */ });
@@ -165,7 +163,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, d
       vehicle: vehicleId,
       driver: defaultDriver || f.driver,
       // blank until the lookup answers, so a stale number never shows for the new truck
-      waybillNo: !tripNoTouchedRef.current && vehicleId && !(editingTrip && vehicleId === editingTrip.vehicle) ? '' : f.waybillNo
+      waybillNo: !tripNoTouchedRef.current && vehicleId && !tripNoLocked ? '' : f.waybillNo
     }));
     refreshTripNo(vehicleId);
     setErrors({});
@@ -442,7 +440,9 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, d
       <div className="movement-grid">
         <div style={{ background: 'var(--color-bg)', padding: 20, border: '2px solid var(--color-divider)' }}>
           <div className="filters-grid" style={{ alignItems: 'stretch' }}>
-            <div className="field"><label>Trip number *</label><input className={errorClass('waybillNo')} type="text" placeholder="Pick a truck — number fills in" value={form.waybillNo} onChange={onTripNoChange} /></div>
+            <div className="field"><label>Trip number *</label><input className={errorClass('waybillNo')} type="text" placeholder="Pick a truck — number fills in" value={form.waybillNo} onChange={onTripNoChange} disabled={tripNoLocked} title={tripNoLocked ? 'Assigned automatically — it can\'t be changed' : undefined} />
+              {tripNoLocked && <div style={{ fontSize: 11, color: 'var(--color-neutral-700)', marginTop: 4 }}>Assigned automatically — can't be changed.</div>}
+            </div>
             <div className="field"><label>Loading date</label><input className="input" type="date" value={form.loadDate} onChange={onLoadDateChange} /></div>
             <div className="field"><label>Unloading date</label><input className={errorClass('unloadDate')} type="date" min={form.loadDate} value={form.unloadDate} onChange={set('unloadDate')} /></div>
             <div className="field">

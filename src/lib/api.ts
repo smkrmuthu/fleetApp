@@ -317,6 +317,22 @@ export async function fetchTrips(params: { vehicleId?: string; status?: string }
   return res.trips.map(tripFromApi);
 }
 
+// Every trip, page by page (fetchTrips only returns the newest 200). Used by the
+// full backup, which must not silently stop at the first page.
+export async function fetchAllTrips(): Promise<Trip[]> {
+  const all: Trip[] = [];
+  let cursor: string | null = null;
+  for (let page = 0; page < 500; page++) {
+    const qs = new URLSearchParams({ limit: '200' });
+    if (cursor) qs.set('cursor', cursor);
+    const res: { trips: ApiTrip[]; nextCursor: string | null } = await request(`/trips?${qs.toString()}`);
+    all.push(...res.trips.map(tripFromApi));
+    if (!res.nextCursor) break;
+    cursor = res.nextCursor;
+  }
+  return all;
+}
+
 export interface NewTripInput {
   id: string; vehicle: string; driver: string; waybillNo: string; itemNo: string; loadDate: string; unloadDate: string;
   from: string; fromNote?: string; to: string; toNote?: string; tons: number; odoStart: number; odoEnd: number; revenue: number; remarks?: string;

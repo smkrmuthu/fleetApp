@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { AppNotification, DriverMaster, MasterSettings, MonthlyExpense, Role, TabId, Trip, UserAccount, Vehicle } from './types';
 import { DEMO_ACCOUNTS, ROLE_TABS } from './data/mockData';
 import { toIsoDate } from './utils/calc';
+import { exportBackup } from './lib/reports';
 import * as api from './lib/api';
 import { SignIn } from './components/SignIn';
 import { AppShell } from './components/AppShell';
@@ -178,6 +179,14 @@ export function App() {
   function cancelEditingTrip() {
     setEditingTrip(null);
     setTab('triplog');
+  }
+
+  // Everything, straight from the server (not the screens' filtered lists).
+  async function backupEverything() {
+    const [allTrips, v, d, e, m, u] = await Promise.all([
+      api.fetchAllTrips(), api.fetchVehicles(), api.fetchDrivers(), api.fetchMonthlyExpenses(), api.fetchMasterSettings(), api.fetchUsers()
+    ]);
+    await exportBackup({ trips: allTrips, vehicles: v, drivers: d, expenses: e, master: m, users: u });
   }
 
   async function approveTrip(tripId: string) {
@@ -393,6 +402,7 @@ export function App() {
           onResetFilters={resetFilters}
           onAddMovement={() => { setEditingTrip(null); setTab('addtrip'); }}
           onApprove={approveTrip}
+          onBackup={backupEverything}
           onEdit={startEditingTrip}
           onDelete={deleteTrip}
           role={role}

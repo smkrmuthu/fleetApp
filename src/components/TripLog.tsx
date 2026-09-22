@@ -22,12 +22,13 @@ interface Props {
   onResetFilters: () => void;
   onAddMovement: () => void;
   onApprove: (tripId: string) => Promise<void>;
+  onBackup: () => Promise<void>;
   onEdit: (trip: Trip) => void;
   onDelete: (trip: Trip) => void;
   role: Role;
 }
 
-export function TripLog({ trips, vehicles, drivers, vehicleFilter, driverFilter, dateFrom, dateTo, onVehicleFilter, onDriverFilter, onDateFrom, onDateTo, onResetFilters, onAddMovement, onApprove, onEdit, onDelete, role }: Props) {
+export function TripLog({ trips, vehicles, drivers, vehicleFilter, driverFilter, dateFrom, dateTo, onVehicleFilter, onDriverFilter, onDateFrom, onDateTo, onResetFilters, onAddMovement, onApprove, onBackup, onEdit, onDelete, role }: Props) {
   const isDriver = role === 'Driver';
   const isOffice = role === 'Office';
   const isManager = role === 'Manager';
@@ -87,9 +88,11 @@ export function TripLog({ trips, vehicles, drivers, vehicleFilter, driverFilter,
                 `Vehicle: ${vehicleFilter === 'all' ? 'all' : vehicleFilter}   Driver: ${driverFilter || 'all'}`
               ))}
             >
-              {exporting ? 'Preparing…' : 'Export Excel'}
+              {exporting === 'xlsx' ? 'Preparing…' : 'Export Excel'}
             </button>
-            <button type="button" className="btn btn-secondary">Backup data</button>
+            <button type="button" className="btn btn-secondary" disabled={!!exporting} onClick={() => runExport('backup', onBackup)}>
+              {exporting === 'backup' ? 'Preparing backup…' : 'Backup data'}
+            </button>
             <button type="button" className="btn btn-primary" onClick={onAddMovement}>Add movement</button>
             </div>
             {exportError && <div role="alert" style={{ color: 'var(--color-accent-700)', fontSize: 12 }}>{exportError}</div>}

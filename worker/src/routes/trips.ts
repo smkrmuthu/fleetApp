@@ -493,7 +493,12 @@ tripRoutes.patch('/:id', async (c) => {
     return c.json({ error: { code: 'validation_error', message: 'Odometer end must be greater than odometer start', field: 'odoEnd' } }, 422);
   }
 
-  if (parsed.data.waybillNo && parsed.data.waybillNo !== existing.waybillNo) {
+  // The trip number is assigned once and then fixed — it identifies the trip.
+  // (A record that somehow has none may still be given one, if it's unused.)
+  if (parsed.data.waybillNo !== undefined && parsed.data.waybillNo !== existing.waybillNo) {
+    if (existing.waybillNo) {
+      return c.json({ error: { code: 'validation_error', message: "A trip number can't be changed once it's assigned", field: 'waybillNo' } }, 422);
+    }
     const [clash] = await db.select({ id: trips.id }).from(trips)
       .where(and(eq(trips.orgId, auth.orgId), eq(trips.waybillNo, parsed.data.waybillNo))).limit(1);
     if (clash) return c.json({ error: { code: 'conflict', message: `Trip number ${parsed.data.waybillNo} is already used by another movement`, field: 'waybillNo' } }, 409);

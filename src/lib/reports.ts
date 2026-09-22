@@ -1,4 +1,4 @@
-import type { MonthlyExpense, Trip } from '../types';
+import type { DriverMaster, MasterSettings, MonthlyExpense, Trip, UserAccount, Vehicle } from '../types';
 import type { VehicleAgg } from '../utils/aggregate';
 import { tripCost } from '../utils/calc';
 import { parseDisplayDate } from './api';
@@ -238,4 +238,98 @@ export async function exportReportPdf(d: ReportData): Promise<void> {
       }
     ]
   });
+}
+
+// ── Full backup ─────────────────────────────────────────────────────────────
+
+export interface BackupData {
+  trips: Trip[];
+  expenses: MonthlyExpense[];
+  vehicles: Vehicle[];
+  drivers: DriverMaster[];
+  users: UserAccount[];
+  master: MasterSettings;
+}
+
+function documentsSheet(trips: Trip[]): SheetSpec {
+  const rows: SheetCell[][] = [[th('Trip no.'), th('Vehicle'), th('File name'), th('Type')]];
+  for (const t of trips) {
+    for (const d of t.documents) rows.push([t.waybillNo === '—' ? '' : t.waybillNo, t.vehicle, d.filename, d.mimeType ?? '']);
+  }
+  return { name: 'Attached files', rows, widths: [26, 13, 40, 22], freezeRows: 1 };
+}
+
+const blankIfDash = (v: string | undefined) => (!v || v === '—' ? '' : v);
+
+export async function exportBackup(d: BackupData): Promise<void> {
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const stamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}`;
+  const attached = d.trips.reduce((a, t) => a + t.documents.length, 0);
+  const lines = d.trips.reduce((a, t) => a + t.expenses.length, 0);
+
+  const about: SheetSpec = {
+    name: 'About',
+    rows: [
+      [title(`${COMPANY} - Full data backup`)],
+      [note(`Created: ${now.toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })}`)],
+      [],
+      [th('Sheet'), th('Records', true)],
+      ['Trips', int(d.trips.length)],
+      ['Route and odometers', int(d.trips.reduce((a, t) => a + t.stops.length + 2, 0))],
+      ['Fuel and expense entries', int(lines)],
+      ['Attached files (names only)', int(attached)],
+      ['Fixed costs', int(d.expenses.length)],
+      ['Vehicles', int(d.vehicles.length)],
+      ['Drivers', int(d.drivers.length)],
+      ['Users', int(d.users.length)],
+      [],
+      [note('Every trip and record in the app, not just what a screen is currently filtered to.')],
+      [note('The attached files themselves (receipts, slips) are not inside this workbook - only their names are listed.')]
+    ],
+    widths: [34, 12]
+  };
+
+  const vehicles: SheetSpec = {
+    name: 'Vehicles',
+    rows: [
+      [th('Truck no.'), th('Model'), th('FC date'), th('Renewal date'), th('Default driver')],
+      ...d.vehicles.map((v) => [v.id, blankIfDash(v.model), dateCell(parseDisplayDate(v.fcDate)), dateCell(parseDisplayDate(v.renewalDate)), v.defaultDriver ?? ''] as SheetCell[])
+    ],
+    widths: [14, 18, 13, 13, 20],
+    freezeRows: 1
+  };
+  const drivers: SheetSpec = {
+    name: 'Drivers',
+    rows: [
+      [th('Name'), th('Licence no.'), th('Licence expiry'), th('Credential'), th('Assigned vehicle')],
+      ...d.drivers.map((x) => [x.name, blankIfDash(x.licence), dateCell(parseDisplayDate(x.expiry)), blankIfDash(x.credential), blankIfDash(x.vehicle)] as SheetCell[])
+    ],
+    widths: [22, 18, 14, 20, 16],
+    freezeRows: 1
+  };
+  const users: SheetSpec = {
+    name: 'Users',
+    rows: [
+      [th('Name'), th('Role'), th('Mobile'), th('Branch'), th('Last active')],
+      ...d.users.map((u) => [u.name, u.role, u.phone, blankIfDash(u.branch), blankIfDash(u.seen)] as SheetCell[])
+    ],
+    widths: [22, 16, 18, 16, 18],
+    freezeRows: 1
+  };
+  const master: SheetSpec = {
+    name: 'Master values',
+    rows: [
+      [th('Setting'), th('Value', true)],
+      ['Diesel rate (Rs per litre)', d.master.dieselRate === null ? null : money(d.master.dieselRate)],
+      ['AdBlue rate (Rs per litre)', d.master.adblueRate === null ? null : money(d.master.adblueRate)],
+      ['Default loading point', d.master.loadingPoint ?? '']
+    ],
+    widths: [30, 26]
+  };
+
+  await saveWorkbook(`fleet-ledger-backup_${stamp}.xlsx`, [
+    about, tripsSheet(d.trips, true), routeSheet(d.trips), expenseLinesSheet(d.trips), documentsSheet(d.trips),
+    monthlyExpensesSheet(d.expenses), vehicles, drivers, users, master
+  ]);
 }
