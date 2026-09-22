@@ -8,7 +8,7 @@ import { useExport } from '../lib/useExport';
 import { TRIP_EXPENSE_LABEL } from '../data/mockData';
 import { dateInRange, formatDateRange, formatNum, rupees, tripCost } from '../utils/calc';
 
-const DETAIL_COLUMNS = 8; // Trip No., Start date, Vehicle, Driver, Route, Tons, KM, Status
+const DETAIL_COLUMNS = 7; // Trip No., Start date, Vehicle, Driver, Tons, KM, Status
 
 // Everything that used to sit in its own column — item no., the fuel/expense
 // breakdown, revenue/profit, odometer, docs, remarks — now lives here,
@@ -224,10 +224,10 @@ export function TripLog({ trips, vehicles, drivers, vehicleFilter, driverFilter,
         </div>
       ) : (
         <DualScroll>
-          <table className="table" style={{ minWidth: 1180 }}>
+          <table className="table" style={{ minWidth: 920 }}>
             <thead>
               <tr>
-                <th className="col-first">Trip No.</th><th>Start date</th><th>Vehicle</th><th>Driver</th><th>Route</th>
+                <th className="col-first">Trip No.</th><th>Start date</th><th>Vehicle</th><th>Driver</th>
                 <th style={{ textAlign: 'right' }}>Tons</th><th style={{ textAlign: 'right' }}>KM</th>
                 <th>Status</th>
               </tr>
@@ -253,10 +253,6 @@ export function TripLog({ trips, vehicles, drivers, vehicleFilter, driverFilter,
                       <td style={{ whiteSpace: 'nowrap' }}>{t.loadDate}</td>
                       <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{t.vehicle}</td>
                       <td>{t.driver}</td>
-                      <td style={{ color: 'var(--color-neutral-700)', whiteSpace: 'nowrap' }}>
-                        {[t.from, ...t.stops.map((st) => st.location), t.to].join(' → ')}
-                        {t.stops.length > 0 && <span style={{ marginLeft: 6, fontSize: 11 }}>({t.stops.length} {t.stops.length === 1 ? 'stop' : 'stops'})</span>}
-                      </td>
                       <td style={{ textAlign: 'right' }}>{formatNum(t.tons, 1)}</td>
                       <td style={{ textAlign: 'right' }}>{formatNum(t.km)}</td>
                       <td style={{ whiteSpace: 'nowrap' }}>
