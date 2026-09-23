@@ -28,6 +28,7 @@ function TripDetail({ t, showFinancials }: { t: Trip; showFinancials: boolean })
         <div style={{ display: 'grid', gap: 18 }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 14 }}>
             {stat('Trip no.', t.waybillNo)}
+            {stat('Loading date', t.loadDate)}
             {stat('Unloading date', t.unloadDate)}
             {stat('Item no.', dash(t.itemNo) || '—')}
             {stat('Odometer', t.odoStart != null && t.odoEnd != null ? `${formatNum(t.odoStart)} → ${formatNum(t.odoEnd)} km` : '—')}
