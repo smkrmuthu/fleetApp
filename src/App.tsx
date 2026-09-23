@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { AppNotification, DriverLeave, DriverMaster, MasterSettings, MonthlyExpense, Role, TabId, Trip, UserAccount, Vehicle } from './types';
-import { DEMO_ACCOUNTS, ROLE_TABS } from './data/mockData';
+import { ROLE_TABS } from './data/mockData';
 import { rupees, toIsoDate } from './utils/calc';
 import { exportBackup } from './lib/reports';
 import * as api from './lib/api';
@@ -108,20 +108,6 @@ export function App() {
   function signOut() {
     api.clearToken();
     setAuthed(false);
-  }
-
-  // The header's role switcher is a demo affordance for trying the three
-  // roles quickly — it re-authenticates as that role's real demo account
-  // rather than just flipping a client-side flag, so every permission check
-  // it triggers is the same one a genuinely different user would hit.
-  async function changeRole(r: Role) {
-    const demo = DEMO_ACCOUNTS.find((a) => a.key === r);
-    if (!demo) return;
-    try {
-      await signIn(demo.phone, demo.password);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not switch role');
-    }
   }
 
   function resetFilters() {
@@ -407,7 +393,6 @@ export function App() {
         role={role}
         userName={currentUserName}
         tab={tab}
-        onRoleChange={changeRole}
         onTabChange={setTab}
         onSignOut={signOut}
         notifications={notifications}

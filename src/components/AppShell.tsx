@@ -8,7 +8,6 @@ interface Props {
   role: Role;
   userName: string;
   tab: TabId;
-  onRoleChange: (r: Role) => void;
   onTabChange: (t: TabId) => void;
   onSignOut: () => void;
   notifications: AppNotification[];
@@ -17,10 +16,8 @@ interface Props {
   children: ReactNode;
 }
 
-const ALL_ROLES: Role[] = ['Driver', 'Office', 'Manager'];
-
 export function AppShell({
-  role, userName, tab, onRoleChange, onTabChange, onSignOut, notifications, onOpenNotification, onMarkAllNotificationsRead, children
+  role, userName, tab, onTabChange, onSignOut, notifications, onOpenNotification, onMarkAllNotificationsRead, children
 }: Props) {
   const tabs = ROLE_TABS[role];
 
@@ -35,25 +32,6 @@ export function AppShell({
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--color-neutral-700)' }}>Signed in as</span>
-            <div style={{ display: 'flex', border: '2px solid var(--color-text)' }}>
-              {ALL_ROLES.map((r) => (
-                <button
-                  key={r}
-                  type="button"
-                  onClick={() => onRoleChange(r)}
-                  style={{
-                    appearance: 'none', border: 0, borderLeft: '2px solid var(--color-text)', background: r === role ? 'var(--color-accent)' : 'transparent',
-                    fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: 12, letterSpacing: '0.06em', textTransform: 'uppercase',
-                    padding: '7px 14px', cursor: 'pointer', color: r === role ? '#fff' : 'var(--color-text)'
-                  }}
-                >
-                  {r}
-                </button>
-              ))}
-            </div>
-          </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             {role !== 'Driver' && (
               <NotificationBell notifications={notifications} onOpen={onOpenNotification} onMarkAllRead={onMarkAllNotificationsRead} />
