@@ -78,12 +78,6 @@ export const ROLE_NOTE: Record<Role, string> = {
   Manager: 'Manager view — full access across all operations, reports, and master records.'
 };
 
-export const DEMO_ACCOUNTS: { name: string; role: string; key: Role; phone: string; password: string }[] = [
-  { name: 'Driver · driver@smt.com', role: 'Driver', key: 'Driver', phone: 'driver@smt.com', password: 'driver123' },
-  { name: 'Office · office@smt.com', role: 'Documentation', key: 'Office', phone: 'office@smt.com', password: 'office123' },
-  { name: 'Manager · mgr@smt.com', role: 'Manager', key: 'Manager', phone: 'mgr@smt.com', password: 'mgr123' }
-];
-
 export const USER_ROWS: UserAccount[] = [
   { name: 'Manager', role: 'Manager', phone: 'mgr@smt.com', branch: 'Chennai HQ', seen: 'Today, 09:12', access: 'All screens, month close', isManager: true },
   { name: 'Office Admin', role: 'Documentation', phone: 'office@smt.com', branch: 'Chennai HQ', seen: 'Today, 08:40', access: 'Movements, expenses, summary', isManager: false },
