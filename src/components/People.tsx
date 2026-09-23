@@ -1,11 +1,9 @@
 import { useState } from 'react';
-import type { DriverMaster, Trip, UserAccount, Vehicle } from '../types';
-import { formatNum, rupees, tripCost } from '../utils/calc';
+import type { DriverMaster, UserAccount, Vehicle } from '../types';
 import { BRANCH_OPTIONS, parseDisplayDate } from '../lib/api';
 import { RecordDialog, type DialogField } from './RecordDialog';
 
 interface Props {
-  trips: Trip[];
   vehicles: Vehicle[];
   drivers: DriverMaster[];
   users: (UserAccount & { id: string })[];
@@ -22,7 +20,7 @@ interface Props {
 }
 
 export function People({
-  trips, vehicles, drivers, users, onAddVehicle, onRemoveVehicle, onAddDriver, onRemoveDriver, onRemoveUser,
+  vehicles, drivers, users, onAddVehicle, onRemoveVehicle, onAddDriver, onRemoveDriver, onRemoveUser,
   onUpdateVehicle, onUpdateDriver, onUpdateUser, canDeleteAccounts, canEditAccounts
 }: Props) {
   const [dialog, setDialog] = useState<{ kind: 'user' | 'truck' | 'driver'; key: string; edit: boolean } | null>(null);
@@ -65,28 +63,6 @@ export function People({
     if (err) setDriverError(err);
     else setNewDriver({ name: '', licence: '', expiry: '', vehicle: vehicles[0]?.id ?? '' });
   }
-
-  const driverRows = drivers.map((d) => {
-    const tr = trips.filter((t) => t.driver === d.name);
-    const agg = tr.reduce(
-      (a, t) => {
-        const c = tripCost(t);
-        a.km += t.km;
-        a.rev += t.revenue;
-        a.exp += c.expense;
-        return a;
-      },
-      { km: 0, rev: 0, exp: 0 }
-    );
-    return {
-      ...d,
-      trips: tr.length,
-      km: agg.km,
-      revenue: agg.rev,
-      perKm: agg.km ? agg.exp / agg.km : null,
-      pending: tr.filter((t) => t.status === 'pending').length
-    };
-  });
 
   const blank = (v: string) => (v === '—' ? '' : v);
   const rowBtn = { color: 'var(--color-text)' } as const;
@@ -264,27 +240,21 @@ export function People({
         </div>
       </div>
       <div className="scroll-x" style={{ border: '2px solid var(--color-divider)' }}>
-        <table className="table" style={{ minWidth: 1200 }}>
+        <table className="table" style={{ minWidth: 760 }}>
           <thead>
             <tr>
               <th>Driver</th><th>Licence no</th><th>Expiry</th><th>Assigned vehicle</th><th>Credential</th>
-              <th style={{ textAlign: 'right' }}>Movements</th><th style={{ textAlign: 'right' }}>Pending</th>
-              <th style={{ textAlign: 'right' }}>KM</th><th style={{ textAlign: 'right' }}>₹/km</th><th style={{ textAlign: 'right' }}>Revenue</th><th className="col-actions"></th>
+              <th className="col-actions"></th>
             </tr>
           </thead>
           <tbody>
-            {driverRows.map((d) => (
+            {drivers.map((d) => (
               <tr key={d.name}>
                 <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{d.name}</td>
                 <td style={{ fontFamily: 'ui-monospace, monospace', fontSize: 12, whiteSpace: 'nowrap' }}>{d.licence}</td>
                 <td style={{ whiteSpace: 'nowrap' }}>{d.expiring ? <span className="tag tag-accent">{d.expiry}</span> : <span>{d.expiry}</span>}</td>
                 <td style={{ whiteSpace: 'nowrap' }}>{d.vehicle}</td>
                 <td style={{ color: 'var(--color-neutral-700)' }}>{d.credential}</td>
-                <td style={{ textAlign: 'right' }}>{formatNum(d.trips)}</td>
-                <td style={{ textAlign: 'right' }}>{formatNum(d.pending)}</td>
-                <td style={{ textAlign: 'right' }}>{formatNum(d.km)}</td>
-                <td style={{ textAlign: 'right' }}>{d.perKm !== null ? rupees(d.perKm) : '—'}</td>
-                <td style={{ textAlign: 'right', fontWeight: 700 }}>{rupees(d.revenue)}</td>
                 <td className="col-actions">
                   <div style={actions}>
                     <button type="button" className="btn btn-ghost" style={rowBtn} onClick={() => setDialog({ kind: 'driver', key: d.name, edit: false })}>View</button>
@@ -294,8 +264,8 @@ export function People({
                 </td>
               </tr>
             ))}
-            {driverRows.length === 0 && (
-              <tr><td colSpan={11} style={{ color: 'var(--color-neutral-700)' }}>No drivers yet.</td></tr>
+            {drivers.length === 0 && (
+              <tr><td colSpan={6} style={{ color: 'var(--color-neutral-700)' }}>No drivers yet.</td></tr>
             )}
           </tbody>
         </table>

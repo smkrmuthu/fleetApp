@@ -451,7 +451,6 @@ export function App() {
       )}
       {tab === 'people' && (
         <People
-          trips={trips}
           vehicles={vehicles}
           drivers={drivers}
           users={users}
