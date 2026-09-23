@@ -86,6 +86,7 @@ async function nextTripNumber(db: ReturnType<typeof getDb>, orgId: string): Prom
 
 const stopSchema = z.object({
   location: z.string().trim().min(1, 'Stop location is required').max(200),
+  date: z.string().optional(),
   odo: z.number().int().positive().nullish(),
   note: z.string().trim().max(200).nullish()
 });

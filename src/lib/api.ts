@@ -101,7 +101,7 @@ function orUndefined(value: string): string | undefined {
   return value && value !== '—' ? value : undefined;
 }
 function stopToApi(st: TripStop) {
-  return { location: st.location, odo: st.odo || undefined, note: st.note || undefined };
+  return { location: st.location, date: st.date || undefined, odo: st.odo || undefined, note: st.note || undefined };
 }
 
 // For PATCH: undefined = leave alone, null = clear, string = set.

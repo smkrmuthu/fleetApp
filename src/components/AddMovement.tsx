@@ -205,7 +205,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, l
 
   function addStop() {
     const id = 's' + Date.now() + Math.random().toString(36).slice(2, 6);
-    setStops((prev) => (prev.length >= MAX_STOPS ? prev : [...prev, { id, location: '', note: '' }]));
+    setStops((prev) => (prev.length >= MAX_STOPS ? prev : [...prev, { id, location: '', date: form.loadDate, note: '' }]));
     setLastAddedStop(id);
   }
 
@@ -284,7 +284,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, l
 
   // Blank rows are ignored; a note or reading with no place is an error.
   const cleanStops: TripStop[] = stops
-    .map((st) => ({ ...st, location: st.location.trim(), odo: st.odo && st.odo > 0 ? st.odo : undefined, note: (st.note ?? '').trim() }))
+    .map((st) => ({ ...st, location: st.location.trim(), date: st.date || undefined, odo: st.odo && st.odo > 0 ? st.odo : undefined, note: (st.note ?? '').trim() }))
     .filter((st) => st.location);
 
   function validate(completing: boolean): Record<string, string> {
@@ -520,7 +520,13 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, l
                     onChange={(e) => updateStop(st.id, { location: e.target.value })}
                     style={{ flex: ROUTE_PLACE, minWidth: 0 }}
                   />
-                  <span className="route-spacer" style={{ flex: ROUTE_DATE, minWidth: 0 }} />
+                  <input
+                    className="input" type="date" min={form.loadDate} max={form.unloadDate || undefined}
+                    aria-label={`Stop ${i + 1} date`}
+                    value={st.date ?? ''}
+                    onChange={(e) => updateStop(st.id, { date: e.target.value })}
+                    style={{ flex: ROUTE_DATE, minWidth: 0 }}
+                  />
                   <input
                     className="input" type="number" inputMode="numeric" aria-label={`Stop ${i + 1} odometer`} placeholder="Odo (km)"
                     value={st.odo ?? ''} onChange={(e) => updateStop(st.id, { odo: e.target.value ? Number(e.target.value) : undefined })}

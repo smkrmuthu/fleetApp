@@ -103,7 +103,7 @@ export function MovementReview({ action, form, original, lines, originalLines, s
   const removedDocs = originalDocuments.filter((d) => !documents.some((x) => x.id === d.id));
   const lineChanges = newLineIds.size + removedLines.length;
   const docChanges = documents.filter((d) => !originalDocIds.has(d.id)).length + removedDocs.length;
-  const stopSig = (list: TripStop[]) => list.map((st) => `${st.location}|${st.odo ?? ''}|${st.note ?? ''}`).join('\n');
+  const stopSig = (list: TripStop[]) => list.map((st) => `${st.location}|${st.date ?? ''}|${st.odo ?? ''}|${st.note ?? ''}`).join('\n');
   const stopsChanged = editing && stopSig(stops) !== stopSig(originalStops);
   const anyChange = changedCount + lineChanges + docChanges > 0 || stopsChanged;
   const leaveConflicts = overlappingLeaves(leaves, form.driver, form.loadDate, form.unloadDate);
