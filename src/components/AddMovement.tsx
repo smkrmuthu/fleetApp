@@ -526,6 +526,10 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, l
                 <input className="input" type="text" aria-label="Final unloading point note" placeholder="Note (optional)" value={form.toNote} onChange={set('toNote')} style={{ flex: ROUTE_NOTE, minWidth: 0 }} />
                 <span className="route-spacer" style={{ width: ROUTE_ACTIONS, flex: 'none' }} />
               </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginLeft: 34 }}>
+                <label htmlFor="unload-date-route" style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>Unloading date</label>
+                <input id="unload-date-route" className={errorClass('unloadDate')} type="date" min={form.loadDate} value={form.unloadDate} onChange={set('unloadDate')} style={{ flex: '0 1 180px' }} />
+              </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 12, flexWrap: 'wrap' }}>
               <button type="button" className="btn btn-secondary" onClick={addStop} disabled={stops.length >= MAX_STOPS}>Add stop</button>

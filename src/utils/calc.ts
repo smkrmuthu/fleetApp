@@ -65,13 +65,17 @@ export function dateInRange(displayDate: string, from: string, to: string): bool
 
 // Unloading date minus loading date, in whole days. Null when either display
 // date is missing or unparseable (a trip that hasn't been given dates yet).
+// Counted inclusively — a trip loaded on the 22nd and unloaded the 23rd
+// spans 2 calendar days (the 22nd and the 23rd), not the 1-day difference
+// between them. Same-day is 1 day, never 0.
 export function tripDurationDays(loadDate: string, unloadDate: string): number | null {
   const from = parseDisplayDate(loadDate);
   const to = parseDisplayDate(unloadDate);
   if (!from || !to) return null;
   const [fy, fm, fd] = from.split('-').map(Number);
   const [ty, tm, td] = to.split('-').map(Number);
-  return Math.round((Date.UTC(ty, tm - 1, td) - Date.UTC(fy, fm - 1, fd)) / 86400000);
+  const diff = Math.round((Date.UTC(ty, tm - 1, td) - Date.UTC(fy, fm - 1, fd)) / 86400000);
+  return diff + 1;
 }
 
 // A movement has only whole loading/unloading dates, no time — so it's
@@ -87,8 +91,8 @@ export function overlappingLeaves(leaves: DriverLeave[], driver: string, loadDat
 
 export function formatDuration(days: number | null): string {
   if (days === null) return '—';
-  if (days <= 0) return 'Same day';
-  return days === 1 ? '1 day' : `${days} days`;
+  const n = Math.max(days, 1);
+  return n === 1 ? '1 day' : `${n} days`;
 }
 
 const RANGE_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
