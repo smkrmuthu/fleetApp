@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useState } from 'react';
-import type { DriverMaster, Role, Trip, Vehicle } from '../types';
+import type { DriverLeave, DriverMaster, Role, Trip, Vehicle } from '../types';
 import { formFromTrip } from './AddMovement';
 import { MovementReview } from './MovementReview';
 import { DualScroll } from './DualScroll';
@@ -96,6 +96,7 @@ interface Props {
   trips: Trip[];
   vehicles: Vehicle[];
   drivers: DriverMaster[];
+  leaves: DriverLeave[];
   vehicleFilter: string;
   driverFilter: string;
   dateFrom: string;
@@ -113,7 +114,7 @@ interface Props {
   role: Role;
 }
 
-export function TripLog({ trips, vehicles, drivers, vehicleFilter, driverFilter, dateFrom, dateTo, onVehicleFilter, onDriverFilter, onDateFrom, onDateTo, onResetFilters, onAddMovement, onApprove, onBackup, onEdit, onDelete, role }: Props) {
+export function TripLog({ trips, vehicles, drivers, leaves, vehicleFilter, driverFilter, dateFrom, dateTo, onVehicleFilter, onDriverFilter, onDateFrom, onDateTo, onResetFilters, onAddMovement, onApprove, onBackup, onEdit, onDelete, role }: Props) {
   const isDriver = role === 'Driver';
   const isOffice = role === 'Office';
   const isManager = role === 'Manager';
@@ -310,6 +311,7 @@ export function TripLog({ trips, vehicles, drivers, vehicleFilter, driverFilter,
             <div role="dialog" aria-modal="true" aria-label="Complete movement" style={{ width: '100%', maxWidth: 640 }}>
               <MovementReview
                 action="complete"
+                leaves={leaves}
                 form={formFromTrip(completing)}
                 original={null}
                 lines={completing.expenses}

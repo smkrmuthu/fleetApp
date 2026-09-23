@@ -1,4 +1,4 @@
-import type { Trip, TripExpenseLine } from '../types';
+import type { DriverLeave, Trip, TripExpenseLine } from '../types';
 import { parseDisplayDate } from '../lib/api';
 
 // Date#toISOString() normalizes to UTC, which silently shifts the date by
@@ -72,6 +72,17 @@ export function tripDurationDays(loadDate: string, unloadDate: string): number |
   const [fy, fm, fd] = from.split('-').map(Number);
   const [ty, tm, td] = to.split('-').map(Number);
   return Math.round((Date.UTC(ty, tm - 1, td) - Date.UTC(fy, fm - 1, fd)) / 86400000);
+}
+
+// A movement has only whole loading/unloading dates, no time — so it's
+// treated as spanning the full day(s) from loadDate 00:00 to unloadDate (or
+// loadDate, if that's not set yet) 23:59 for the purpose of catching an
+// overlap with a driver's leave, which is recorded down to the minute.
+export function overlappingLeaves(leaves: DriverLeave[], driver: string, loadDate: string, unloadDate: string): DriverLeave[] {
+  if (!driver || !loadDate) return [];
+  const tripStart = `${loadDate}T00:00`;
+  const tripEnd = `${unloadDate || loadDate}T23:59`;
+  return leaves.filter((l) => l.driver === driver && tripStart <= l.endsAt && l.startsAt <= tripEnd);
 }
 
 export function formatDuration(days: number | null): string {

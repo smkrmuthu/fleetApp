@@ -51,21 +51,25 @@ export function App() {
     setLoading(true);
     setError('');
     try {
-      const [v, d, t, e, r] = await Promise.all([api.fetchVehicles(), api.fetchDrivers(), api.fetchTrips(), api.fetchMonthlyExpenses(), api.fetchMasterSettings()]);
+      // Leaves are fetched for every role, not just Office/Manager — a driver
+      // login can enter movements for other drivers too, and needs the same
+      // on-leave warning in Add Movement.
+      const [v, d, t, e, r, l] = await Promise.all([
+        api.fetchVehicles(), api.fetchDrivers(), api.fetchTrips(), api.fetchMonthlyExpenses(), api.fetchMasterSettings(), api.fetchDriverLeaves()
+      ]);
       setVehicles(v);
       setDrivers(d);
       setTrips(t);
       setExpenses(e);
       setMaster(r);
+      setDriverLeaves(l);
       if (currentRole !== 'Driver') {
-        const [u, n, l] = await Promise.all([api.fetchUsers(), api.fetchNotifications(), api.fetchDriverLeaves()]);
+        const [u, n] = await Promise.all([api.fetchUsers(), api.fetchNotifications()]);
         setUsers(u);
         setNotifications(n);
-        setDriverLeaves(l);
       } else {
         setUsers([]);
         setNotifications([]);
-        setDriverLeaves([]);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load data');
@@ -413,6 +417,7 @@ export function App() {
           vehicles={vehicles}
           drivers={drivers}
           master={master}
+          leaves={driverLeaves}
           defaultDriverName={role === 'Driver' ? currentUserName : undefined}
           editingTrip={editingTrip}
           onCancelEdit={cancelEditingTrip}
@@ -423,6 +428,7 @@ export function App() {
           trips={trips}
           vehicles={vehicles}
           drivers={drivers}
+          leaves={driverLeaves}
           vehicleFilter={vehicleFilter}
           driverFilter={driverFilter}
           dateFrom={dateFrom}

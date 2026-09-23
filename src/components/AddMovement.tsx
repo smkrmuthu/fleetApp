@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import type { DriverMaster, MasterSettings, Trip, TripDocument, TripExpenseKind, TripExpenseLine, TripFormState, TripStop, Vehicle } from '../types';
+import type { DriverLeave, DriverMaster, MasterSettings, Trip, TripDocument, TripExpenseKind, TripExpenseLine, TripFormState, TripStop, Vehicle } from '../types';
 import { TRIP_EXPENSE_LABEL } from '../data/mockData';
-import { dieselLitres, rupees, todayIso, toNumber } from '../utils/calc';
+import { dieselLitres, overlappingLeaves, rupees, todayIso, toNumber } from '../utils/calc';
 import { MovementReview } from './MovementReview';
-import { fetchDocumentBlobUrl, fetchNextTripNumberPreview, parseDisplayDate, scanReceipt, type ScannedReceipt } from '../lib/api';
+import { fetchDocumentBlobUrl, fetchNextTripNumberPreview, formatDisplayDateTime, parseDisplayDate, scanReceipt, type ScannedReceipt } from '../lib/api';
 
 function fileToBase64(file: File): Promise<{ base64: string; mimeType: string }> {
   return new Promise((resolve, reject) => {
@@ -83,12 +83,13 @@ interface Props {
   vehicles: Vehicle[];
   drivers: DriverMaster[];
   master: MasterSettings;
+  leaves: DriverLeave[];
   defaultDriverName?: string;
   editingTrip?: Trip | null;
   onCancelEdit?: () => void;
 }
 
-export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, defaultDriverName, editingTrip, onCancelEdit }: Props) {
+export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, leaves, defaultDriverName, editingTrip, onCancelEdit }: Props) {
   const showFinancials = !driverOnly;
   const isEditing = !!editingTrip;
   const isCompleted = editingTrip?.status === 'approved';
@@ -262,6 +263,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, d
   const profit = toNumber(form.revenue) - expense;
   const litres = dieselLitres(lines);
   const kmpl = litres ? (km / litres).toFixed(2) + ' km/l' : '—';
+  const driverLeaveConflicts = overlappingLeaves(leaves, form.driver, form.loadDate, form.unloadDate);
 
   // Blank rows are ignored; a note or reading with no place is an error.
   const cleanStops: TripStop[] = stops
@@ -458,6 +460,16 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, d
             )}
             <div className="field field-span-2"><label>Remarks</label><input className="input" type="text" placeholder="Remarks" value={form.remarks} onChange={set('remarks')} /></div>
           </div>
+
+          {driverLeaveConflicts.length > 0 && !confirmAction && (
+            <div role="status" style={{ border: '2px solid var(--color-accent)', background: 'var(--color-accent-100)', color: 'var(--color-accent-800)', padding: '10px 14px', marginTop: 16, fontSize: 13, display: 'grid', gap: 4 }}>
+              <strong>{form.driver} is recorded on leave during these dates:</strong>
+              {driverLeaveConflicts.map((l) => (
+                <div key={l.id}>{formatDisplayDateTime(l.startsAt)} → {formatDisplayDateTime(l.endsAt)}{l.remarks ? ` — ${l.remarks}` : ''}</div>
+              ))}
+              <div>You can still save this movement — double-check the driver or dates first.</div>
+            </div>
+          )}
 
           <div style={{ marginTop: 20, borderTop: '2px solid var(--color-divider)', paddingTop: 16 }}>
             <div style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--color-neutral-700)', marginBottom: 12 }}>
@@ -717,6 +729,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, d
           {confirmAction ? (
             <MovementReview
               action={confirmAction}
+              leaves={leaves}
               form={{ ...form, unloadDate: form.unloadDate || form.loadDate }}
               original={editingTrip ? formFromTrip(editingTrip) : null}
               lines={lines}
