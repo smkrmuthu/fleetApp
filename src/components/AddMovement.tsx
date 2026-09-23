@@ -454,6 +454,8 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, l
                 {isEditing ? "Assigned automatically — can't be changed." : 'Preview — confirmed once you save.'}
               </div>
             </div>
+            <div className="field"><label>Loading date</label><input className="input" type="date" value={form.loadDate} onChange={onLoadDateChange} /></div>
+            <div className="field"><label>Unloading date</label><input className={errorClass('unloadDate')} type="date" min={form.loadDate} value={form.unloadDate} onChange={set('unloadDate')} /></div>
             <div className="field">
               <label>Vehicle *</label>
               <select className={errorClass('vehicle')} value={form.vehicle} onChange={onVehicleChange}>
