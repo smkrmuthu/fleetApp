@@ -5,6 +5,12 @@ import { dieselLitres, overlappingLeaves, rupees, todayIso, toNumber } from '../
 import { MovementReview } from './MovementReview';
 import { fetchDocumentBlobUrl, fetchNextTripNumberPreview, formatDisplayDateTime, parseDisplayDate, scanReceipt, type ScannedReceipt } from '../lib/api';
 
+// Mirrors the server's allowlist (worker/src/lib/fileValidation.ts) so a
+// driver gets an immediate, specific message instead of a generic save
+// error — the server's magic-byte check remains the actual security
+// boundary, this is purely a UX shortcut for the obvious rejects.
+const ACCEPTED_DOCUMENT_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'application/pdf'];
+
 function fileToBase64(file: File): Promise<{ base64: string; mimeType: string }> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -119,6 +125,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, l
   const [scanFile, setScanFile] = useState<{ base64: string; mimeType: string; filename: string } | null>(null);
   const [scanErrorMsg, setScanErrorMsg] = useState('');
   const [viewingDoc, setViewingDoc] = useState<string | null>(null);
+  const [docErrorMsg, setDocErrorMsg] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [confirmAction, setConfirmAction] = useState<SubmitAction | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -223,7 +230,15 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, l
   async function onFilesChosen(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
     if (fileInputRef.current) fileInputRef.current.value = '';
+    const rejected: string[] = [];
     for (const file of files) {
+      // An empty file.type (common for camera captures on some devices) is
+      // let through — fileToBase64 falls back to image/jpeg for those, and
+      // the server's magic-byte check is the real gate either way.
+      if (file.type && !ACCEPTED_DOCUMENT_TYPES.includes(file.type)) {
+        rejected.push(file.name);
+        continue;
+      }
       try {
         const { base64, mimeType } = await fileToBase64(file);
         setDocuments((prev) => [...prev, { id: 'x' + Date.now() + Math.random().toString(36).slice(2), filename: file.name, mimeType, base64 }]);
@@ -231,6 +246,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, l
         // a file that failed to read locally is simply skipped
       }
     }
+    setDocErrorMsg(rejected.length ? `${rejected.join(', ')} — only photos and PDF files are supported.` : '');
   }
 
   function removeDocument(id: string) {
@@ -706,7 +722,10 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, l
 
           <div style={{ marginTop: 16, borderTop: '2px solid var(--color-divider)', paddingTop: 16 }}>
             <div style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--color-neutral-700)', marginBottom: 12 }}>Supporting documents</div>
-            <input ref={fileInputRef} type="file" multiple accept="image/*,.pdf" onChange={onFilesChosen} style={{ marginBottom: documents.length ? 10 : 0 }} />
+            <input ref={fileInputRef} type="file" multiple accept="image/*,.pdf" onChange={onFilesChosen} style={{ marginBottom: docErrorMsg || documents.length ? 10 : 0 }} />
+            {docErrorMsg && (
+              <div style={{ fontSize: 12, color: 'var(--color-accent-800)', marginBottom: 10 }}>{docErrorMsg}</div>
+            )}
             {documents.length > 0 && (
               <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 6 }}>
                 {documents.map((d) => (

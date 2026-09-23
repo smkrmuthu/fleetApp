@@ -5,6 +5,7 @@ import type { Env, Vars } from '../types';
 import { getDb, newId, nowIso } from '../db';
 import { trips, tripExpenses, notifications, receipts, tripDocuments, tripStops, drivers, counters } from '../../drizzle/schema';
 import { base64ToBytes, filenameFromKey, storageKeyFor } from '../lib/storage';
+import { ALLOWED_DOCUMENT_MIME_TYPES, matchesDeclaredType, sanitizeFilenameForHeader } from '../lib/fileValidation';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { buildFilters, combine, parsePagination } from '../lib/filters';
 import { writeAudit } from '../lib/audit';
@@ -24,11 +25,19 @@ const expenseLineSchema = z
   })
   .refine((l) => l.kind !== 'other' || !!l.details?.trim(), { message: "details is required when kind = 'other'", path: ['details'] });
 
-const documentInputSchema = z.object({
-  filename: z.string().min(1),
-  mimeType: z.string().min(1),
-  base64: z.string().min(1)
-});
+// mimeType is a client-supplied claim — the .refine() below re-derives the
+// truth from the file's own magic bytes so an attacker can't label an HTML
+// or SVG payload as an image to get it stored (and later served) as one.
+const documentInputSchema = z
+  .object({
+    filename: z.string().min(1),
+    mimeType: z.enum(ALLOWED_DOCUMENT_MIME_TYPES),
+    base64: z.string().min(1)
+  })
+  .refine((doc) => matchesDeclaredType(doc.mimeType, base64ToBytes(doc.base64)), {
+    message: 'File content does not match its declared type',
+    path: ['mimeType']
+  });
 
 type Problem = { message: string; field: string };
 type StopReading = { odo?: number | null };
@@ -454,7 +463,21 @@ tripRoutes.get('/:id/documents/:docId/file', async (c) => {
 
   const object = await c.env.DOCS.get(receipt.storageKey);
   if (!object) return c.json({ error: { code: 'not_found', message: 'File not found in storage' } }, 404);
-  return new Response(object.body, { headers: { 'Content-Type': receipt.mimeType ?? 'application/octet-stream' } });
+
+  // Documents uploaded since the SEC-02 fix already have a verified,
+  // allowlisted mimeType, but this also has to cover whatever was uploaded
+  // before that check existed — anything not on the current allowlist is
+  // served as an inert download rather than trusted to render inline.
+  const isSafeInlineType = !!receipt.mimeType && (ALLOWED_DOCUMENT_MIME_TYPES as readonly string[]).includes(receipt.mimeType);
+  const contentType = isSafeInlineType ? receipt.mimeType! : 'application/octet-stream';
+  const filename = sanitizeFilenameForHeader(filenameFromKey(receipt.storageKey));
+  return new Response(object.body, {
+    headers: {
+      'Content-Type': contentType,
+      'X-Content-Type-Options': 'nosniff',
+      'Content-Disposition': `${isSafeInlineType ? 'inline' : 'attachment'}; filename="${filename}"`
+    }
+  });
 });
 
 // Office/manager may edit any trip at any time. A driver may only edit
