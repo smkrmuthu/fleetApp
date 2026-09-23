@@ -95,6 +95,34 @@ export function formatDuration(days: number | null): string {
   return n === 1 ? '1 day' : `${n} days`;
 }
 
+// A leave has a real start/end time, not just dates, so its length is a
+// straight minute count rather than the inclusive day counting above.
+function parseNaiveDateTime(s: string): number | null {
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/);
+  if (!m) return null;
+  const [, y, mo, d, h, mi] = m;
+  return Date.UTC(Number(y), Number(mo) - 1, Number(d), Number(h), Number(mi));
+}
+
+export function leaveDurationMinutes(startsAt: string, endsAt: string): number | null {
+  const a = parseNaiveDateTime(startsAt);
+  const b = parseNaiveDateTime(endsAt);
+  if (a === null || b === null) return null;
+  return Math.round((b - a) / 60000);
+}
+
+export function formatLeaveDuration(minutes: number | null): string {
+  if (minutes === null || minutes < 0) return '—';
+  const days = Math.floor(minutes / 1440);
+  const hours = Math.floor((minutes % 1440) / 60);
+  const mins = minutes % 60;
+  const parts: string[] = [];
+  if (days) parts.push(`${days} ${days === 1 ? 'day' : 'days'}`);
+  if (hours) parts.push(`${hours} ${hours === 1 ? 'hr' : 'hrs'}`);
+  if (mins) parts.push(`${mins} min`);
+  return parts.length ? parts.join(' ') : '0 min';
+}
+
 const RANGE_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 export function formatDateRange(from: string, to: string): string {
   if (!from || !to) return '';

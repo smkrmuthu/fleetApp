@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { DriverLeave, DriverMaster, MasterSettings, Vehicle } from '../types';
 import { formatDisplayDateTime } from '../lib/api';
+import { formatLeaveDuration, leaveDurationMinutes } from '../utils/calc';
 
 interface Props {
   vehicles: Vehicle[];
@@ -283,7 +284,7 @@ export function Master({ vehicles, drivers, settings, onSave, onSetDefaultDriver
       <div className="scroll-x" style={{ border: '2px solid var(--color-divider)' }}>
         <table className="table" style={{ minWidth: 640 }}>
           <thead>
-            <tr><th>Driver</th><th>From</th><th>To</th><th>Remarks</th><th className="col-actions"></th></tr>
+            <tr><th>Driver</th><th>From</th><th>To</th><th>Duration</th><th>Remarks</th><th className="col-actions"></th></tr>
           </thead>
           <tbody>
             {sortedLeaves.map((l) => (
@@ -291,6 +292,7 @@ export function Master({ vehicles, drivers, settings, onSave, onSetDefaultDriver
                 <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{l.driver}</td>
                 <td style={{ whiteSpace: 'nowrap' }}>{formatDisplayDateTime(l.startsAt)}</td>
                 <td style={{ whiteSpace: 'nowrap' }}>{formatDisplayDateTime(l.endsAt)}</td>
+                <td style={{ whiteSpace: 'nowrap' }}>{formatLeaveDuration(leaveDurationMinutes(l.startsAt, l.endsAt))}</td>
                 <td style={{ color: 'var(--color-neutral-700)' }}>{l.remarks ?? '—'}</td>
                 <td className="col-actions">
                   <button type="button" className="btn btn-ghost" style={{ color: 'var(--color-accent-700)' }} onClick={() => onRemoveLeave(l.id)}>Delete</button>
@@ -298,7 +300,7 @@ export function Master({ vehicles, drivers, settings, onSave, onSetDefaultDriver
               </tr>
             ))}
             {sortedLeaves.length === 0 && (
-              <tr><td colSpan={5} style={{ color: 'var(--color-neutral-700)' }}>No leave recorded yet.</td></tr>
+              <tr><td colSpan={6} style={{ color: 'var(--color-neutral-700)' }}>No leave recorded yet.</td></tr>
             )}
           </tbody>
         </table>
