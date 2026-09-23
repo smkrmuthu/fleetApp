@@ -1,8 +1,8 @@
 -- Demo data for Shree Mira Trader — mirrors the mock data the frontend
 -- prototype shipped with, now as real rows. Demo sign-in passwords:
---   Manager  A. Balan   +91 94440 61928 / manager123
---   Office   Kavitha R  +91 90031 77402 / office123
---   Driver   Murugan S  +91 98431 20114 / driver123
+--   Manager  A. Balan   mgr@smt.com / mgr123
+--   Office   Kavitha R  office@smt.com / office123
+--   Driver   Murugan S  driver@smt.com / driver123
 
 INSERT INTO orgs (id, name, currency, fy_start_month) VALUES
   ('org-meridian', 'Shree Mira Trader', 'INR', 4);
@@ -25,10 +25,10 @@ INSERT INTO drivers (id, org_id, branch_id, full_name, phone, licence_no, licenc
   ('Ilango R',  'org-meridian', 'branch-chennai', 'Ilango R',  '+91 90805 44117', 'TN52 20160112290', '2026-10-09', 'Yard pass · renew', 'TN52 BK 2290', 1);
 
 INSERT INTO users (id, org_id, branch_id, role, full_name, phone, password_hash, password_salt, driver_id, last_seen_at) VALUES
-  ('user-balan',   'org-meridian', 'branch-chennai', 'manager', 'A. Balan',  '+91 94440 61928', '7910d62f16a10f8efe732b6befc939c492bb97f79068497abbef9812997b10dc', 'a1b2c3d4e5f60718293a4b5c6d7e8f90', NULL, '2026-09-14T09:12:00Z'),
-  ('user-kavitha', 'org-meridian', 'branch-chennai', 'office',  'Kavitha R', '+91 90031 77402', '6580eacfafbc9e7c06290bcadae41dc961af8be698fbe25a24b3c549b321d852', 'b2c3d4e5f60718293a4b5c6d7e8f90a1', NULL, '2026-09-14T08:40:00Z'),
+  ('user-balan',   'org-meridian', 'branch-chennai', 'manager', 'A. Balan',  'mgr@smt.com',    '5902886c11f95192472316c5482b88afecaef9ea82bc9beea6744826825c50fb', '3686be45329fa9a7d42fd41e0d43c794', NULL, '2026-09-14T09:12:00Z'),
+  ('user-kavitha', 'org-meridian', 'branch-chennai', 'office',  'Kavitha R', 'office@smt.com', '042bf5071767ff3bae163af25883cac1decde244af49549cc9765661a3cd8f65', '6dd3a086980ec50de96f1dedf3516d45', NULL, '2026-09-14T08:40:00Z'),
   ('user-suresh',  'org-meridian', 'branch-cochin',  'office',  'Suresh V',  '+91 98847 30215', NULL, NULL, NULL, '2026-09-13T18:22:00Z'),
-  ('user-murugan', 'org-meridian', 'branch-chennai', 'driver',  'Murugan S', '+91 98431 20114', 'dd79aa9700ce22fefaebec2b5884a612c20b587bae5d0f0de640143c8dd7f13e', 'c3d4e5f60718293a4b5c6d7e8f90a1b2', 'Murugan S', '2026-09-14T07:05:00Z'),
+  ('user-murugan', 'org-meridian', 'branch-chennai', 'driver',  'Murugan S', 'driver@smt.com', 'b10121718c4893cca0af63eb8ede93e0550d03e26356f909401e9c7616d27dc8', '24ec67fc6c467f94b1e5497089bb0293', 'Murugan S', '2026-09-14T07:05:00Z'),
   ('user-rafiq',   'org-meridian', 'branch-cochin',  'driver',  'Rafiq A',   '+91 99401 55380', NULL, NULL, 'Rafiq A', '2026-09-14T06:48:00Z'),
   ('user-prakash', 'org-meridian', 'branch-hosur',   'driver',  'Prakash N', '+91 94433 71206', NULL, NULL, 'Prakash N', '2026-09-12T00:00:00Z'),
   ('user-ilango',  'org-meridian', 'branch-chennai', 'driver',  'Ilango R',  '+91 90805 44117', NULL, NULL, 'Ilango R', '2026-09-14T11:30:00Z');

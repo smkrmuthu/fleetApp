@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { DEMO_ACCOUNTS } from '../data/mockData';
 import logoMarkWhite from '../assets/logo-mark-white.png';
 
 interface Props {
@@ -46,7 +45,7 @@ export function SignIn({ onSignIn }: Props) {
 
       <div className="sign-in-form-panel" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
         <h1 style={{ fontSize: 32, letterSpacing: '-0.02em', margin: '0 0 6px' }}>Sign in</h1>
-        <p style={{ color: 'var(--color-neutral-700)', margin: '0 0 28px' }}>Use the mobile number registered with your branch.</p>
+        <p style={{ color: 'var(--color-neutral-700)', margin: '0 0 28px' }}>Sign in with your registered account credentials.</p>
 
         <form
           style={{ display: 'grid', gap: 16 }}
@@ -56,8 +55,8 @@ export function SignIn({ onSignIn }: Props) {
           }}
         >
           <div className="field">
-            <label>Mobile number</label>
-            <input className="input" type="tel" placeholder="+91 98xxx xxxxx" value={phone} onChange={(e) => setPhone(e.target.value)} />
+            <label>Email or Mobile number</label>
+            <input className="input" type="text" placeholder="name@smt.com" value={phone} onChange={(e) => setPhone(e.target.value)} autoFocus />
           </div>
           <div className="field">
             <label>Password</label>
@@ -74,32 +73,6 @@ export function SignIn({ onSignIn }: Props) {
             <a href="#otp">Sign in with OTP instead</a>
           </div>
         </form>
-
-        <div style={{ marginTop: 36, borderTop: '2px solid var(--color-divider)', paddingTop: 18 }}>
-          <div style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--color-neutral-700)', marginBottom: 12 }}>
-            Demo — sign in as
-          </div>
-          <div style={{ display: 'grid', gap: 2, background: 'var(--color-divider)', border: '2px solid var(--color-divider)' }}>
-            {DEMO_ACCOUNTS.map((a) => (
-              <button
-                key={a.key}
-                type="button"
-                disabled={busy}
-                onClick={() => attempt(a.phone, a.password)}
-                style={{
-                  appearance: 'none', border: 0, background: 'var(--color-bg)', textAlign: 'left',
-                  padding: '13px 16px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between',
-                  gap: 14, alignItems: 'baseline', fontFamily: 'var(--font-body)', fontSize: 14
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--color-accent-100)')}
-                onMouseLeave={(e) => (e.currentTarget.style.background = 'var(--color-bg)')}
-              >
-                <span style={{ fontWeight: 600 }}>{a.name}</span>
-                <span style={{ fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--color-accent-700)' }}>{a.role}</span>
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
     </div>
   );

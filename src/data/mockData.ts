@@ -57,8 +57,8 @@ export const TRIP_EXPENSE_LABEL: Record<string, string> = {
 
 export const ROLE_TABS: Record<Role, TabId[]> = {
   Driver: ['addtrip', 'triplog'],
-  Office: ['addtrip', 'triplog', 'summary', 'expenses', 'people', 'master'],
-  Manager: ['summary', 'triplog', 'expenses', 'report', 'people', 'master', 'schema']
+  Office: ['addtrip', 'triplog', 'summary', 'expenses'],
+  Manager: ['summary', 'addtrip', 'triplog', 'expenses', 'report', 'people', 'master', 'schema']
 };
 
 export const TAB_LABELS: Record<TabId, string> = {
@@ -73,25 +73,21 @@ export const TAB_LABELS: Record<TabId, string> = {
 };
 
 export const ROLE_NOTE: Record<Role, string> = {
-  Driver: 'Driver view — enter trips, see your own log.',
-  Office: 'Documentation view — enter movements for any driver, post fixed costs, read the summary.',
-  Manager: 'Manager view — full access including the monthly report and the data model.'
+  Driver: 'Driver view — enter movements, see your own trip log.',
+  Office: 'Documentation view — enter movements, trip log, summary, and post monthly expenses.',
+  Manager: 'Manager view — full access across all operations, reports, and master records.'
 };
 
 export const DEMO_ACCOUNTS: { name: string; role: string; key: Role; phone: string; password: string }[] = [
-  { name: 'Murugan S · +91 98431 20114', role: 'Driver', key: 'Driver', phone: '+91 98431 20114', password: 'driver123' },
-  { name: 'Kavitha R · +91 90031 77402', role: 'Documentation', key: 'Office', phone: '+91 90031 77402', password: 'office123' },
-  { name: 'A. Balan · +91 94440 61928', role: 'Manager', key: 'Manager', phone: '+91 94440 61928', password: 'manager123' }
+  { name: 'Driver · driver@smt.com', role: 'Driver', key: 'Driver', phone: 'driver@smt.com', password: 'driver123' },
+  { name: 'Office · office@smt.com', role: 'Documentation', key: 'Office', phone: 'office@smt.com', password: 'office123' },
+  { name: 'Manager · mgr@smt.com', role: 'Manager', key: 'Manager', phone: 'mgr@smt.com', password: 'mgr123' }
 ];
 
 export const USER_ROWS: UserAccount[] = [
-  { name: 'A. Balan', role: 'Manager', phone: '+91 94440 61928', branch: 'Chennai HQ', seen: 'Today, 09:12', access: 'All screens, month close', isManager: true },
-  { name: 'Kavitha R', role: 'Documentation', phone: '+91 90031 77402', branch: 'Chennai HQ', seen: 'Today, 08:40', access: 'Movements, expenses, summary', isManager: false },
-  { name: 'Suresh V', role: 'Documentation', phone: '+91 98847 30215', branch: 'Cochin', seen: 'Yesterday, 18:22', access: 'Movements, expenses, summary', isManager: false },
-  { name: 'Murugan S', role: 'Driver', phone: '+91 98431 20114', branch: 'Chennai HQ', seen: 'Today, 07:05', access: 'Own movements only', isManager: false },
-  { name: 'Rafiq A', role: 'Driver', phone: '+91 99401 55380', branch: 'Cochin', seen: 'Today, 06:48', access: 'Own movements only', isManager: false },
-  { name: 'Prakash N', role: 'Driver', phone: '+91 94433 71206', branch: 'Hosur', seen: '2 days ago', access: 'Own movements only', isManager: false },
-  { name: 'Ilango R', role: 'Driver', phone: '+91 90805 44117', branch: 'Chennai HQ', seen: 'Today, 11:30', access: 'Own movements only', isManager: false }
+  { name: 'Manager', role: 'Manager', phone: 'mgr@smt.com', branch: 'Chennai HQ', seen: 'Today, 09:12', access: 'All screens, month close', isManager: true },
+  { name: 'Office Admin', role: 'Documentation', phone: 'office@smt.com', branch: 'Chennai HQ', seen: 'Today, 08:40', access: 'Movements, expenses, summary', isManager: false },
+  { name: 'Driver', role: 'Driver', phone: 'driver@smt.com', branch: 'Chennai HQ', seen: 'Today, 07:05', access: 'Own movements only', isManager: false }
 ];
 
 export const DRIVER_MASTER: DriverMaster[] = [
