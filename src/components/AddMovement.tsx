@@ -65,8 +65,9 @@ const MAX_STOPS = 20;
 
 // Column sizes shared by every Route row so the odometer boxes line up.
 const ROUTE_PLACE = '2 1 180px';
-const ROUTE_ODO = '0 1 130px';
-const ROUTE_NOTE = '1 1 130px';
+const ROUTE_DATE = '1 1 130px';
+const ROUTE_ODO = '0 1 110px';
+const ROUTE_NOTE = '1 1 120px';
 const ROUTE_ACTIONS = 96;
 const ROUTE_ROW: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' };
 
@@ -453,8 +454,6 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, l
                 {isEditing ? "Assigned automatically — can't be changed." : 'Preview — confirmed once you save.'}
               </div>
             </div>
-            <div className="field"><label>Loading date</label><input className="input" type="date" value={form.loadDate} onChange={onLoadDateChange} /></div>
-            <div className="field"><label>Unloading date</label><input className={errorClass('unloadDate')} type="date" min={form.loadDate} value={form.unloadDate} onChange={set('unloadDate')} /></div>
             <div className="field">
               <label>Vehicle *</label>
               <select className={errorClass('vehicle')} value={form.vehicle} onChange={onVehicleChange}>
@@ -495,6 +494,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, l
               <div className="route-head" style={{ display: 'flex', gap: 10, fontSize: 11, color: 'var(--color-neutral-700)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
                 <span style={{ width: 24, flex: 'none' }} />
                 <span style={{ flex: ROUTE_PLACE }}>Place</span>
+                <span style={{ flex: ROUTE_DATE }}>Date</span>
                 <span style={{ flex: ROUTE_ODO }}>Odometer (km)</span>
                 <span style={{ flex: ROUTE_NOTE }}>Note</span>
                 <span style={{ width: ROUTE_ACTIONS, flex: 'none' }} />
@@ -503,6 +503,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, l
               <div style={ROUTE_ROW}>
                 <span style={routeBadge('start')} aria-hidden="true">A</span>
                 <input className="input" type="text" aria-label="Loading point" placeholder="Loading point (yard / factory)" value={form.from} onChange={(e) => { setFromTouched(true); set('from')(e); }} style={{ flex: ROUTE_PLACE, minWidth: 0 }} />
+                <input className="input" type="date" aria-label="Loading date" value={form.loadDate} onChange={onLoadDateChange} style={{ flex: ROUTE_DATE, minWidth: 0 }} />
                 <input className={errorClass('odoStart')} type="number" inputMode="numeric" aria-label="Odometer at start (km)" placeholder="Start odo" value={form.odoStart} onChange={set('odoStart')} style={{ flex: ROUTE_ODO, minWidth: 0 }} />
                 <input className="input" type="text" aria-label="Loading point note" placeholder="Note (optional)" value={form.fromNote} onChange={set('fromNote')} style={{ flex: ROUTE_NOTE, minWidth: 0 }} />
                 <span className="route-spacer" style={{ width: ROUTE_ACTIONS, flex: 'none' }} />
@@ -517,6 +518,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, l
                     onChange={(e) => updateStop(st.id, { location: e.target.value })}
                     style={{ flex: ROUTE_PLACE, minWidth: 0 }}
                   />
+                  <span className="route-spacer" style={{ flex: ROUTE_DATE, minWidth: 0 }} />
                   <input
                     className="input" type="number" inputMode="numeric" aria-label={`Stop ${i + 1} odometer`} placeholder="Odo (km)"
                     value={st.odo ?? ''} onChange={(e) => updateStop(st.id, { odo: e.target.value ? Number(e.target.value) : undefined })}
@@ -538,13 +540,10 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, l
               <div style={ROUTE_ROW}>
                 <span style={routeBadge('end')} aria-hidden="true">B</span>
                 <input className="input" type="text" aria-label="Final unloading point" placeholder="Final unloading point (warehouse / yard)" value={form.to} onChange={set('to')} style={{ flex: ROUTE_PLACE, minWidth: 0 }} />
+                <input className={errorClass('unloadDate')} type="date" min={form.loadDate} aria-label="Unloading date" value={form.unloadDate} onChange={set('unloadDate')} style={{ flex: ROUTE_DATE, minWidth: 0 }} />
                 <input className={errorClass('odoEnd')} type="number" inputMode="numeric" aria-label="Odometer at trip end (km)" placeholder="End odo" value={form.odoEnd} onChange={set('odoEnd')} style={{ flex: ROUTE_ODO, minWidth: 0 }} />
                 <input className="input" type="text" aria-label="Final unloading point note" placeholder="Note (optional)" value={form.toNote} onChange={set('toNote')} style={{ flex: ROUTE_NOTE, minWidth: 0 }} />
                 <span className="route-spacer" style={{ width: ROUTE_ACTIONS, flex: 'none' }} />
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginLeft: 34 }}>
-                <label htmlFor="unload-date-route" style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>Unloading date</label>
-                <input id="unload-date-route" className={errorClass('unloadDate')} type="date" min={form.loadDate} value={form.unloadDate} onChange={set('unloadDate')} style={{ flex: '0 1 180px' }} />
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 12, flexWrap: 'wrap' }}>
