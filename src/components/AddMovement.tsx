@@ -205,7 +205,8 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, l
 
   function addStop() {
     const id = 's' + Date.now() + Math.random().toString(36).slice(2, 6);
-    setStops((prev) => (prev.length >= MAX_STOPS ? prev : [...prev, { id, location: '', date: form.loadDate, note: '' }]));
+    const lastDate = stops.slice().reverse().find((st) => st.date)?.date || form.loadDate;
+    setStops((prev) => (prev.length >= MAX_STOPS ? prev : [...prev, { id, location: '', date: lastDate, note: '' }]));
     setLastAddedStop(id);
   }
 
@@ -306,6 +307,25 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, l
         errs.odoEnd = `Odometer end can't be lower than the last stop's reading (${prev}).`;
       }
     }
+    // Stop dates must only advance along the route: loading date -> Stop 1 -> Stop 2 -> ... -> unloading date
+    if (!errs.stops) {
+      let prevDate = form.loadDate;
+      let prevLabel = `loading date (${form.loadDate})`;
+      for (let i = 0; i < stops.length; i++) {
+        const stDate = stops[i].date;
+        if (!stDate) continue;
+        if (stDate < prevDate) {
+          errs.stops = `Stop ${i + 1} date (${stDate}) cannot be earlier than ${prevLabel}.`;
+          break;
+        }
+        if (form.unloadDate && stDate > form.unloadDate) {
+          errs.stops = `Stop ${i + 1} date (${stDate}) cannot be later than unloading date (${form.unloadDate}).`;
+          break;
+        }
+        prevDate = stDate;
+        prevLabel = `Stop ${i + 1} date (${stDate})`;
+      }
+    }
     if (!form.vehicle) errs.vehicle = 'Select a vehicle.';
     if (!form.driver) errs.driver = 'Select a driver.';
     if (completing) {
@@ -316,8 +336,14 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, l
     if (form.odoEnd && toNumber(form.odoEnd) <= toNumber(form.odoStart)) {
       errs.odoEnd = 'Odometer end must be greater than odometer start.';
     }
-    if (form.unloadDate && form.unloadDate < form.loadDate) {
-      errs.unloadDate = 'Unloading date cannot be before the loading date.';
+    if (form.unloadDate) {
+      const lastStopWithDate = stops.slice().reverse().find((st) => st.date);
+      if (lastStopWithDate?.date && form.unloadDate < lastStopWithDate.date) {
+        const lastIdx = stops.indexOf(lastStopWithDate) + 1;
+        errs.unloadDate = `Unloading date (${form.unloadDate}) cannot be earlier than Stop ${lastIdx} date (${lastStopWithDate.date}).`;
+      } else if (form.unloadDate < form.loadDate) {
+        errs.unloadDate = 'Unloading date cannot be before the loading date.';
+      }
     }
     return errs;
   }
@@ -454,8 +480,8 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, l
                 {isEditing ? "Assigned automatically — can't be changed." : 'Preview — confirmed once you save.'}
               </div>
             </div>
-            <div className="field"><label>Loading date</label><input className="input" type="date" value={form.loadDate} onChange={onLoadDateChange} /></div>
-            <div className="field"><label>Unloading date</label><input className={errorClass('unloadDate')} type="date" min={form.loadDate} value={form.unloadDate} onChange={set('unloadDate')} /></div>
+            <div className="field"><label>Loading date</label><input className="input" type="date" max={stops.find((s) => s.date)?.date || form.unloadDate || undefined} value={form.loadDate} onChange={onLoadDateChange} /></div>
+            <div className="field"><label>Unloading date</label><input className={errorClass('unloadDate')} type="date" min={stops.slice().reverse().find((st) => st.date)?.date || form.loadDate} value={form.unloadDate} onChange={set('unloadDate')} /></div>
             <div className="field">
               <label>Vehicle *</label>
               <select className={errorClass('vehicle')} value={form.vehicle} onChange={onVehicleChange}>
@@ -505,50 +531,54 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, l
               <div style={ROUTE_ROW}>
                 <span style={routeBadge('start')} aria-hidden="true">A</span>
                 <input className="input" type="text" aria-label="Loading point" placeholder="Loading point (yard / factory)" value={form.from} onChange={(e) => { setFromTouched(true); set('from')(e); }} style={{ flex: ROUTE_PLACE, minWidth: 0 }} />
-                <input className="input" type="date" aria-label="Loading date" value={form.loadDate} onChange={onLoadDateChange} style={{ flex: ROUTE_DATE, minWidth: 0 }} />
+                <input className="input" type="date" max={stops.find((s) => s.date)?.date || form.unloadDate || undefined} aria-label="Loading date" value={form.loadDate} onChange={onLoadDateChange} style={{ flex: ROUTE_DATE, minWidth: 0 }} />
                 <input className={errorClass('odoStart')} type="number" inputMode="numeric" aria-label="Odometer at start (km)" placeholder="Start odo" value={form.odoStart} onChange={set('odoStart')} style={{ flex: ROUTE_ODO, minWidth: 0 }} />
                 <input className="input" type="text" aria-label="Loading point note" placeholder="Note (optional)" value={form.fromNote} onChange={set('fromNote')} style={{ flex: ROUTE_NOTE, minWidth: 0 }} />
                 <span className="route-spacer" style={{ width: ROUTE_ACTIONS, flex: 'none' }} />
               </div>
 
-              {stops.map((st, i) => (
-                <div key={st.id} style={ROUTE_ROW}>
-                  <span style={routeBadge('stop')} aria-hidden="true">{i + 1}</span>
-                  <input
-                    className="input" type="text" aria-label={`Stop ${i + 1} place`} placeholder={`Stop ${i + 1} — place`}
-                    value={st.location} autoFocus={st.id === lastAddedStop}
-                    onChange={(e) => updateStop(st.id, { location: e.target.value })}
-                    style={{ flex: ROUTE_PLACE, minWidth: 0 }}
-                  />
-                  <input
-                    className="input" type="date" min={form.loadDate} max={form.unloadDate || undefined}
-                    aria-label={`Stop ${i + 1} date`}
-                    value={st.date ?? ''}
-                    onChange={(e) => updateStop(st.id, { date: e.target.value })}
-                    style={{ flex: ROUTE_DATE, minWidth: 0 }}
-                  />
-                  <input
-                    className="input" type="number" inputMode="numeric" aria-label={`Stop ${i + 1} odometer`} placeholder="Odo (km)"
-                    value={st.odo ?? ''} onChange={(e) => updateStop(st.id, { odo: e.target.value ? Number(e.target.value) : undefined })}
-                    style={{ flex: ROUTE_ODO, minWidth: 0 }}
-                  />
-                  <input
-                    className="input" type="text" aria-label={`Stop ${i + 1} note`} placeholder="Note (optional)"
-                    value={st.note ?? ''} onChange={(e) => updateStop(st.id, { note: e.target.value })}
-                    style={{ flex: ROUTE_NOTE, minWidth: 0 }}
-                  />
-                  <span style={{ display: 'flex', width: ROUTE_ACTIONS, flex: 'none', justifyContent: 'flex-end' }}>
-                    <button type="button" className="btn btn-ghost" aria-label={`Move stop ${i + 1} up`} disabled={i === 0} onClick={() => moveStop(i, -1)} style={{ padding: '4px 8px' }}>↑</button>
-                    <button type="button" className="btn btn-ghost" aria-label={`Move stop ${i + 1} down`} disabled={i === stops.length - 1} onClick={() => moveStop(i, 1)} style={{ padding: '4px 8px' }}>↓</button>
-                    <button type="button" className="btn btn-ghost" aria-label={`Remove stop ${i + 1}`} onClick={() => removeStop(st.id)} style={{ padding: '4px 8px' }}>✕</button>
-                  </span>
-                </div>
-              ))}
+              {stops.map((st, i) => {
+                const minStopDate = stops.slice(0, i).reverse().find((s) => s.date)?.date || form.loadDate;
+                const maxStopDate = stops.slice(i + 1).find((s) => s.date)?.date || form.unloadDate || undefined;
+                return (
+                  <div key={st.id} style={ROUTE_ROW}>
+                    <span style={routeBadge('stop')} aria-hidden="true">{i + 1}</span>
+                    <input
+                      className="input" type="text" aria-label={`Stop ${i + 1} place`} placeholder={`Stop ${i + 1} — place`}
+                      value={st.location} autoFocus={st.id === lastAddedStop}
+                      onChange={(e) => updateStop(st.id, { location: e.target.value })}
+                      style={{ flex: ROUTE_PLACE, minWidth: 0 }}
+                    />
+                    <input
+                      className="input" type="date" min={minStopDate} max={maxStopDate}
+                      aria-label={`Stop ${i + 1} date`}
+                      value={st.date ?? ''}
+                      onChange={(e) => updateStop(st.id, { date: e.target.value })}
+                      style={{ flex: ROUTE_DATE, minWidth: 0 }}
+                    />
+                    <input
+                      className="input" type="number" inputMode="numeric" aria-label={`Stop ${i + 1} odometer`} placeholder="Odo (km)"
+                      value={st.odo ?? ''} onChange={(e) => updateStop(st.id, { odo: e.target.value ? Number(e.target.value) : undefined })}
+                      style={{ flex: ROUTE_ODO, minWidth: 0 }}
+                    />
+                    <input
+                      className="input" type="text" aria-label={`Stop ${i + 1} note`} placeholder="Note (optional)"
+                      value={st.note ?? ''} onChange={(e) => updateStop(st.id, { note: e.target.value })}
+                      style={{ flex: ROUTE_NOTE, minWidth: 0 }}
+                    />
+                    <span style={{ display: 'flex', width: ROUTE_ACTIONS, flex: 'none', justifyContent: 'flex-end' }}>
+                      <button type="button" className="btn btn-ghost" aria-label={`Move stop ${i + 1} up`} disabled={i === 0} onClick={() => moveStop(i, -1)} style={{ padding: '4px 8px' }}>↑</button>
+                      <button type="button" className="btn btn-ghost" aria-label={`Move stop ${i + 1} down`} disabled={i === stops.length - 1} onClick={() => moveStop(i, 1)} style={{ padding: '4px 8px' }}>↓</button>
+                      <button type="button" className="btn btn-ghost" aria-label={`Remove stop ${i + 1}`} onClick={() => removeStop(st.id)} style={{ padding: '4px 8px' }}>✕</button>
+                    </span>
+                  </div>
+                );
+              })}
 
               <div style={ROUTE_ROW}>
                 <span style={routeBadge('end')} aria-hidden="true">B</span>
                 <input className="input" type="text" aria-label="Final unloading point" placeholder="Final unloading point (warehouse / yard)" value={form.to} onChange={set('to')} style={{ flex: ROUTE_PLACE, minWidth: 0 }} />
-                <input className={errorClass('unloadDate')} type="date" min={form.loadDate} aria-label="Unloading date" value={form.unloadDate} onChange={set('unloadDate')} style={{ flex: ROUTE_DATE, minWidth: 0 }} />
+                <input className={errorClass('unloadDate')} type="date" min={stops.slice().reverse().find((st) => st.date)?.date || form.loadDate} aria-label="Unloading date" value={form.unloadDate} onChange={set('unloadDate')} style={{ flex: ROUTE_DATE, minWidth: 0 }} />
                 <input className={errorClass('odoEnd')} type="number" inputMode="numeric" aria-label="Odometer at trip end (km)" placeholder="End odo" value={form.odoEnd} onChange={set('odoEnd')} style={{ flex: ROUTE_ODO, minWidth: 0 }} />
                 <input className="input" type="text" aria-label="Final unloading point note" placeholder="Note (optional)" value={form.toNote} onChange={set('toNote')} style={{ flex: ROUTE_NOTE, minWidth: 0 }} />
                 <span className="route-spacer" style={{ width: ROUTE_ACTIONS, flex: 'none' }} />

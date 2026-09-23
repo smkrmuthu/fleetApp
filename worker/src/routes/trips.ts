@@ -60,6 +60,29 @@ function stopOdometerProblem(odoStart: number | null | undefined, odoEnd: number
   return null;
 }
 
+// Stop dates must only advance along the route: loadDate <= stop 1 date <= stop 2 date <= ... <= unloadDate
+function stopDateProblem(loadDate: string | null | undefined, unloadDate: string | null | undefined, stops: { date?: string | null }[]): Problem | null {
+  if (!loadDate) return null;
+  let prevDate = loadDate;
+  let prevLabel = `loading date (${loadDate})`;
+  for (let i = 0; i < stops.length; i++) {
+    const d = stops[i].date;
+    if (!d) continue;
+    if (d < prevDate) {
+      return { message: `Stop ${i + 1} date (${d}) cannot be earlier than ${prevLabel}`, field: 'stops' };
+    }
+    if (unloadDate && d > unloadDate) {
+      return { message: `Stop ${i + 1} date (${d}) cannot be later than unloading date (${unloadDate})`, field: 'stops' };
+    }
+    prevDate = d;
+    prevLabel = `Stop ${i + 1} date (${d})`;
+  }
+  if (unloadDate && unloadDate < prevDate) {
+    return { message: `Unloading date (${unloadDate}) cannot be earlier than previous date (${prevDate})`, field: 'unloadDate' };
+  }
+  return null;
+}
+
 // A movement can only be complete once it has its loading weight, both
 // odometer readings (end above start) and a reading at every stop.
 // Returns the first thing missing.
@@ -194,6 +217,9 @@ tripRoutes.post('/', async (c) => {
 
   const problem = isDriver ? stopOdometerProblem(data.odoStart, data.odoEnd, data.stops) : completionProblem(data, data.stops);
   if (problem) return c.json({ error: { code: 'validation_error', ...problem } }, 422);
+
+  const dateProb = stopDateProblem(data.loadDate, data.unloadDate, data.stops);
+  if (dateProb) return c.json({ error: { code: 'validation_error', ...dateProb } }, 422);
 
   if (data.odoEnd != null && data.odoStart != null && data.odoEnd <= data.odoStart) {
     return c.json({ error: { code: 'validation_error', message: 'Odometer end must be greater than odometer start', field: 'odoEnd' } }, 422);
@@ -527,6 +553,11 @@ tripRoutes.patch('/:id', async (c) => {
     ? completionProblem({ weightKg: 'weightKg' in tripPatch ? tripPatch.weightKg : existing.weightKg, odoStart, odoEnd }, effectiveStops)
     : stopOdometerProblem(odoStart, odoEnd, effectiveStops);
   if (problem) return c.json({ error: { code: 'validation_error', ...problem } }, 422);
+
+  const effectiveLoadDate = tripPatch.loadDate ?? existing.loadDate;
+  const effectiveUnloadDate = 'unloadDate' in tripPatch ? tripPatch.unloadDate : existing.unloadDate;
+  const dateProb = stopDateProblem(effectiveLoadDate, effectiveUnloadDate, newStops ?? []);
+  if (dateProb) return c.json({ error: { code: 'validation_error', ...dateProb } }, 422);
 
   const now = nowIso();
   await db.update(trips).set({ ...tripPatch, updatedAt: now }).where(eq(trips.id, id));
