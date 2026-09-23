@@ -6,6 +6,7 @@ import { exportBackup } from './lib/reports';
 import * as api from './lib/api';
 import { SignIn } from './components/SignIn';
 import { AppShell } from './components/AppShell';
+import { PwaInstall } from './components/PwaInstall';
 import { MovementSummary } from './components/MovementSummary';
 import { AddMovement } from './components/AddMovement';
 import { TripLog } from './components/TripLog';
@@ -392,147 +393,155 @@ export function App() {
   if (checkingSession) return null;
 
   if (!authed) {
-    return <SignIn onSignIn={signIn} />;
+    return (
+      <>
+        <SignIn onSignIn={signIn} />
+        <PwaInstall />
+      </>
+    );
   }
 
   return (
-    <AppShell
-      role={role}
-      userName={currentUserName}
-      tab={tab}
-      onRoleChange={changeRole}
-      onTabChange={setTab}
-      onSignOut={signOut}
-      notifications={notifications}
-      onOpenNotification={openNotification}
-      onMarkAllNotificationsRead={markAllNotificationsRead}
-    >
-      {error && (
-        <div style={{ border: '2px solid var(--color-accent)', color: 'var(--color-accent-700)', padding: '10px 16px', marginBottom: 16 }}>
-          {error} <button type="button" className="btn btn-ghost" style={{ padding: '0 6px' }} onClick={() => setError('')}>Dismiss</button>
-        </div>
-      )}
-      {loading && <div style={{ color: 'var(--color-neutral-700)', marginBottom: 16 }}>Loading…</div>}
+    <>
+      <AppShell
+        role={role}
+        userName={currentUserName}
+        tab={tab}
+        onRoleChange={changeRole}
+        onTabChange={setTab}
+        onSignOut={signOut}
+        notifications={notifications}
+        onOpenNotification={openNotification}
+        onMarkAllNotificationsRead={markAllNotificationsRead}
+      >
+        {error && (
+          <div style={{ border: '2px solid var(--color-accent)', color: 'var(--color-accent-700)', padding: '10px 16px', marginBottom: 16 }}>
+            {error} <button type="button" className="btn btn-ghost" style={{ padding: '0 6px' }} onClick={() => setError('')}>Dismiss</button>
+          </div>
+        )}
+        {loading && <div style={{ color: 'var(--color-neutral-700)', marginBottom: 16 }}>Loading…</div>}
 
-      {tab === 'summary' && (
-        <MovementSummary
-          trips={trips}
-          expenses={expenses}
-          vehicles={vehicles}
-          drivers={drivers}
-          vehicleFilter={vehicleFilter}
-          driverFilter={driverFilter}
-          dateFrom={dateFrom}
-          dateTo={dateTo}
-          onVehicleFilter={setVehicleFilter}
-          onDriverFilter={setDriverFilter}
-          onDateFrom={setDateFrom}
-          onDateTo={setDateTo}
-          onResetFilters={resetFilters}
-        />
-      )}
-      {tab === 'addtrip' && (
-        <AddMovement
-          key={role + (editingTrip?.id ?? 'new')}
-          onSubmit={submitTrip}
-          driverOnly={role === 'Driver'}
-          vehicles={vehicles}
-          drivers={drivers}
-          master={master}
-          leaves={driverLeaves}
-          defaultDriverName={role === 'Driver' ? currentUserName : undefined}
-          editingTrip={editingTrip}
-          onCancelEdit={cancelEditingTrip}
-        />
-      )}
-      {tab === 'triplog' && (
-        <TripLog
-          trips={trips}
-          vehicles={vehicles}
-          drivers={drivers}
-          leaves={driverLeaves}
-          vehicleFilter={vehicleFilter}
-          driverFilter={driverFilter}
-          dateFrom={dateFrom}
-          dateTo={dateTo}
-          onVehicleFilter={setVehicleFilter}
-          onDriverFilter={setDriverFilter}
-          onDateFrom={setDateFrom}
-          onDateTo={setDateTo}
-          onResetFilters={resetFilters}
-          onAddMovement={() => { setEditingTrip(null); setTab('addtrip'); }}
-          onApprove={approveTrip}
-          onBackup={backupEverything}
-          onEdit={startEditingTrip}
-          onDelete={deleteTrip}
-          role={role}
-        />
-      )}
-      {tab === 'expenses' && (
-        <MonthlyExpenses
-          expenses={expenses}
-          vehicles={vehicles}
-          drivers={drivers}
-          categories={expenseCategories}
-          dateFrom={dateFrom}
-          dateTo={dateTo}
-          onDateFrom={setDateFrom}
-          onDateTo={setDateTo}
-          onResetFilters={resetFilters}
-          onAdd={addExpense}
-          onDelete={deleteMonthlyExpense}
-        />
-      )}
-      {tab === 'report' && (
-        <MonthlyReport
-          trips={trips}
-          expenses={expenses}
-          vehicles={vehicles}
-          drivers={drivers}
-          vehicleFilter={vehicleFilter}
-          driverFilter={driverFilter}
-          dateFrom={dateFrom}
-          dateTo={dateTo}
-          onVehicleFilter={setVehicleFilter}
-          onDriverFilter={setDriverFilter}
-          onDateFrom={setDateFrom}
-          onDateTo={setDateTo}
-          onResetFilters={resetFilters}
-        />
-      )}
-      {tab === 'people' && (
-        <People
-          vehicles={vehicles}
-          drivers={drivers}
-          users={users}
-          onAddVehicle={addVehicle}
-          onRemoveVehicle={removeVehicle}
-          onAddDriver={addDriver}
-          onUpdateVehicle={editVehicle}
-          onUpdateDriver={editDriver}
-          onUpdateUser={editUser}
-          onRemoveDriver={removeDriver}
-          onRemoveUser={removeUser}
-          canDeleteAccounts={role === 'Manager'}
-          canEditAccounts={role === 'Manager'}
-        />
-      )}
-      {tab === 'master' && (
-        <Master
-          vehicles={vehicles}
-          drivers={drivers}
-          settings={master}
-          onSave={saveMasterSettings}
-          onSetDefaultDriver={(vehicleId, driver) => editVehicle(vehicleId, { defaultDriver: driver })}
-          leaves={driverLeaves}
-          onAddLeave={addDriverLeave}
-          onRemoveLeave={removeDriverLeave}
-          categories={expenseCategories}
-          onAddCategory={addExpenseCategory}
-          onRemoveCategory={removeExpenseCategory}
-        />
-      )}
-      {tab === 'schema' && <DataModel />}
-    </AppShell>
+        {tab === 'summary' && (
+          <MovementSummary
+            trips={trips}
+            expenses={expenses}
+            vehicles={vehicles}
+            drivers={drivers}
+            vehicleFilter={vehicleFilter}
+            driverFilter={driverFilter}
+            dateFrom={dateFrom}
+            dateTo={dateTo}
+            onVehicleFilter={setVehicleFilter}
+            onDriverFilter={setDriverFilter}
+            onDateFrom={setDateFrom}
+            onDateTo={setDateTo}
+            onResetFilters={resetFilters}
+          />
+        )}
+        {tab === 'addtrip' && (
+          <AddMovement
+            key={role + (editingTrip?.id ?? 'new')}
+            onSubmit={submitTrip}
+            driverOnly={role === 'Driver'}
+            vehicles={vehicles}
+            drivers={drivers}
+            master={master}
+            leaves={driverLeaves}
+            defaultDriverName={role === 'Driver' ? currentUserName : undefined}
+            editingTrip={editingTrip}
+            onCancelEdit={cancelEditingTrip}
+          />
+        )}
+        {tab === 'triplog' && (
+          <TripLog
+            trips={trips}
+            vehicles={vehicles}
+            drivers={drivers}
+            leaves={driverLeaves}
+            vehicleFilter={vehicleFilter}
+            driverFilter={driverFilter}
+            dateFrom={dateFrom}
+            dateTo={dateTo}
+            onVehicleFilter={setVehicleFilter}
+            onDriverFilter={setDriverFilter}
+            onDateFrom={setDateFrom}
+            onDateTo={setDateTo}
+            onResetFilters={resetFilters}
+            onAddMovement={() => { setEditingTrip(null); setTab('addtrip'); }}
+            onApprove={approveTrip}
+            onBackup={backupEverything}
+            onEdit={startEditingTrip}
+            onDelete={deleteTrip}
+            role={role}
+          />
+        )}
+        {tab === 'expenses' && (
+          <MonthlyExpenses
+            expenses={expenses}
+            vehicles={vehicles}
+            drivers={drivers}
+            categories={expenseCategories}
+            dateFrom={dateFrom}
+            dateTo={dateTo}
+            onDateFrom={setDateFrom}
+            onDateTo={setDateTo}
+            onResetFilters={resetFilters}
+            onAdd={addExpense}
+            onDelete={deleteMonthlyExpense}
+          />
+        )}
+        {tab === 'report' && (
+          <MonthlyReport
+            trips={trips}
+            expenses={expenses}
+            vehicles={vehicles}
+            drivers={drivers}
+            vehicleFilter={vehicleFilter}
+            driverFilter={driverFilter}
+            dateFrom={dateFrom}
+            dateTo={dateTo}
+            onVehicleFilter={setVehicleFilter}
+            onDriverFilter={setDriverFilter}
+            onDateFrom={setDateFrom}
+            onDateTo={setDateTo}
+            onResetFilters={resetFilters}
+          />
+        )}
+        {tab === 'people' && (
+          <People
+            vehicles={vehicles}
+            drivers={drivers}
+            users={users}
+            onAddVehicle={addVehicle}
+            onRemoveVehicle={removeVehicle}
+            onAddDriver={addDriver}
+            onUpdateVehicle={editVehicle}
+            onUpdateDriver={editDriver}
+            onUpdateUser={editUser}
+            onRemoveDriver={removeDriver}
+            onRemoveUser={removeUser}
+            canDeleteAccounts={role === 'Manager'}
+            canEditAccounts={role === 'Manager'}
+          />
+        )}
+        {tab === 'master' && (
+          <Master
+            vehicles={vehicles}
+            drivers={drivers}
+            settings={master}
+            onSave={saveMasterSettings}
+            onSetDefaultDriver={(vehicleId, driver) => editVehicle(vehicleId, { defaultDriver: driver })}
+            leaves={driverLeaves}
+            onAddLeave={addDriverLeave}
+            onRemoveLeave={removeDriverLeave}
+            categories={expenseCategories}
+            onAddCategory={addExpenseCategory}
+            onRemoveCategory={removeExpenseCategory}
+          />
+        )}
+        {tab === 'schema' && <DataModel />}
+      </AppShell>
+      <PwaInstall />
+    </>
   );
 }
