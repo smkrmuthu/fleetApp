@@ -23,6 +23,15 @@ export interface MasterSettings {
   loadingPoint: string | null; // where new movements start from
 }
 
+// A driver's time off, with both the date and time it starts/ends.
+export interface DriverLeave {
+  id: string;
+  driver: string;
+  startsAt: string; // "2026-09-25T09:00", local, no timezone
+  endsAt: string;
+  remarks?: string;
+}
+
 export interface DriverMaster {
   name: string;
   licence: string;

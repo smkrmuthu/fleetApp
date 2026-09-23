@@ -43,6 +43,13 @@
       "when": 1790074803265,
       "tag": "0005_counters",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1790124080511,
+      "tag": "0006_driver_leaves",
+      "breakpoints": true
     }
   ]
 }

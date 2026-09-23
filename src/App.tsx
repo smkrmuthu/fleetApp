@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { AppNotification, DriverMaster, MasterSettings, MonthlyExpense, Role, TabId, Trip, UserAccount, Vehicle } from './types';
+import type { AppNotification, DriverLeave, DriverMaster, MasterSettings, MonthlyExpense, Role, TabId, Trip, UserAccount, Vehicle } from './types';
 import { DEMO_ACCOUNTS, ROLE_TABS } from './data/mockData';
 import { rupees, toIsoDate } from './utils/calc';
 import { exportBackup } from './lib/reports';
@@ -40,6 +40,7 @@ export function App() {
   const [users, setUsers] = useState<PersonUser[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [master, setMaster] = useState<MasterSettings>({ dieselRate: null, adblueRate: null, loadingPoint: null });
+  const [driverLeaves, setDriverLeaves] = useState<DriverLeave[]>([]);
   const [vehicleFilter, setVehicleFilter] = useState('all');
   const [driverFilter, setDriverFilter] = useState('');
   const [dateFrom, setDateFrom] = useState(() => currentMonthRange().from);
@@ -57,12 +58,14 @@ export function App() {
       setExpenses(e);
       setMaster(r);
       if (currentRole !== 'Driver') {
-        const [u, n] = await Promise.all([api.fetchUsers(), api.fetchNotifications()]);
+        const [u, n, l] = await Promise.all([api.fetchUsers(), api.fetchNotifications(), api.fetchDriverLeaves()]);
         setUsers(u);
         setNotifications(n);
+        setDriverLeaves(l);
       } else {
         setUsers([]);
         setNotifications([]);
+        setDriverLeaves([]);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load data');
@@ -281,6 +284,25 @@ export function App() {
     }
   }
 
+  async function addDriverLeave(l: { driver: string; startsAt: string; endsAt: string; remarks?: string }): Promise<string | null> {
+    try {
+      await api.createDriverLeave(l);
+      setDriverLeaves(await api.fetchDriverLeaves());
+      return null;
+    } catch (e) {
+      return e instanceof Error ? e.message : 'Could not save leave';
+    }
+  }
+
+  async function removeDriverLeave(id: string) {
+    try {
+      await api.deleteDriverLeave(id);
+      setDriverLeaves((prev) => prev.filter((l) => l.id !== id));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not delete leave');
+    }
+  }
+
   async function editDriver(name: string, d: { licence: string; expiry: string; vehicle: string; credential: string }): Promise<string | null> {
     try {
       await api.updateDriver(name, d);
@@ -473,6 +495,9 @@ export function App() {
           settings={master}
           onSave={saveMasterSettings}
           onSetDefaultDriver={(vehicleId, driver) => editVehicle(vehicleId, { defaultDriver: driver })}
+          leaves={driverLeaves}
+          onAddLeave={addDriverLeave}
+          onRemoveLeave={removeDriverLeave}
         />
       )}
       {tab === 'schema' && <DataModel />}

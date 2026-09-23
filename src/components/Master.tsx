@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import type { DriverMaster, MasterSettings, Vehicle } from '../types';
+import type { DriverLeave, DriverMaster, MasterSettings, Vehicle } from '../types';
+import { formatDisplayDateTime } from '../lib/api';
 
 interface Props {
   vehicles: Vehicle[];
@@ -7,11 +8,18 @@ interface Props {
   settings: MasterSettings;
   onSave: (patch: Partial<MasterSettings>) => Promise<string | null>;
   onSetDefaultDriver: (vehicleId: string, driver: string) => Promise<string | null>;
+  leaves: DriverLeave[];
+  onAddLeave: (l: { driver: string; startsAt: string; endsAt: string; remarks?: string }) => Promise<string | null>;
+  onRemoveLeave: (id: string) => void;
+}
+
+function blankLeaveForm(defaultDriver: string) {
+  return { driver: defaultDriver, startsAt: '', endsAt: '', remarks: '' };
 }
 
 const fmt = (n: number | null) => (n === null ? '' : String(n));
 
-export function Master({ vehicles, drivers, settings, onSave, onSetDefaultDriver }: Props) {
+export function Master({ vehicles, drivers, settings, onSave, onSetDefaultDriver, leaves, onAddLeave, onRemoveLeave }: Props) {
   const rates = settings;
   const [diesel, setDiesel] = useState(fmt(rates.dieselRate));
   const [adblue, setAdblue] = useState(fmt(rates.adblueRate));
@@ -78,6 +86,25 @@ export function Master({ vehicles, drivers, settings, onSave, onSetDefaultDriver
     const err = await onSetDefaultDriver(vehicleId, driver);
     setRowStatus((s) => ({ ...s, [vehicleId]: err ?? 'Saved' }));
     if (!err) setTimeout(() => setRowStatus((s) => (s[vehicleId] === 'Saved' ? { ...s, [vehicleId]: '' } : s)), 2000);
+  }
+
+  const [leaveForm, setLeaveForm] = useState(() => blankLeaveForm(drivers[0]?.name ?? ''));
+  const [leaveError, setLeaveError] = useState('');
+  const [savingLeave, setSavingLeave] = useState(false);
+  const sortedLeaves = [...leaves].sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+
+  async function addLeave() {
+    if (!leaveForm.driver) return setLeaveError('Select a driver.');
+    if (!leaveForm.startsAt || !leaveForm.endsAt) return setLeaveError('Enter both the start and end date and time.');
+    if (leaveForm.endsAt <= leaveForm.startsAt) return setLeaveError('End must be after start.');
+    setLeaveError('');
+    setSavingLeave(true);
+    const err = await onAddLeave({
+      driver: leaveForm.driver, startsAt: leaveForm.startsAt, endsAt: leaveForm.endsAt, remarks: leaveForm.remarks.trim() || undefined
+    });
+    setSavingLeave(false);
+    if (err) setLeaveError(err);
+    else setLeaveForm((f) => blankLeaveForm(f.driver));
   }
 
   return (
@@ -186,6 +213,73 @@ export function Master({ vehicles, drivers, settings, onSave, onSetDefaultDriver
             })}
             {vehicles.length === 0 && (
               <tr><td colSpan={3} style={{ color: 'var(--color-neutral-700)' }}>No trucks yet — add one under People.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <h2 style={{ fontSize: 20, marginBottom: 12 }}>Driver leave</h2>
+      <p style={{ color: 'var(--color-neutral-700)', fontSize: 13, marginTop: -4, marginBottom: 12, maxWidth: '74ch', lineHeight: 1.6 }}>
+        Record when a driver is off, down to the date and time — a half-day, an overnight break, or several days away.
+      </p>
+      <div style={{ border: '2px solid var(--color-divider)', padding: 16, marginBottom: 20 }}>
+        <form className="filters-grid" onSubmit={(e) => { e.preventDefault(); addLeave(); }}>
+          <div className="field">
+            <label htmlFor="leave-driver">Driver</label>
+            <select
+              id="leave-driver" className="input" value={leaveForm.driver}
+              onChange={(e) => setLeaveForm((f) => ({ ...f, driver: e.target.value }))}
+            >
+              <option value="">Select driver</option>
+              {drivers.map((d) => <option key={d.name} value={d.name}>{d.name}</option>)}
+            </select>
+          </div>
+          <div className="field">
+            <label htmlFor="leave-from">From</label>
+            <input
+              id="leave-from" className="input" type="datetime-local" value={leaveForm.startsAt}
+              onChange={(e) => setLeaveForm((f) => ({ ...f, startsAt: e.target.value }))}
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="leave-to">To</label>
+            <input
+              id="leave-to" className="input" type="datetime-local" value={leaveForm.endsAt}
+              onChange={(e) => setLeaveForm((f) => ({ ...f, endsAt: e.target.value }))}
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="leave-remarks">Remarks</label>
+            <input
+              id="leave-remarks" className="input" type="text" placeholder="Optional" maxLength={300}
+              value={leaveForm.remarks} onChange={(e) => setLeaveForm((f) => ({ ...f, remarks: e.target.value }))}
+            />
+          </div>
+          <button type="submit" className="btn btn-primary" style={{ justifySelf: 'start' }} disabled={savingLeave}>
+            {savingLeave ? 'Saving…' : 'Add leave'}
+          </button>
+          {leaveError && <div role="alert" style={{ color: 'var(--color-accent-700)', fontSize: 13 }}>{leaveError}</div>}
+        </form>
+      </div>
+      <div className="scroll-x" style={{ border: '2px solid var(--color-divider)' }}>
+        <table className="table" style={{ minWidth: 640 }}>
+          <thead>
+            <tr><th>Driver</th><th>From</th><th>To</th><th>Remarks</th><th className="col-actions"></th></tr>
+          </thead>
+          <tbody>
+            {sortedLeaves.map((l) => (
+              <tr key={l.id}>
+                <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{l.driver}</td>
+                <td style={{ whiteSpace: 'nowrap' }}>{formatDisplayDateTime(l.startsAt)}</td>
+                <td style={{ whiteSpace: 'nowrap' }}>{formatDisplayDateTime(l.endsAt)}</td>
+                <td style={{ color: 'var(--color-neutral-700)' }}>{l.remarks ?? '—'}</td>
+                <td className="col-actions">
+                  <button type="button" className="btn btn-ghost" style={{ color: 'var(--color-accent-700)' }} onClick={() => onRemoveLeave(l.id)}>Delete</button>
+                </td>
+              </tr>
+            ))}
+            {sortedLeaves.length === 0 && (
+              <tr><td colSpan={5} style={{ color: 'var(--color-neutral-700)' }}>No leave recorded yet.</td></tr>
             )}
           </tbody>
         </table>

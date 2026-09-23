@@ -266,6 +266,26 @@ export const auditLog = sqliteTable(
 );
 
 // Org-wide master values that other screens read (e.g. today's diesel and
+// A driver's time off, with both the date and time it starts/ends. Naive
+// local strings ("2026-09-25T09:00"), the same "no timezone math" approach
+// used for trip dates elsewhere in this schema.
+export const driverLeaves = sqliteTable(
+  'driver_leaves',
+  {
+    id: text('id').primaryKey(),
+    orgId: text('org_id').notNull().references(() => orgs.id, { onDelete: 'cascade' }),
+    driverId: text('driver_id').notNull().references(() => drivers.id),
+    startsAt: text('starts_at').notNull(),
+    endsAt: text('ends_at').notNull(),
+    remarks: text('remarks'),
+    createdBy: text('created_by').references(() => users.id),
+    createdAt: text('created_at').notNull().default(sql`(current_timestamp)`)
+  },
+  (t) => ({
+    driverIdx: index('driver_leaves_driver').on(t.orgId, t.driverId)
+  })
+);
+
 // Atomic per-org counters (currently just the trip-number sequence). One row
 // per key, incremented with an upsert so two simultaneous trip creations can
 // never land on the same number.

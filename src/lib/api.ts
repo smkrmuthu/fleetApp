@@ -1,5 +1,5 @@
 import type {
-  AppNotification, DriverMaster, ExpenseCategory, MasterSettings, MonthlyExpense, NotificationKind,
+  AppNotification, DriverLeave, DriverMaster, ExpenseCategory, MasterSettings, MonthlyExpense, NotificationKind,
   Role, TabId, Trip, TripDocument, TripExpenseKind, TripExpenseLine, TripStop, UserAccount, Vehicle
 } from '../types';
 
@@ -56,6 +56,15 @@ export function formatDisplayDate(iso: string | null | undefined): string {
   if (!y || !m || !d) return iso;
   return `${String(d).padStart(2, '0')} ${MONTHS[m - 1]} ${y}`;
 }
+// "2026-09-25T09:00" → "25 Sep 2026, 09:00" — same naive local reading as
+// formatDisplayDate, just with the time kept alongside it.
+export function formatDisplayDateTime(iso: string | null | undefined): string {
+  if (!iso) return '—';
+  const [datePart, timePart] = iso.split('T');
+  const date = formatDisplayDate(datePart);
+  return timePart ? `${date}, ${timePart.slice(0, 5)}` : date;
+}
+
 export function parseDisplayDate(display: string): string {
   const m = display.match(/^(\d{2}) (\w{3}) (\d{4})$/);
   if (!m) return '';
@@ -493,4 +502,29 @@ export async function fetchMasterSettings(): Promise<MasterSettings> {
 
 export async function updateMasterSettings(r: Partial<MasterSettings>): Promise<MasterSettings> {
   return request<MasterSettings>('/settings', { method: 'PATCH', body: JSON.stringify(r) });
+}
+
+// ── driver leave ────────────────────────────────────────────────────────────
+interface ApiDriverLeave {
+  id: string; driverId: string; startsAt: string; endsAt: string; remarks: string | null;
+}
+
+function driverLeaveFromApi(l: ApiDriverLeave): DriverLeave {
+  return { id: l.id, driver: l.driverId, startsAt: l.startsAt, endsAt: l.endsAt, remarks: l.remarks ?? undefined };
+}
+
+export async function fetchDriverLeaves(): Promise<DriverLeave[]> {
+  const res = await request<{ driverLeaves: ApiDriverLeave[] }>('/driver-leaves');
+  return res.driverLeaves.map(driverLeaveFromApi);
+}
+
+export async function createDriverLeave(l: { driver: string; startsAt: string; endsAt: string; remarks?: string }): Promise<void> {
+  await request('/driver-leaves', {
+    method: 'POST',
+    body: JSON.stringify({ driverId: l.driver, startsAt: l.startsAt, endsAt: l.endsAt, remarks: l.remarks || undefined })
+  });
+}
+
+export async function deleteDriverLeave(id: string): Promise<void> {
+  await request(`/driver-leaves/${encodeURIComponent(id)}`, { method: 'DELETE' });
 }
