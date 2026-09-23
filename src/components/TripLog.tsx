@@ -6,9 +6,9 @@ import { DualScroll } from './DualScroll';
 import { exportTripLog } from '../lib/reports';
 import { useExport } from '../lib/useExport';
 import { TRIP_EXPENSE_LABEL } from '../data/mockData';
-import { dateInRange, formatDateRange, formatNum, rupees, tripCost } from '../utils/calc';
+import { dateInRange, formatDateRange, formatDuration, formatNum, rupees, tripCost, tripDurationDays } from '../utils/calc';
 
-const DETAIL_COLUMNS = 7; // Trip No., Start date, Vehicle, Driver, Tons, KM, Status
+const DETAIL_COLUMNS = 8; // Trip No., Loading date, Duration, Vehicle, Driver, Tons, KM, Status
 
 // Everything that used to sit in its own column — item no., the fuel/expense
 // breakdown, revenue/profit, odometer, docs, remarks — now lives here,
@@ -224,10 +224,10 @@ export function TripLog({ trips, vehicles, drivers, vehicleFilter, driverFilter,
         </div>
       ) : (
         <DualScroll>
-          <table className="table" style={{ minWidth: 920 }}>
+          <table className="table" style={{ minWidth: 1020 }}>
             <thead>
               <tr>
-                <th className="col-first">Trip No.</th><th>Start date</th><th>Vehicle</th><th>Driver</th>
+                <th className="col-first">Trip No.</th><th>Loading Date</th><th>Duration</th><th>Vehicle</th><th>Driver</th>
                 <th style={{ textAlign: 'right' }}>Tons</th><th style={{ textAlign: 'right' }}>KM</th>
                 <th>Status</th>
               </tr>
@@ -251,6 +251,7 @@ export function TripLog({ trips, vehicles, drivers, vehicleFilter, driverFilter,
                         </div>
                       </td>
                       <td style={{ whiteSpace: 'nowrap' }}>{t.loadDate}</td>
+                      <td style={{ whiteSpace: 'nowrap', color: 'var(--color-neutral-700)' }}>{formatDuration(tripDurationDays(t.loadDate, t.unloadDate))}</td>
                       <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{t.vehicle}</td>
                       <td>{t.driver}</td>
                       <td style={{ textAlign: 'right' }}>{formatNum(t.tons, 1)}</td>

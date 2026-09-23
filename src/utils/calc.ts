@@ -63,6 +63,23 @@ export function dateInRange(displayDate: string, from: string, to: string): bool
   return (!from || iso >= from) && (!to || iso <= to);
 }
 
+// Unloading date minus loading date, in whole days. Null when either display
+// date is missing or unparseable (a trip that hasn't been given dates yet).
+export function tripDurationDays(loadDate: string, unloadDate: string): number | null {
+  const from = parseDisplayDate(loadDate);
+  const to = parseDisplayDate(unloadDate);
+  if (!from || !to) return null;
+  const [fy, fm, fd] = from.split('-').map(Number);
+  const [ty, tm, td] = to.split('-').map(Number);
+  return Math.round((Date.UTC(ty, tm - 1, td) - Date.UTC(fy, fm - 1, fd)) / 86400000);
+}
+
+export function formatDuration(days: number | null): string {
+  if (days === null) return '—';
+  if (days <= 0) return 'Same day';
+  return days === 1 ? '1 day' : `${days} days`;
+}
+
 const RANGE_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 export function formatDateRange(from: string, to: string): string {
   if (!from || !to) return '';
