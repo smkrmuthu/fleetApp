@@ -200,10 +200,10 @@ export const monthlyExpenses = sqliteTable(
     vehicleId: text('vehicle_id').notNull().references(() => vehicles.id),
     driverId: text('driver_id').references(() => drivers.id),
     spentOn: text('spent_on').notNull(),
-    category: text('category', {
-      enum: ['loading_charges', 'unloading_charges', 'weighbridge_fee', 'detention', 'maintenance',
-        'insurance', 'tyres', 'permit_tax', 'loan_lease', 'fine', 'other']
-    }).notNull(),
+    // Free text — validated at write time against the org's own
+    // expense_categories list, which can be edited from Master (Trucks and
+    // Drivers work the same way: no fixed set baked into the schema).
+    category: text('category').notNull(),
     amountPaise: integer('amount_paise').notNull(),
     remarks: text('remarks'),
     receiptId: text('receipt_id').references(() => receipts.id),
@@ -266,6 +266,19 @@ export const auditLog = sqliteTable(
 );
 
 // Org-wide master values that other screens read (e.g. today's diesel and
+// The list of monthly-expense descriptions an org can choose from, managed
+// like the Trucks/Drivers master lists — the name itself is the identity
+// key, and removing one only deactivates it (existing expense rows keep
+// showing whatever name they were logged under).
+export const expenseCategories = sqliteTable(
+  'expense_categories',
+  {
+    id: text('id').primaryKey(),
+    orgId: text('org_id').notNull().references(() => orgs.id, { onDelete: 'cascade' }),
+    active: integer('active', { mode: 'boolean' }).notNull().default(true)
+  }
+);
+
 // A driver's time off, with both the date and time it starts/ends. Naive
 // local strings ("2026-09-25T09:00"), the same "no timezone math" approach
 // used for trip dates elsewhere in this schema.

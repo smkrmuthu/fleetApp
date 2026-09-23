@@ -121,18 +121,9 @@ export interface Trip {
   documents: TripDocument[];
 }
 
-export type ExpenseCategory =
-  | 'Loading charges'
-  | 'Unloading charges'
-  | 'Weighbridge fee'
-  | 'Detention / halting charges'
-  | 'Maintenance'
-  | 'Insurance'
-  | 'Tyres'
-  | 'Permit / tax'
-  | 'Loan / lease'
-  | 'Fine'
-  | 'Other';
+// A free-text description name, managed under Master > Expense descriptions
+// (add/remove), not a fixed set baked into the app.
+export type ExpenseCategory = string;
 
 export interface MonthlyExpense {
   id: string;

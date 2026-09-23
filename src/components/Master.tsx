@@ -11,6 +11,9 @@ interface Props {
   leaves: DriverLeave[];
   onAddLeave: (l: { driver: string; startsAt: string; endsAt: string; remarks?: string }) => Promise<string | null>;
   onRemoveLeave: (id: string) => void;
+  categories: string[];
+  onAddCategory: (name: string) => Promise<string | null>;
+  onRemoveCategory: (name: string) => void;
 }
 
 function blankLeaveForm(defaultDriver: string) {
@@ -19,7 +22,7 @@ function blankLeaveForm(defaultDriver: string) {
 
 const fmt = (n: number | null) => (n === null ? '' : String(n));
 
-export function Master({ vehicles, drivers, settings, onSave, onSetDefaultDriver, leaves, onAddLeave, onRemoveLeave }: Props) {
+export function Master({ vehicles, drivers, settings, onSave, onSetDefaultDriver, leaves, onAddLeave, onRemoveLeave, categories, onAddCategory, onRemoveCategory }: Props) {
   const rates = settings;
   const [diesel, setDiesel] = useState(fmt(rates.dieselRate));
   const [adblue, setAdblue] = useState(fmt(rates.adblueRate));
@@ -105,6 +108,22 @@ export function Master({ vehicles, drivers, settings, onSave, onSetDefaultDriver
     setSavingLeave(false);
     if (err) setLeaveError(err);
     else setLeaveForm((f) => blankLeaveForm(f.driver));
+  }
+
+  const [newCategory, setNewCategory] = useState('');
+  const [categoryError, setCategoryError] = useState('');
+  const [savingCategory, setSavingCategory] = useState(false);
+
+  async function addCategory() {
+    const name = newCategory.trim();
+    if (!name) return setCategoryError('Enter a description.');
+    if (categories.some((c) => c.toLowerCase() === name.toLowerCase())) return setCategoryError('That description already exists.');
+    setCategoryError('');
+    setSavingCategory(true);
+    const err = await onAddCategory(name);
+    setSavingCategory(false);
+    if (err) setCategoryError(err);
+    else setNewCategory('');
   }
 
   return (
@@ -280,6 +299,47 @@ export function Master({ vehicles, drivers, settings, onSave, onSetDefaultDriver
             ))}
             {sortedLeaves.length === 0 && (
               <tr><td colSpan={5} style={{ color: 'var(--color-neutral-700)' }}>No leave recorded yet.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <h2 style={{ fontSize: 20, marginBottom: 12 }}>Expense descriptions</h2>
+      <p style={{ color: 'var(--color-neutral-700)', fontSize: 13, marginTop: -4, marginBottom: 12, maxWidth: '74ch', lineHeight: 1.6 }}>
+        The list offered under "Description" when logging a Monthly Expense. Removing one only stops it being offered for
+        new entries — anything already logged under it is unaffected.
+      </p>
+      <div style={{ border: '2px solid var(--color-divider)', padding: 16, marginBottom: 20 }}>
+        <form className="filters-grid" onSubmit={(e) => { e.preventDefault(); addCategory(); }}>
+          <div className="field field-span-2">
+            <label htmlFor="new-category">Description</label>
+            <input
+              id="new-category" className="input" type="text" placeholder="e.g. Toll" maxLength={60}
+              value={newCategory} onChange={(e) => { setNewCategory(e.target.value); setCategoryError(''); }}
+            />
+          </div>
+          <button type="submit" className="btn btn-primary" style={{ justifySelf: 'start' }} disabled={savingCategory}>
+            {savingCategory ? 'Adding…' : 'Add description'}
+          </button>
+          {categoryError && <div role="alert" style={{ color: 'var(--color-accent-700)', fontSize: 13 }}>{categoryError}</div>}
+        </form>
+      </div>
+      <div className="scroll-x" style={{ border: '2px solid var(--color-divider)' }}>
+        <table className="table" style={{ minWidth: 360 }}>
+          <thead>
+            <tr><th>Description</th><th className="col-actions"></th></tr>
+          </thead>
+          <tbody>
+            {categories.map((name) => (
+              <tr key={name}>
+                <td style={{ fontWeight: 600 }}>{name}</td>
+                <td className="col-actions">
+                  <button type="button" className="btn btn-ghost" style={{ color: 'var(--color-accent-700)' }} onClick={() => onRemoveCategory(name)}>Delete</button>
+                </td>
+              </tr>
+            ))}
+            {categories.length === 0 && (
+              <tr><td colSpan={2} style={{ color: 'var(--color-neutral-700)' }}>No descriptions yet — add one above.</td></tr>
             )}
           </tbody>
         </table>

@@ -1,4 +1,4 @@
-import type { AppNotification, DriverMaster, ExpenseCategory, MonthlyExpense, Role, TabId, UserAccount, Vehicle } from '../types';
+import type { AppNotification, DriverMaster, MonthlyExpense, Role, TabId, UserAccount, Vehicle } from '../types';
 
 export const VEHICLES: Vehicle[] = [
   { id: 'TN38 AB 4412', model: 'Tata Signa 4825', fcDate: '15 Mar 2025', renewalDate: '14 Mar 2027', renewalDue: false },
@@ -16,12 +16,11 @@ export const MONTHLY_EXPENSES: MonthlyExpense[] = [
   { id: 'e6', date: '09 Sep', vehicle: 'TN45 CQ 9087', driver: 'Rafiq A', category: 'Maintenance', amount: 5200, remarks: 'Oil change' }
 ];
 
-export const EXPENSE_CATEGORIES: ExpenseCategory[] = [
-  'Loading charges', 'Unloading charges', 'Weighbridge fee', 'Detention / halting charges', 'Maintenance',
-  'Insurance', 'Tyres', 'Permit / tax', 'Loan / lease', 'Fine', 'Other'
-];
-
-export const CATEGORY_TINT: Record<string, string> = {
+// Fixed swatches for the descriptions that ship by default, so they don't
+// visually reshuffle just because this app updated. A description added
+// later (Master > Expense descriptions) gets a swatch from CATEGORY_TINT_FALLBACKS
+// instead, picked deterministically by name so it's stable across reloads.
+const CATEGORY_TINT: Record<string, string> = {
   'Loading charges': 'var(--color-accent-700)',
   'Unloading charges': 'var(--color-accent-500)',
   'Weighbridge fee': 'var(--color-neutral-900)',
@@ -33,6 +32,14 @@ export const CATEGORY_TINT: Record<string, string> = {
   'Loan / lease': 'var(--color-accent-400)',
   'Fine': 'var(--color-accent-600)'
 };
+const CATEGORY_TINT_FALLBACKS = ['var(--color-accent-800)', 'var(--color-neutral-600)', 'var(--color-accent-200)', 'var(--color-neutral-400)'];
+
+export function categoryTint(name: string): string {
+  if (CATEGORY_TINT[name]) return CATEGORY_TINT[name];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) | 0;
+  return CATEGORY_TINT_FALLBACKS[Math.abs(hash) % CATEGORY_TINT_FALLBACKS.length];
+}
 
 export const TRIP_EXPENSE_TINT: Record<string, string> = {
   diesel: 'var(--color-accent-700)',

@@ -11,6 +11,7 @@ import { notificationRoutes } from './routes/notifications';
 import { receiptRoutes } from './routes/receipts';
 import { settingsRoutes } from './routes/settings';
 import { driverLeaveRoutes } from './routes/driverLeaves';
+import { expenseCategoryRoutes } from './routes/expenseCategories';
 
 const app = new Hono<{ Bindings: Env; Variables: Vars }>();
 
@@ -31,6 +32,7 @@ app.route('/v1/notifications', notificationRoutes);
 app.route('/v1/receipts', receiptRoutes);
 app.route('/v1/settings', settingsRoutes);
 app.route('/v1/driver-leaves', driverLeaveRoutes);
+app.route('/v1/expense-categories', expenseCategoryRoutes);
 
 app.notFound((c) => c.json({ error: { code: 'not_found', message: 'No such route' } }, 404));
 app.onError((err, c) => {

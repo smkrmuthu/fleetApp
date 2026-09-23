@@ -3,7 +3,7 @@ import { and, eq, isNull } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Env, Vars } from '../types';
 import { getDb, newId, nowIso } from '../db';
-import { monthlyExpenses } from '../../drizzle/schema';
+import { expenseCategories, monthlyExpenses } from '../../drizzle/schema';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { buildFilters, combine } from '../lib/filters';
 import { writeAudit } from '../lib/audit';
@@ -31,8 +31,7 @@ const createSchema = z.object({
   vehicleId: z.string().min(1),
   driverId: z.string().optional(),
   spentOn: z.string().min(1),
-  category: z.enum(['loading_charges', 'unloading_charges', 'weighbridge_fee', 'detention', 'maintenance',
-    'insurance', 'tyres', 'permit_tax', 'loan_lease', 'fine', 'other']),
+  category: z.string().trim().min(1).max(60),
   amountPaise: z.number().int().nonnegative(),
   remarks: z.string().optional()
 });
@@ -44,6 +43,10 @@ monthlyExpenseRoutes.post('/', requireRole('office', 'manager'), async (c) => {
   if (!parsed.success) return c.json({ error: { code: 'validation_error', message: parsed.error.message } }, 422);
 
   const db = getDb(c.env);
+  const [cat] = await db.select({ id: expenseCategories.id }).from(expenseCategories)
+    .where(and(eq(expenseCategories.id, parsed.data.category), eq(expenseCategories.orgId, auth.orgId), eq(expenseCategories.active, true))).limit(1);
+  if (!cat) return c.json({ error: { code: 'validation_error', message: `"${parsed.data.category}" isn't a current description — add it under Master first`, field: 'category' } }, 422);
+
   const id = newId();
   await db.insert(monthlyExpenses).values({ id, orgId: auth.orgId, createdBy: auth.userId, ...parsed.data });
   await writeAudit(db, auth.orgId, 'monthly_expenses', id, 'insert', parsed.data, auth.userId);

@@ -94,23 +94,6 @@ const ROLE_ACCESS: Record<ApiRole, string> = {
   driver: 'Own movements only'
 };
 
-const CATEGORY_TO_API: Record<ExpenseCategory, string> = {
-  'Loading charges': 'loading_charges',
-  'Unloading charges': 'unloading_charges',
-  'Weighbridge fee': 'weighbridge_fee',
-  'Detention / halting charges': 'detention',
-  'Maintenance': 'maintenance',
-  'Insurance': 'insurance',
-  'Tyres': 'tyres',
-  'Permit / tax': 'permit_tax',
-  'Loan / lease': 'loan_lease',
-  'Fine': 'fine',
-  'Other': 'other'
-};
-const CATEGORY_FROM_API: Record<string, ExpenseCategory> = Object.fromEntries(
-  Object.entries(CATEGORY_TO_API).map(([display, api]) => [api, display as ExpenseCategory])
-);
-
 // Forms fall back to the '—' placeholder for an empty optional field (it's
 // what the read side already displays for "no value") — treat it the same
 // as empty when going the other way, into a wire payload.
@@ -265,7 +248,7 @@ interface ApiMonthlyExpense {
 function monthlyExpenseFromApi(e: ApiMonthlyExpense): MonthlyExpense {
   return {
     id: e.id, date: formatDisplayDate(e.spentOn), vehicle: e.vehicleId, driver: e.driverId ?? '—',
-    category: CATEGORY_FROM_API[e.category] ?? 'Other', amount: paiseToRupees(e.amountPaise), remarks: e.remarks ?? '—'
+    category: e.category, amount: paiseToRupees(e.amountPaise), remarks: e.remarks ?? '—'
   };
 }
 
@@ -283,9 +266,23 @@ export async function createMonthlyExpense(e: { vehicle: string; driver: string;
     method: 'POST',
     body: JSON.stringify({
       vehicleId: e.vehicle, driverId: orUndefined(e.driver), spentOn: e.date,
-      category: CATEGORY_TO_API[e.category], amountPaise: rupeesToPaise(e.amount), remarks: e.remarks || undefined
+      category: e.category, amountPaise: rupeesToPaise(e.amount), remarks: e.remarks || undefined
     })
   });
+}
+
+// ── expense descriptions (Master) ───────────────────────────────────────
+export async function fetchExpenseCategories(): Promise<string[]> {
+  const res = await request<{ expenseCategories: string[] }>('/expense-categories');
+  return res.expenseCategories;
+}
+
+export async function createExpenseCategory(name: string): Promise<void> {
+  await request('/expense-categories', { method: 'POST', body: JSON.stringify({ name }) });
+}
+
+export async function deleteExpenseCategory(name: string): Promise<void> {
+  await request(`/expense-categories/${encodeURIComponent(name)}`, { method: 'DELETE' });
 }
 
 // ── trips ────────────────────────────────────────────────────────────────

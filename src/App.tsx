@@ -41,6 +41,7 @@ export function App() {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [master, setMaster] = useState<MasterSettings>({ dieselRate: null, adblueRate: null, loadingPoint: null });
   const [driverLeaves, setDriverLeaves] = useState<DriverLeave[]>([]);
+  const [expenseCategories, setExpenseCategories] = useState<string[]>([]);
   const [vehicleFilter, setVehicleFilter] = useState('all');
   const [driverFilter, setDriverFilter] = useState('');
   const [dateFrom, setDateFrom] = useState(() => currentMonthRange().from);
@@ -64,12 +65,14 @@ export function App() {
       setMaster(r);
       setDriverLeaves(l);
       if (currentRole !== 'Driver') {
-        const [u, n] = await Promise.all([api.fetchUsers(), api.fetchNotifications()]);
+        const [u, n, ec] = await Promise.all([api.fetchUsers(), api.fetchNotifications(), api.fetchExpenseCategories()]);
         setUsers(u);
         setNotifications(n);
+        setExpenseCategories(ec);
       } else {
         setUsers([]);
         setNotifications([]);
+        setExpenseCategories([]);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load data');
@@ -307,6 +310,25 @@ export function App() {
     }
   }
 
+  async function addExpenseCategory(name: string): Promise<string | null> {
+    try {
+      await api.createExpenseCategory(name);
+      setExpenseCategories(await api.fetchExpenseCategories());
+      return null;
+    } catch (e) {
+      return e instanceof Error ? e.message : 'Could not add description';
+    }
+  }
+
+  async function removeExpenseCategory(name: string) {
+    try {
+      await api.deleteExpenseCategory(name);
+      setExpenseCategories((prev) => prev.filter((c) => c !== name));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not delete description');
+    }
+  }
+
   async function editDriver(name: string, d: { licence: string; expiry: string; vehicle: string; credential: string }): Promise<string | null> {
     try {
       await api.updateDriver(name, d);
@@ -451,6 +473,7 @@ export function App() {
           expenses={expenses}
           vehicles={vehicles}
           drivers={drivers}
+          categories={expenseCategories}
           dateFrom={dateFrom}
           dateTo={dateTo}
           onDateFrom={setDateFrom}
@@ -504,6 +527,9 @@ export function App() {
           leaves={driverLeaves}
           onAddLeave={addDriverLeave}
           onRemoveLeave={removeDriverLeave}
+          categories={expenseCategories}
+          onAddCategory={addExpenseCategory}
+          onRemoveCategory={removeExpenseCategory}
         />
       )}
       {tab === 'schema' && <DataModel />}

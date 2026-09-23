@@ -50,6 +50,13 @@
       "when": 1790124080511,
       "tag": "0006_driver_leaves",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1790160286221,
+      "tag": "0007_expense_categories",
+      "breakpoints": true
     }
   ]
 }

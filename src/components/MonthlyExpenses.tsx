@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import type { DriverMaster, ExpenseFormState, MonthlyExpense, Vehicle } from '../types';
-import { CATEGORY_TINT, EXPENSE_CATEGORIES } from '../data/mockData';
+import { categoryTint } from '../data/mockData';
 import { dateInRange, formatDateRange, rupees, todayIso, toNumber } from '../utils/calc';
 
-function blankExpense(defaultVehicle: string): ExpenseFormState {
-  return { date: todayIso(), vehicle: defaultVehicle, driver: '', category: EXPENSE_CATEGORIES[0], amount: '0', remarks: '' };
+function blankExpense(defaultVehicle: string, defaultCategory: string): ExpenseFormState {
+  return { date: todayIso(), vehicle: defaultVehicle, driver: '', category: defaultCategory, amount: '0', remarks: '' };
 }
 
 interface Props {
@@ -18,10 +18,11 @@ interface Props {
   onResetFilters: () => void;
   onAdd: (e: MonthlyExpense) => void;
   onDelete: (e: MonthlyExpense) => void;
+  categories: string[];
 }
 
-export function MonthlyExpenses({ expenses: allExpenses, vehicles, drivers, dateFrom, dateTo, onDateFrom, onDateTo, onResetFilters, onAdd, onDelete }: Props) {
-  const [exp, setExp] = useState<ExpenseFormState>(() => blankExpense(vehicles[0]?.id ?? ''));
+export function MonthlyExpenses({ expenses: allExpenses, vehicles, drivers, categories, dateFrom, dateTo, onDateFrom, onDateTo, onResetFilters, onAdd, onDelete }: Props) {
+  const [exp, setExp] = useState<ExpenseFormState>(() => blankExpense(vehicles[0]?.id ?? '', categories[0] ?? ''));
   const [truckFilter, setTruckFilter] = useState('all');
   const expenses = allExpenses.filter((e) => dateInRange(e.date, dateFrom, dateTo) && (truckFilter === 'all' || e.vehicle === truckFilter));
 
@@ -67,12 +68,13 @@ export function MonthlyExpenses({ expenses: allExpenses, vehicles, drivers, date
           <div className="field">
             <label>Description</label>
             <select className="input" value={exp.category} onChange={set('category')}>
-              {EXPENSE_CATEGORIES.map((k) => <option key={k} value={k}>{k}</option>)}
+              {categories.length === 0 && <option value="">Add one under Master first</option>}
+              {categories.map((k) => <option key={k} value={k}>{k}</option>)}
             </select>
           </div>
           <div className="field"><label>Amount (₹)</label><input className="input" type="number" value={exp.amount} onChange={set('amount')} /></div>
           <div className="field"><label>Remarks</label><input className="input" type="text" placeholder="Remarks" value={exp.remarks} onChange={set('remarks')} /></div>
-          <button type="button" className="btn btn-primary" style={{ justifySelf: 'start' }} onClick={addExpense}>Add expense</button>
+          <button type="button" className="btn btn-primary" style={{ justifySelf: 'start' }} onClick={addExpense} disabled={categories.length === 0}>Add expense</button>
         </div>
       </div>
 
@@ -95,7 +97,7 @@ export function MonthlyExpenses({ expenses: allExpenses, vehicles, drivers, date
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', borderTop: '2px solid var(--color-divider)', borderLeft: '2px solid var(--color-divider)', marginBottom: 24 }}>
           {Array.from(byKind.entries()).map(([label, value]) => (
             <div key={label} style={{ background: 'var(--color-bg)', padding: '14px 16px', display: 'flex', gap: 12, borderRight: '2px solid var(--color-divider)', borderBottom: '2px solid var(--color-divider)' }}>
-              <div style={{ width: 6, flex: 'none', background: CATEGORY_TINT[label] }} />
+              <div style={{ width: 6, flex: 'none', background: categoryTint(label) }} />
               <div>
                 <div className="stat-label">{label}</div>
                 <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 22 }}>{rupees(value)}</div>
@@ -126,7 +128,7 @@ export function MonthlyExpenses({ expenses: allExpenses, vehicles, drivers, date
                 <td>{e.driver}</td>
                 <td>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 9 }}>
-                    <span style={{ width: 4, height: 15, background: CATEGORY_TINT[e.category], display: 'inline-block' }} />
+                    <span style={{ width: 4, height: 15, background: categoryTint(e.category), display: 'inline-block' }} />
                     {e.category}
                   </span>
                 </td>
