@@ -191,17 +191,17 @@ export async function fetchDrivers(): Promise<DriverMaster[]> {
   return res.drivers.map(driverFromApi);
 }
 
-export async function createDriver(d: { name: string; licence: string; expiry: string; vehicle: string }): Promise<void> {
+export async function createDriver(d: { name: string; licence: string; expiry: string }): Promise<void> {
   await request('/drivers', {
     method: 'POST',
-    body: JSON.stringify({ fullName: d.name, licenceNo: orUndefined(d.licence), licenceExpiry: orUndefined(d.expiry), defaultVehicle: orUndefined(d.vehicle) })
+    body: JSON.stringify({ fullName: d.name, licenceNo: orUndefined(d.licence), licenceExpiry: orUndefined(d.expiry) })
   });
 }
 
-export async function updateDriver(name: string, d: { licence: string; expiry: string; vehicle: string; credential: string }): Promise<void> {
+export async function updateDriver(name: string, d: { licence: string; expiry: string; credential: string }): Promise<void> {
   await request(`/drivers/${encodeURIComponent(name)}`, {
     method: 'PATCH',
-    body: JSON.stringify({ licenceNo: d.licence, licenceExpiry: d.expiry, defaultVehicle: d.vehicle, credential: d.credential })
+    body: JSON.stringify({ licenceNo: d.licence, licenceExpiry: d.expiry, credential: d.credential })
   });
 }
 

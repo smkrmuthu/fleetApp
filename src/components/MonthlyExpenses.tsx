@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { DriverMaster, ExpenseFormState, MonthlyExpense, Vehicle } from '../types';
 import { categoryTint } from '../data/mockData';
+import { parseDisplayDate } from '../lib/api';
 import { dateInRange, formatDateRange, rupees, todayIso, toNumber } from '../utils/calc';
 
 function blankExpense(defaultVehicle: string, defaultCategory: string): ExpenseFormState {
@@ -24,7 +25,13 @@ interface Props {
 export function MonthlyExpenses({ expenses: allExpenses, vehicles, drivers, categories, dateFrom, dateTo, onDateFrom, onDateTo, onResetFilters, onAdd, onDelete }: Props) {
   const [exp, setExp] = useState<ExpenseFormState>(() => blankExpense(vehicles[0]?.id ?? '', categories[0] ?? ''));
   const [truckFilter, setTruckFilter] = useState('all');
-  const expenses = allExpenses.filter((e) => dateInRange(e.date, dateFrom, dateTo) && (truckFilter === 'all' || e.vehicle === truckFilter));
+  const [dateSort, setDateSort] = useState<'asc' | 'desc'>('asc');
+  const expenses = allExpenses
+    .filter((e) => dateInRange(e.date, dateFrom, dateTo) && (truckFilter === 'all' || e.vehicle === truckFilter))
+    .sort((a, b) => {
+      const cmp = parseDisplayDate(a.date).localeCompare(parseDisplayDate(b.date));
+      return dateSort === 'asc' ? cmp : -cmp;
+    });
 
   const set = (k: keyof ExpenseFormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setExp((f) => ({ ...f, [k]: e.target.value } as ExpenseFormState));
@@ -117,7 +124,15 @@ export function MonthlyExpenses({ expenses: allExpenses, vehicles, drivers, cate
         <table className="table" style={{ minWidth: 860 }}>
           <thead>
             <tr>
-              <th>Date</th><th>Vehicle</th><th>Driver</th><th>Description</th><th>Remarks</th><th style={{ textAlign: 'right' }}>Amount</th><th></th>
+              <th aria-sort={dateSort === 'asc' ? 'ascending' : 'descending'}>
+                <button
+                  type="button" className="btn btn-ghost" onClick={() => setDateSort((d) => (d === 'asc' ? 'desc' : 'asc'))}
+                  style={{ padding: 0, font: 'inherit', letterSpacing: 'inherit', textTransform: 'inherit', color: 'inherit', display: 'inline-flex', gap: 6, alignItems: 'center' }}
+                  title={dateSort === 'asc' ? 'Oldest first — click for newest first' : 'Newest first — click for oldest first'}
+                >
+                  Date <span aria-hidden="true">{dateSort === 'asc' ? '▲' : '▼'}</span>
+                </button>
+              </th><th>Vehicle</th><th>Driver</th><th>Description</th><th>Remarks</th><th style={{ textAlign: 'right' }}>Amount</th><th></th>
             </tr>
           </thead>
           <tbody>

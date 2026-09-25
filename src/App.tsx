@@ -316,7 +316,7 @@ export function App() {
     }
   }
 
-  async function editDriver(name: string, d: { licence: string; expiry: string; vehicle: string; credential: string }): Promise<string | null> {
+  async function editDriver(name: string, d: { licence: string; expiry: string; credential: string }): Promise<string | null> {
     try {
       await api.updateDriver(name, d);
       setDrivers(await api.fetchDrivers());

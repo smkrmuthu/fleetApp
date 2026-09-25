@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, ne, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Env, Vars } from '../types';
 import { getDb } from '../db';
@@ -92,6 +92,9 @@ vehicleRoutes.patch('/:id', requireRole('office', 'manager'), async (c) => {
   if (changes.defaultDriver) {
     const [drv] = await db.select().from(drivers).where(and(eq(drivers.id, changes.defaultDriver), eq(drivers.orgId, auth.orgId), eq(drivers.active, true))).limit(1);
     if (!drv) return c.json({ error: { code: 'validation_error', message: `${changes.defaultDriver} isn't an active driver`, field: 'defaultDriver' } }, 422);
+    const [taken] = await db.select({ id: vehicles.id }).from(vehicles)
+      .where(and(eq(vehicles.orgId, auth.orgId), eq(vehicles.active, true), eq(vehicles.defaultDriver, changes.defaultDriver), ne(vehicles.id, id))).limit(1);
+    if (taken) return c.json({ error: { code: 'validation_error', message: `${changes.defaultDriver} is already the default driver of ${taken.id}`, field: 'defaultDriver' } }, 422);
   }
   const result = await db.update(vehicles).set(changes).where(and(eq(vehicles.id, id), eq(vehicles.orgId, auth.orgId)));
   if (result.meta.changes === 0) return c.json({ error: { code: 'not_found', message: 'Vehicle not found' } }, 404);

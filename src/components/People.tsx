@@ -13,7 +13,7 @@ interface Props {
   onRemoveDriver: (name: string) => void;
   onRemoveUser: (id: string) => void;
   onUpdateVehicle: (id: string, v: { model?: string; fcDate?: string; renewalDate?: string; defaultDriver?: string }) => Promise<string | null>;
-  onUpdateDriver: (name: string, d: { licence: string; expiry: string; vehicle: string; credential: string }) => Promise<string | null>;
+  onUpdateDriver: (name: string, d: { licence: string; expiry: string; credential: string }) => Promise<string | null>;
   onUpdateUser: (id: string, u: { name: string; phone: string; role: string; branchId: string }) => Promise<string | null>;
   canDeleteAccounts: boolean;
   canEditAccounts: boolean;
@@ -25,7 +25,7 @@ export function People({
 }: Props) {
   const [dialog, setDialog] = useState<{ kind: 'user' | 'truck' | 'driver'; key: string; edit: boolean } | null>(null);
   const [newVehicle, setNewVehicle] = useState({ id: '', model: '', fcDate: '', renewalDate: '' });
-  const [newDriver, setNewDriver] = useState({ name: '', licence: '', expiry: '', vehicle: vehicles[0]?.id ?? '' });
+  const [newDriver, setNewDriver] = useState({ name: '', licence: '', expiry: '' });
   const [vehicleError, setVehicleError] = useState('');
   const [driverError, setDriverError] = useState('');
 
@@ -57,11 +57,11 @@ export function People({
       licence: newDriver.licence.trim() || '—',
       expiry: newDriver.expiry || '—',
       expiring: false,
-      vehicle: newDriver.vehicle || '—',
+      vehicle: '—',
       credential: '—'
     });
     if (err) setDriverError(err);
-    else setNewDriver({ name: '', licence: '', expiry: '', vehicle: vehicles[0]?.id ?? '' });
+    else setNewDriver({ name: '', licence: '', expiry: '' });
   }
 
   const blank = (v: string) => (v === '—' ? '' : v);
@@ -97,20 +97,16 @@ export function People({
     if (dialog.kind === 'driver') {
       const d = drivers.find((x) => x.name === dialog.key);
       if (!d) return null;
-      const current = blank(d.vehicle);
-      const options = [{ value: '', label: 'None' }, ...vehicles.map((v) => ({ value: v.id, label: v.id }))];
-      if (current && !vehicles.some((v) => v.id === current)) options.push({ value: current, label: `${current} (removed)` });
       const fields: DialogField[] = [
         { key: 'name', label: 'Name', display: d.name, value: d.name, locked: true, hint: "A driver's name is how their trips are recorded, so it can't be changed. To correct it, add the right name and delete this one." },
         { key: 'licence', label: 'Licence no', display: d.licence, value: blank(d.licence) },
         { key: 'expiry', label: 'Licence expiry', type: 'date', display: d.expiry, value: parseDisplayDate(d.expiry) },
-        { key: 'vehicle', label: 'Assigned vehicle', type: 'select', options, display: d.vehicle, value: current },
         { key: 'credential', label: 'Credential', display: d.credential, value: blank(d.credential) }
       ];
       return (
         <RecordDialog
           key={`driver-${d.name}-${dialog.edit}`} title={d.name} subtitle="Driver" fields={fields} startInEdit={dialog.edit} canEdit onClose={close}
-          onSave={(x) => onUpdateDriver(d.name, { licence: x.licence, expiry: x.expiry, vehicle: x.vehicle, credential: x.credential })}
+          onSave={(x) => onUpdateDriver(d.name, { licence: x.licence, expiry: x.expiry, credential: x.credential })}
         />
       );
     }
@@ -229,12 +225,6 @@ export function People({
           <div className="field"><label>Name</label><input className="input" type="text" placeholder="Driver name" value={newDriver.name} onChange={(e) => setNewDriver((d) => ({ ...d, name: e.target.value }))} /></div>
           <div className="field"><label>Licence no</label><input className="input" type="text" placeholder="Licence no" value={newDriver.licence} onChange={(e) => setNewDriver((d) => ({ ...d, licence: e.target.value }))} /></div>
           <div className="field"><label>Licence expiry</label><input className="input" type="date" value={newDriver.expiry} onChange={(e) => setNewDriver((d) => ({ ...d, expiry: e.target.value }))} /></div>
-          <div className="field">
-            <label>Assigned vehicle</label>
-            <select className="input" value={newDriver.vehicle} onChange={(e) => setNewDriver((d) => ({ ...d, vehicle: e.target.value }))}>
-              {vehicles.map((v) => <option key={v.id} value={v.id}>{v.id}</option>)}
-            </select>
-          </div>
           <button type="button" className="btn btn-primary" style={{ justifySelf: 'start' }} onClick={addDriver}>Add driver</button>
           {driverError && <div role="alert" style={{ color: 'var(--color-accent-700)', fontSize: 13 }}>{driverError}</div>}
         </div>
@@ -243,7 +233,7 @@ export function People({
         <table className="table" style={{ minWidth: 760 }}>
           <thead>
             <tr>
-              <th>Driver</th><th>Licence no</th><th>Expiry</th><th>Assigned vehicle</th><th>Credential</th>
+              <th>Driver</th><th>Licence no</th><th>Expiry</th><th>Credential</th>
               <th className="col-actions"></th>
             </tr>
           </thead>
@@ -253,7 +243,6 @@ export function People({
                 <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{d.name}</td>
                 <td style={{ fontFamily: 'ui-monospace, monospace', fontSize: 12, whiteSpace: 'nowrap' }}>{d.licence}</td>
                 <td style={{ whiteSpace: 'nowrap' }}>{d.expiring ? <span className="tag tag-accent">{d.expiry}</span> : <span>{d.expiry}</span>}</td>
-                <td style={{ whiteSpace: 'nowrap' }}>{d.vehicle}</td>
                 <td style={{ color: 'var(--color-neutral-700)' }}>{d.credential}</td>
                 <td className="col-actions">
                   <div style={actions}>

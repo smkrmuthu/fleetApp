@@ -86,6 +86,11 @@ export function Master({ vehicles, drivers, settings, onSave, onSetDefaultDriver
   }
 
   async function changeDefaultDriver(vehicleId: string, driver: string) {
+    const takenBy = driver ? vehicles.find((v) => v.id !== vehicleId && v.defaultDriver === driver) : undefined;
+    if (takenBy) {
+      setRowStatus((s) => ({ ...s, [vehicleId]: `${driver} is already the default driver of ${takenBy.id}.` }));
+      return;
+    }
     setRowStatus((s) => ({ ...s, [vehicleId]: 'Saving…' }));
     const err = await onSetDefaultDriver(vehicleId, driver);
     setRowStatus((s) => ({ ...s, [vehicleId]: err ?? 'Saved' }));
