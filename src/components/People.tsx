@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { DriverMaster, UserAccount, Vehicle } from '../types';
-import { BRANCH_OPTIONS, formatDisplayDate, parseDisplayDate, type VehicleEdit } from '../lib/api';
+import { BRANCH_OPTIONS, parseDisplayDate, type VehicleEdit } from '../lib/api';
 import { dueStatus, vehicleAge } from '../utils/calc';
 import { RecordDialog, type DialogField } from './RecordDialog';
 
@@ -99,11 +99,6 @@ export function People({
       const fields: DialogField[] = [
         { key: 'reg', label: 'Registration no', display: v.id, value: v.id, locked: true, hint: "The registration number is how trips refer to this truck, so it can't be changed. To correct it, add the right one and delete this one." },
         { key: 'regDate', label: 'Reg Date', type: 'date', display: v.regDate, value: parseDisplayDate(v.regDate) },
-        {
-          key: 'age', label: 'Age of Vehicle', display: vehicleAge(v.regDate), value: '', locked: true,
-          computed: (vals) => vehicleAge(vals.regDate ? formatDisplayDate(vals.regDate) : ''),
-          hint: 'Worked out from the Reg Date and today\'s date.'
-        },
         { key: 'batchNo', label: 'Batch #', display: v.batchNo, value: blank(v.batchNo) },
         { key: 'taxDate', label: 'Tax Date', type: 'date', display: v.taxDate, value: parseDisplayDate(v.taxDate), flag: dueStatus(v.taxDate) },
         { key: 'inspectionDate', label: 'Inspection Date', type: 'date', display: v.inspectionDate, value: parseDisplayDate(v.inspectionDate), flag: dueStatus(v.inspectionDate) },
@@ -225,14 +220,6 @@ export function People({
           <div className="field"><label>FC Date</label><input className="input" type="date" value={newVehicle.fcDate} onChange={(e) => setNewVehicle((v) => ({ ...v, fcDate: e.target.value }))} /></div>
           <div className="field"><label>Pollution Cert Date</label><input className="input" type="date" value={newVehicle.pollutionDate} onChange={(e) => setNewVehicle((v) => ({ ...v, pollutionDate: e.target.value }))} /></div>
           <div className="field"><label>Owner</label><input className="input" type="text" placeholder="Owner name" value={newVehicle.owner} onChange={(e) => setNewVehicle((v) => ({ ...v, owner: e.target.value }))} /></div>
-          <div className="field">
-            <label>Age of Vehicle</label>
-            <input
-              className="input" type="text" disabled placeholder="Fills in from Reg Date"
-              value={newVehicle.regDate ? vehicleAge(formatDisplayDate(newVehicle.regDate)) : ''}
-              title="Worked out from the Reg Date and today's date"
-            />
-          </div>
           <div className="field"><label>Model</label><input className="input" type="text" placeholder="Make and model" value={newVehicle.model} onChange={(e) => setNewVehicle((v) => ({ ...v, model: e.target.value }))} /></div>
           <button type="button" className="btn btn-primary" style={{ justifySelf: 'start' }} onClick={addVehicle}>Add truck</button>
           {vehicleError && <div role="alert" style={{ color: 'var(--color-accent-700)', fontSize: 13 }}>{vehicleError}</div>}

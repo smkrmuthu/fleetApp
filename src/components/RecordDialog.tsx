@@ -14,8 +14,6 @@ export interface DialogField {
   required?: boolean;
   // Informational rows (e.g. last active) that only appear in view mode.
   viewOnly?: boolean;
-  // A read-only field worked out from the other fields as they're edited.
-  computed?: (values: Record<string, string>) => string;
   // Shown beside the value in view mode, e.g. "Due in 10 days".
   flag?: { label: string; expired: boolean } | null;
 }
@@ -118,8 +116,8 @@ export function RecordDialog({ title, subtitle, fields, startInEdit, canEdit, on
                       id={`rd-${f.key}`}
                       className="input"
                       type={f.type ?? 'text'}
-                      disabled={f.locked || !!f.computed}
-                      value={f.computed ? f.computed(values) : values[f.key]}
+                      disabled={f.locked}
+                      value={values[f.key]}
                       onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
                     />
                   )}
