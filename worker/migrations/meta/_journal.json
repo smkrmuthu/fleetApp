@@ -57,6 +57,13 @@
       "when": 1790160286221,
       "tag": "0007_expense_categories",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1790347351648,
+      "tag": "0008_vehicle_details",
+      "breakpoints": true
     }
   ]
 }

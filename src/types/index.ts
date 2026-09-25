@@ -13,6 +13,15 @@ export interface Vehicle {
   fcDate: string;
   renewalDate: string;
   renewalDue: boolean;
+  // Registration and compliance details. Dates are display dates ("05 Nov 2024"),
+  // '—' when not recorded. A vehicle's age is worked out from regDate.
+  regDate: string;
+  batchNo: string;
+  taxDate: string;
+  inspectionDate: string;
+  npDate: string;
+  pollutionDate: string;
+  owner: string;
   // '' when the truck has no default driver.
   defaultDriver?: string;
 }

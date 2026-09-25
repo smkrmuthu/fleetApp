@@ -1,6 +1,6 @@
 import type { DriverMaster, MasterSettings, MonthlyExpense, Trip, UserAccount, Vehicle } from '../types';
 import type { VehicleAgg } from '../utils/aggregate';
-import { tripCost } from '../utils/calc';
+import { tripCost, vehicleAge } from '../utils/calc';
 import { parseDisplayDate } from './api';
 import {
   pdfText, dateCell, dec, int, label, money, note, percent, rs, safeName, saveWorkbook, savePdf, th, title,
@@ -293,10 +293,17 @@ export async function exportBackup(d: BackupData): Promise<void> {
   const vehicles: SheetSpec = {
     name: 'Vehicles',
     rows: [
-      [th('Truck no.'), th('Model'), th('FC date'), th('Renewal date'), th('Default driver')],
-      ...d.vehicles.map((v) => [v.id, blankIfDash(v.model), dateCell(parseDisplayDate(v.fcDate)), dateCell(parseDisplayDate(v.renewalDate)), v.defaultDriver ?? ''] as SheetCell[])
+      [
+        th('Reg No'), th('Reg Date'), th('Age of Vehicle'), th('Batch #'), th('Tax Date'), th('Inspection Date'), th('NP Date'), th('FC Date'),
+        th('Pollution Cert Date'), th('Owner'), th('Model'), th('Renewal date'), th('Default driver')
+      ],
+      ...d.vehicles.map((v) => [
+        v.id, dateCell(parseDisplayDate(v.regDate)), vehicleAge(v.regDate) === '—' ? '' : vehicleAge(v.regDate), blankIfDash(v.batchNo),
+        dateCell(parseDisplayDate(v.taxDate)), dateCell(parseDisplayDate(v.inspectionDate)), dateCell(parseDisplayDate(v.npDate)), dateCell(parseDisplayDate(v.fcDate)),
+        dateCell(parseDisplayDate(v.pollutionDate)), blankIfDash(v.owner), blankIfDash(v.model), dateCell(parseDisplayDate(v.renewalDate)), v.defaultDriver ?? ''
+      ] as SheetCell[])
     ],
-    widths: [14, 18, 13, 13, 20],
+    widths: [14, 13, 14, 12, 13, 15, 13, 13, 19, 20, 18, 13, 20],
     freezeRows: 1
   };
   const drivers: SheetSpec = {

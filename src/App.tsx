@@ -259,7 +259,7 @@ export function App() {
     }
   }
 
-  async function editVehicle(id: string, v: { model?: string; fcDate?: string; renewalDate?: string; defaultDriver?: string }): Promise<string | null> {
+  async function editVehicle(id: string, v: api.VehicleEdit): Promise<string | null> {
     try {
       await api.updateVehicle(id, v);
       setVehicles(await api.fetchVehicles());

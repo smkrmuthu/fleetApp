@@ -63,6 +63,21 @@ export function dateInRange(displayDate: string, from: string, to: string): bool
   return (!from || iso >= from) && (!to || iso <= to);
 }
 
+// How old a vehicle is, from its registration date ("05 Nov 2024") to today,
+// as "3 yr 2 mo". '—' when there's no registration date (or it's in the future).
+export function vehicleAge(regDate: string, now: Date = new Date()): string {
+  const iso = parseDisplayDate(regDate);
+  if (!iso) return '—';
+  const [y, m, d] = iso.split('-').map(Number);
+  let months = (now.getFullYear() - y) * 12 + (now.getMonth() + 1 - m);
+  if (now.getDate() < d) months -= 1;
+  if (months < 0) return '—';
+  if (months < 1) return 'Under 1 month';
+  const years = Math.floor(months / 12);
+  const rem = months % 12;
+  return [years ? `${years} yr` : '', rem ? `${rem} mo` : ''].filter(Boolean).join(' ');
+}
+
 // Unloading date minus loading date, in whole days. Null when either display
 // date is missing or unparseable (a trip that hasn't been given dates yet).
 // Counted inclusively — a trip loaded on the 22nd and unloaded the 23rd

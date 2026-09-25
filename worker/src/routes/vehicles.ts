@@ -25,11 +25,21 @@ vehicleRoutes.get('/', async (c) => {
   });
 });
 
+// '' means "no date" (a cleared field); anything else must be a real ISO date.
+const isoDate = z.string().regex(/^(\d{4}-\d{2}-\d{2})?$/, 'Use a valid date');
+
 const createSchema = z.object({
   regNo: z.string().min(1),
   model: z.string().optional(),
   fcDate: z.string().optional(),
   fcRenewalDue: z.string().optional(),
+  regDate: isoDate.optional(),
+  batchNo: z.string().trim().max(60).optional(),
+  taxDate: isoDate.optional(),
+  inspectionDate: isoDate.optional(),
+  npDate: isoDate.optional(),
+  pollutionDate: isoDate.optional(),
+  owner: z.string().trim().max(120).optional(),
   customFields: z.record(z.string(), z.unknown()).optional()
 });
 
@@ -55,11 +65,20 @@ vehicleRoutes.post('/', requireRole('office', 'manager'), async (c) => {
       active: true,
       model: parsed.data.model ?? existing.model,
       fcDate: parsed.data.fcDate ?? existing.fcDate,
-      fcRenewalDue: parsed.data.fcRenewalDue ?? existing.fcRenewalDue
+      fcRenewalDue: parsed.data.fcRenewalDue ?? existing.fcRenewalDue,
+      regDate: parsed.data.regDate || existing.regDate,
+      batchNo: parsed.data.batchNo || existing.batchNo,
+      taxDate: parsed.data.taxDate || existing.taxDate,
+      inspectionDate: parsed.data.inspectionDate || existing.inspectionDate,
+      npDate: parsed.data.npDate || existing.npDate,
+      pollutionDate: parsed.data.pollutionDate || existing.pollutionDate,
+      owner: parsed.data.owner || existing.owner
     }).where(eq(vehicles.id, id));
     await writeAudit(db, auth.orgId, 'vehicles', id, 'reactivate', parsed.data, auth.userId);
   } else {
-    await db.insert(vehicles).values({ ...parsed.data, id, regNo: id, orgId: auth.orgId, active: true });
+    // An empty string means "left blank" — store nothing rather than ''.
+    const blankToNull = <T extends Record<string, unknown>>(o: T) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, v === '' ? null : v]));
+    await db.insert(vehicles).values({ ...blankToNull(parsed.data), id, regNo: id, orgId: auth.orgId, active: true });
     await writeAudit(db, auth.orgId, 'vehicles', id, 'insert', parsed.data, auth.userId);
   }
 
@@ -73,6 +92,13 @@ const patchSchema = z.object({
   model: z.string().nullable().optional(),
   fcDate: z.string().nullable().optional(),
   fcRenewalDue: z.string().nullable().optional(),
+  regDate: isoDate.nullable().optional(),
+  batchNo: z.string().trim().max(60).nullable().optional(),
+  taxDate: isoDate.nullable().optional(),
+  inspectionDate: isoDate.nullable().optional(),
+  npDate: isoDate.nullable().optional(),
+  pollutionDate: isoDate.nullable().optional(),
+  owner: z.string().trim().max(120).nullable().optional(),
   defaultDriver: z.string().nullable().optional()
 });
 

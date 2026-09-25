@@ -1,11 +1,4 @@
-import type { AppNotification, DriverMaster, MonthlyExpense, Role, TabId, UserAccount, Vehicle } from '../types';
-
-export const VEHICLES: Vehicle[] = [
-  { id: 'TN38 AB 4412', model: 'Tata Signa 4825', fcDate: '15 Mar 2025', renewalDate: '14 Mar 2027', renewalDue: false },
-  { id: 'TN45 CQ 9087', model: 'Ashok Leyland 3520', fcDate: '30 Sep 2024', renewalDate: '29 Sep 2026', renewalDue: true },
-  { id: 'KA01 MD 7731', model: 'BharatBenz 2823', fcDate: '05 Jan 2025', renewalDate: '04 Jan 2027', renewalDue: false },
-  { id: 'TN52 BK 2290', model: 'Eicher Pro 6028', fcDate: '05 Nov 2024', renewalDate: '04 Nov 2026', renewalDue: true }
-];
+import type { AppNotification, DriverMaster, MonthlyExpense, Role, TabId, UserAccount } from '../types';
 
 export const MONTHLY_EXPENSES: MonthlyExpense[] = [
   { id: 'e1', date: '01 Sep', vehicle: 'TN38 AB 4412', driver: 'Murugan S', category: 'Detention / halting charges', amount: 28600, remarks: 'EWB 2710 0345 6789 · yard halt' },

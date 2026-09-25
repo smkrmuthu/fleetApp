@@ -62,6 +62,15 @@ export const vehicles = sqliteTable(
     tareKg: integer('tare_kg'),
     fcDate: text('fc_date'),
     fcRenewalDue: text('fc_renewal_due'),
+    // Registration and compliance details. Dates are ISO (YYYY-MM-DD); a
+    // vehicle's age is worked out from regDate, never stored.
+    regDate: text('reg_date'),
+    batchNo: text('batch_no'),
+    taxDate: text('tax_date'),
+    inspectionDate: text('inspection_date'),
+    npDate: text('np_date'),
+    pollutionDate: text('pollution_date'),
+    owner: text('owner'),
     active: integer('active', { mode: 'boolean' }).notNull().default(true),
     // Pre-fills the Driver field in Add Movement when this truck is picked.
     defaultDriver: text('default_driver').references((): any => drivers.id),
