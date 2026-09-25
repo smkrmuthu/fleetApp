@@ -6,6 +6,7 @@ import { DualScroll } from './DualScroll';
 import { exportTripLog } from '../lib/reports';
 import { useExport } from '../lib/useExport';
 import { TRIP_EXPENSE_LABEL } from '../data/mockData';
+import { fetchDocumentBlobUrl } from '../lib/api';
 import { dateInRange, formatDateRange, formatDuration, formatNum, rupees, tripCost, tripDurationDays } from '../utils/calc';
 
 const DETAIL_COLUMNS = 8; // Trip No., Loading date, Duration, Vehicle, Driver, Tons, KM, Status
@@ -13,8 +14,21 @@ const DETAIL_COLUMNS = 8; // Trip No., Loading date, Duration, Vehicle, Driver, 
 // Everything that used to sit in its own column — item no., the fuel/expense
 // breakdown, revenue/profit, odometer, docs, remarks — now lives here,
 // opened per trip instead of stretching the table sideways for everyone.
-function TripDetail({ t, showFinancials }: { t: Trip; showFinancials: boolean }) {
+function TripDetailBody({ t, showFinancials }: { t: Trip; showFinancials: boolean }) {
   const c = tripCost(t);
+  const [openingDoc, setOpeningDoc] = useState<string | null>(null);
+  const [docError, setDocError] = useState('');
+  async function openDocument(docId: string) {
+    setOpeningDoc(docId);
+    setDocError('');
+    try {
+      window.open(await fetchDocumentBlobUrl(t.id, docId), '_blank');
+    } catch {
+      setDocError('Could not open that file — try again.');
+    } finally {
+      setOpeningDoc(null);
+    }
+  }
   const dash = (v: string) => (v === '—' ? '' : v);
   const stat = (label: string, value: string) => (
     <div>
@@ -23,8 +37,6 @@ function TripDetail({ t, showFinancials }: { t: Trip; showFinancials: boolean })
     </div>
   );
   return (
-    <tr>
-      <td colSpan={DETAIL_COLUMNS} style={{ background: 'var(--color-surface)', padding: '16px 20px 20px' }}>
         <div style={{ display: 'grid', gap: 18 }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 14 }}>
             {stat('Trip no.', t.waybillNo)}
@@ -75,7 +87,15 @@ function TripDetail({ t, showFinancials }: { t: Trip; showFinancials: boolean })
             <div>
               <div className="stat-label" style={{ marginBottom: 6 }}>Documents</div>
               <div style={{ display: 'grid', gap: 2, fontSize: 13, color: 'var(--color-neutral-700)' }}>
-                {t.documents.map((d) => <div key={d.id}>{d.filename}</div>)}
+                {t.documents.map((d) => (
+                  <div key={d.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span>{d.filename}</span>
+                    <button type="button" className="btn btn-ghost" style={{ padding: '0 4px', fontSize: 12 }} disabled={openingDoc === d.id} onClick={() => openDocument(d.id)}>
+                      {openingDoc === d.id ? 'Opening…' : 'View'}
+                    </button>
+                  </div>
+                ))}
+                {docError && <div role="alert" style={{ color: 'var(--color-accent-700)' }}>{docError}</div>}
               </div>
             </div>
           )}
@@ -87,6 +107,14 @@ function TripDetail({ t, showFinancials }: { t: Trip; showFinancials: boolean })
             </div>
           )}
         </div>
+  );
+}
+
+function TripDetail({ t, showFinancials }: { t: Trip; showFinancials: boolean }) {
+  return (
+    <tr>
+      <td colSpan={DETAIL_COLUMNS} style={{ background: 'var(--color-surface)', padding: '16px 20px 20px' }}>
+        <TripDetailBody t={t} showFinancials={showFinancials} />
       </td>
     </tr>
   );
@@ -123,6 +151,7 @@ export function TripLog({ trips, vehicles, drivers, leaves, vehicleFilter, drive
   const { busy: exporting, error: exportError, run: runExport } = useExport();
   const [completing, setCompleting] = useState<Trip | null>(null);
   const [completingBusy, setCompletingBusy] = useState(false);
+  const [viewing, setViewing] = useState<Trip | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   function toggleExpanded(id: string) {
@@ -171,7 +200,7 @@ export function TripLog({ trips, vehicles, drivers, leaves, vehicleFilter, drive
         <div>
           <div className="kicker">{rows.length} movements · {formatDateRange(dateFrom, dateTo)}</div>
           <h1 style={{ fontSize: 34, letterSpacing: '-0.02em' }}>Trip Log</h1>
-          <p style={{ color: 'var(--color-neutral-700)', marginTop: 6, fontSize: 13 }}>Every movement in one place — open a draft to complete it, or delete what's still open. Office and Managers can also open completed movements to view or correct them.</p>
+          <p style={{ color: 'var(--color-neutral-700)', marginTop: 6, fontSize: 13 }}>Every movement in one place — open a draft to complete it, or delete what's still open. Completed movements can be viewed by everyone; only a Manager can correct them.</p>
         </div>
         {showActions && (
           <div style={{ display: 'grid', gap: 6, justifyItems: 'end' }}>
@@ -283,9 +312,13 @@ export function TripLog({ trips, vehicles, drivers, leaves, vehicleFilter, drive
                         ) : (
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             <span className="tag tag-outline">Approved</span>
-                            {(isOffice || isManager) && (
+                            {isManager ? (
                               <button type="button" className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => onEdit(t)}>
                                 View / Edit
+                              </button>
+                            ) : (
+                              <button type="button" className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => setViewing(t)}>
+                                View
                               </button>
                             )}
                           </div>
@@ -299,6 +332,30 @@ export function TripLog({ trips, vehicles, drivers, leaves, vehicleFilter, drive
             </tbody>
           </table>
         </DualScroll>
+      )}
+
+      {viewing && (
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(32,30,29,0.55)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '4vh 16px', overflowY: 'auto' }}
+          onMouseDown={(e) => { if (e.target === e.currentTarget) setViewing(null); }}
+        >
+          <div role="dialog" aria-modal="true" aria-label="Movement details" style={{ width: '100%', maxWidth: 760, background: 'var(--color-bg)', border: '2px solid var(--color-divider)', padding: 24, display: 'grid', gap: 18 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+              <div>
+                <div className="kicker">Completed movement · view only</div>
+                <h2 style={{ fontSize: 24, letterSpacing: '-0.02em', margin: 0 }}>{viewing.waybillNo}</h2>
+              </div>
+              <button type="button" className="btn btn-secondary" onClick={() => setViewing(null)}>Close</button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 14 }}>
+              <div><div className="stat-label" style={{ marginBottom: 2 }}>Vehicle</div><div style={{ fontWeight: 600 }}>{viewing.vehicle}</div></div>
+              <div><div className="stat-label" style={{ marginBottom: 2 }}>Driver</div><div style={{ fontWeight: 600 }}>{viewing.driver}</div></div>
+              <div><div className="stat-label" style={{ marginBottom: 2 }}>Duration</div><div style={{ fontWeight: 600 }}>{formatDuration(tripDurationDays(viewing.loadDate, viewing.unloadDate))}</div></div>
+              <div><div className="stat-label" style={{ marginBottom: 2 }}>Tons / KM</div><div style={{ fontWeight: 600 }}>{formatNum(viewing.tons, 1)} / {formatNum(viewing.km)}</div></div>
+            </div>
+            <TripDetailBody t={viewing} showFinancials={showFinancials} />
+          </div>
+        </div>
       )}
 
       {completing && (() => {

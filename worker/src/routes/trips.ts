@@ -389,6 +389,9 @@ tripRoutes.post('/:id/expenses', async (c) => {
   if (auth.role === 'driver' && (trip.createdBy !== auth.userId || trip.status === 'approved')) {
     return c.json({ error: { code: 'forbidden', message: 'Can only add to your own open movement' } }, 403);
   }
+  if (auth.role === 'office' && trip.status === 'approved') {
+    return c.json({ error: { code: 'forbidden', message: 'Only a manager can change a completed movement' } }, 403);
+  }
 
   const row = { id: parsed.data.id ?? newId(), orgId: auth.orgId, tripId: id, createdBy: auth.userId, createdAt: nowIso(), ...parsed.data };
   await db.insert(tripExpenses).values(row);
@@ -409,6 +412,9 @@ tripRoutes.delete('/:id/expenses/:expenseId', async (c) => {
   if (!trip) return c.json({ error: { code: 'not_found', message: 'Trip not found' } }, 404);
   if (auth.role === 'driver' && (trip.createdBy !== auth.userId || trip.status === 'approved')) {
     return c.json({ error: { code: 'forbidden', message: 'Can only change your own open movement' } }, 403);
+  }
+  if (auth.role === 'office' && trip.status === 'approved') {
+    return c.json({ error: { code: 'forbidden', message: 'Only a manager can change a completed movement' } }, 403);
   }
 
   const [line] = await db.select().from(tripExpenses)
@@ -438,6 +444,9 @@ tripRoutes.post('/:id/documents', async (c) => {
   if (auth.role === 'driver' && (trip.createdBy !== auth.userId || trip.status === 'approved')) {
     return c.json({ error: { code: 'forbidden', message: 'Can only attach files to your own open movement' } }, 403);
   }
+  if (auth.role === 'office' && trip.status === 'approved') {
+    return c.json({ error: { code: 'forbidden', message: 'Only a manager can change a completed movement' } }, 403);
+  }
 
   const doc = await uploadDocument(c.env, db, auth, id, parsed.data);
   await writeAudit(db, auth.orgId, 'trip_documents', doc.id, 'insert', { tripId: id, filename: doc.filename }, auth.userId);
@@ -454,6 +463,9 @@ tripRoutes.delete('/:id/documents/:docId', async (c) => {
   if (!trip) return c.json({ error: { code: 'not_found', message: 'Trip not found' } }, 404);
   if (auth.role === 'driver' && (trip.createdBy !== auth.userId || trip.status === 'approved')) {
     return c.json({ error: { code: 'forbidden', message: 'Can only remove files from your own open movement' } }, 403);
+  }
+  if (auth.role === 'office' && trip.status === 'approved') {
+    return c.json({ error: { code: 'forbidden', message: 'Only a manager can change a completed movement' } }, 403);
   }
 
   const [doc] = await db.select().from(tripDocuments).where(and(eq(tripDocuments.id, docId), eq(tripDocuments.orgId, auth.orgId), eq(tripDocuments.tripId, id))).limit(1);
@@ -519,6 +531,9 @@ tripRoutes.patch('/:id', async (c) => {
   if (!existing) return c.json({ error: { code: 'not_found', message: 'Trip not found' } }, 404);
   if (auth.role === 'driver' && (existing.createdBy !== auth.userId || existing.status === 'approved')) {
     return c.json({ error: { code: 'forbidden', message: 'Can only edit your own open movement' } }, 403);
+  }
+  if (auth.role === 'office' && existing.status === 'approved') {
+    return c.json({ error: { code: 'forbidden', message: 'Only a manager can change a completed movement' } }, 403);
   }
 
   const body = await c.req.json().catch(() => null);
