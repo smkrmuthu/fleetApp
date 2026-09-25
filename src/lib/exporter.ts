@@ -1,4 +1,5 @@
 import { Capacitor } from '@capacitor/core';
+import logoPdf from '../assets/logo-full-pdf.jpg';
 
 // ── Saving a file ───────────────────────────────────────────────────────────
 // In a browser this is an ordinary download. Inside the Android app a WebView
@@ -109,6 +110,15 @@ export const rs = (n: number): string => `${n < 0 ? '-' : ''}Rs. ${Math.abs(Math
 // Turns an on-screen string ("₹-3,91,585", "Avg ₹/km") into PDF-safe text.
 export const pdfText = (s: string): string => s.replace(/^₹-/, '-Rs. ').replace(/₹\//g, 'Rs/').replace(/₹/g, 'Rs. ');
 
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('Could not load image'));
+    img.src = src;
+  });
+}
+
 export async function savePdf(filename: string, report: PdfReport): Promise<void> {
   const [{ jsPDF }, { default: autoTable }] = await Promise.all([import('jspdf'), import('jspdf-autotable')]);
   const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
@@ -128,6 +138,14 @@ export async function savePdf(filename: string, report: PdfReport): Promise<void
   doc.setTextColor(96, 93, 93);
   doc.text(report.company, margin + 16, margin + 36);
   doc.text(report.lines.join('   |   '), margin + 16, margin + 50);
+
+  // Company logo, top right of the first page. A logo that fails to load
+  // shouldn't stop the report from being produced.
+  try {
+    const logo = await loadImage(logoPdf);
+    const logoW = 130;
+    doc.addImage(logo, 'JPEG', width - margin - logoW, margin - 2, logoW, (logoW * logo.height) / logo.width);
+  } catch { /* report without a logo */ }
 
   let y = margin + 74;
   for (const t of report.tables) {

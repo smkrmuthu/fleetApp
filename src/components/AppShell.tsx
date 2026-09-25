@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import type { AppNotification, Role, TabId } from '../types';
 import { ROLE_NOTE, ROLE_TABS, TAB_LABELS } from '../data/mockData';
 import { NotificationBell } from './NotificationBell';
-import logoMark from '../assets/logo-mark-red.png';
+import logoFull from '../assets/logo-full.png';
 
 interface Props {
   role: Role;
@@ -25,7 +25,8 @@ export function AppShell({
     <>
       <header className="app-shell-bar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24, borderBottom: '2px solid var(--color-divider)', flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <img src={logoMark} alt="" style={{ height: 28, width: 'auto' }} />
+          <img src={logoFull} alt="Shree Mira Trader" style={{ height: 44, width: 'auto' }} />
+          <div style={{ width: 2, alignSelf: 'stretch', background: 'var(--color-divider)' }} />
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 14 }}>
             <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 20, letterSpacing: '-0.02em', textTransform: 'uppercase' }}>Fleet Ledger</div>
             <div style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--color-neutral-700)' }}>Goods movement &amp; expense log</div>

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import logoMarkWhite from '../assets/logo-mark-white.png';
+import logoFull from '../assets/logo-full.png';
 
 interface Props {
   onSignIn: (phone: string, password: string) => Promise<void>;
@@ -27,8 +28,10 @@ export function SignIn({ onSignIn }: Props) {
     <div className="sign-in-grid">
       <div className="sign-in-brand" style={{ background: 'var(--color-accent)', color: '#fff' }}>
         <img src={logoMarkWhite} alt="" className="sign-in-watermark" />
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <img src={logoMarkWhite} alt="" style={{ height: 26, width: 'auto' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+          <div style={{ background: '#fff', padding: '10px 16px', display: 'inline-flex' }}>
+            <img src={logoFull} alt="Shree Mira Trader" style={{ height: 52, width: 'auto' }} />
+          </div>
           <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 18, letterSpacing: '0.02em', textTransform: 'uppercase' }}>Fleet Ledger</div>
         </div>
         <div style={{ alignSelf: 'center' }}>
