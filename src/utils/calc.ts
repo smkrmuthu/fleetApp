@@ -63,6 +63,24 @@ export function dateInRange(displayDate: string, from: string, to: string): bool
   return (!from || iso >= from) && (!to || iso <= to);
 }
 
+export const DUE_SOON_DAYS = 60;
+
+export interface DueStatus { label: string; expired: boolean }
+
+// Whether an expiry-type date ("05 Nov 2026") has passed or is coming up within
+// DUE_SOON_DAYS. Null when there's no date or it's comfortably in the future.
+export function dueStatus(displayDate: string, now: Date = new Date()): DueStatus | null {
+  const iso = parseDisplayDate(displayDate);
+  if (!iso) return null;
+  const [y, m, d] = iso.split('-').map(Number);
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const days = Math.round((new Date(y, m - 1, d).getTime() - today.getTime()) / 86_400_000);
+  if (days < 0) return { label: days === -1 ? 'Expired yesterday' : `Expired ${-days} days ago`, expired: true };
+  if (days === 0) return { label: 'Due today', expired: false };
+  if (days <= DUE_SOON_DAYS) return { label: days === 1 ? 'Due tomorrow' : `Due in ${days} days`, expired: false };
+  return null;
+}
+
 // How old a vehicle is, from its registration date ("05 Nov 2024") to today,
 // as "3 yr 2 mo". '—' when there's no registration date (or it's in the future).
 export function vehicleAge(regDate: string, now: Date = new Date()): string {

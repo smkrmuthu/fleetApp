@@ -14,6 +14,10 @@ export interface DialogField {
   required?: boolean;
   // Informational rows (e.g. last active) that only appear in view mode.
   viewOnly?: boolean;
+  // A read-only field worked out from the other fields as they're edited.
+  computed?: (values: Record<string, string>) => string;
+  // Shown beside the value in view mode, e.g. "Due in 10 days".
+  flag?: { label: string; expired: boolean } | null;
 }
 
 interface Props {
@@ -114,8 +118,8 @@ export function RecordDialog({ title, subtitle, fields, startInEdit, canEdit, on
                       id={`rd-${f.key}`}
                       className="input"
                       type={f.type ?? 'text'}
-                      disabled={f.locked}
-                      value={values[f.key]}
+                      disabled={f.locked || !!f.computed}
+                      value={f.computed ? f.computed(values) : values[f.key]}
                       onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
                     />
                   )}
@@ -134,7 +138,10 @@ export function RecordDialog({ title, subtitle, fields, startInEdit, canEdit, on
                 {fields.map((f) => (
                   <div key={f.key} style={{ display: 'flex', justifyContent: 'space-between', gap: 16, padding: '10px 0', borderBottom: '1px solid var(--color-neutral-300)' }}>
                     <dt style={{ color: 'var(--color-neutral-700)', fontSize: 13 }}>{f.label}</dt>
-                    <dd style={{ margin: 0, fontWeight: 600, textAlign: 'right', overflowWrap: 'anywhere' }}>{f.display || '—'}</dd>
+                    <dd style={{ margin: 0, fontWeight: 600, textAlign: 'right', overflowWrap: 'anywhere' }}>
+                      {f.display || '—'}
+                      {f.flag && <span className={f.flag.expired ? 'tag tag-accent' : 'tag tag-outline'} style={{ marginLeft: 8 }}>{f.flag.label}</span>}
+                    </dd>
                   </div>
                 ))}
               </dl>

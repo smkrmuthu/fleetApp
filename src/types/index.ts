@@ -11,8 +11,6 @@ export interface Vehicle {
   id: string;
   model: string;
   fcDate: string;
-  renewalDate: string;
-  renewalDue: boolean;
   // Registration and compliance details. Dates are display dates ("05 Nov 2024"),
   // '—' when not recorded. A vehicle's age is worked out from regDate.
   regDate: string;

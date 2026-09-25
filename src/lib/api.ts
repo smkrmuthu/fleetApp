@@ -143,19 +143,19 @@ export async function restoreSession(): Promise<{ role: Role; name: string } | n
 
 // ── vehicles ─────────────────────────────────────────────────────────────
 interface ApiVehicle {
-  id: string; model: string | null; fcDate: string | null; fcRenewalDue: string | null; renewalDue: boolean; defaultDriver: string | null;
+  id: string; model: string | null; fcDate: string | null; defaultDriver: string | null;
   regDate: string | null; batchNo: string | null; taxDate: string | null; inspectionDate: string | null; npDate: string | null; pollutionDate: string | null; owner: string | null;
 }
 
 // What can be changed on a truck. Dates are ISO ("2026-09-25"); '' clears a field.
 export interface VehicleEdit {
-  model?: string; fcDate?: string; renewalDate?: string; defaultDriver?: string;
+  model?: string; fcDate?: string; defaultDriver?: string;
   regDate?: string; batchNo?: string; taxDate?: string; inspectionDate?: string; npDate?: string; pollutionDate?: string; owner?: string;
 }
 
 function vehicleFromApi(v: ApiVehicle): Vehicle {
   return {
-    id: v.id, model: v.model ?? '—', fcDate: formatDisplayDate(v.fcDate), renewalDate: formatDisplayDate(v.fcRenewalDue), renewalDue: v.renewalDue, defaultDriver: v.defaultDriver ?? '',
+    id: v.id, model: v.model ?? '—', fcDate: formatDisplayDate(v.fcDate), defaultDriver: v.defaultDriver ?? '',
     regDate: formatDisplayDate(v.regDate), batchNo: v.batchNo ?? '—', taxDate: formatDisplayDate(v.taxDate), inspectionDate: formatDisplayDate(v.inspectionDate),
     npDate: formatDisplayDate(v.npDate), pollutionDate: formatDisplayDate(v.pollutionDate), owner: v.owner ?? '—'
   };
@@ -166,11 +166,11 @@ export async function fetchVehicles(): Promise<Vehicle[]> {
   return res.vehicles.map(vehicleFromApi);
 }
 
-export async function createVehicle(v: { id: string; model: string; fcDate: string; renewalDate: string; regDate: string; batchNo: string; taxDate: string; inspectionDate: string; npDate: string; pollutionDate: string; owner: string }): Promise<void> {
+export async function createVehicle(v: { id: string; model: string; fcDate: string; regDate: string; batchNo: string; taxDate: string; inspectionDate: string; npDate: string; pollutionDate: string; owner: string }): Promise<void> {
   await request('/vehicles', {
     method: 'POST',
     body: JSON.stringify({
-      regNo: v.id, model: v.model, fcDate: orUndefined(v.fcDate), fcRenewalDue: orUndefined(v.renewalDate),
+      regNo: v.id, model: v.model, fcDate: orUndefined(v.fcDate),
       regDate: orUndefined(v.regDate), batchNo: orUndefined(v.batchNo), taxDate: orUndefined(v.taxDate), inspectionDate: orUndefined(v.inspectionDate),
       npDate: orUndefined(v.npDate), pollutionDate: orUndefined(v.pollutionDate), owner: orUndefined(v.owner)
     })
@@ -183,7 +183,6 @@ export async function updateVehicle(id: string, v: VehicleEdit): Promise<void> {
   const body: Record<string, string> = {};
   if (v.model !== undefined) body.model = v.model;
   if (v.fcDate !== undefined) body.fcDate = v.fcDate;
-  if (v.renewalDate !== undefined) body.fcRenewalDue = v.renewalDate;
   if (v.defaultDriver !== undefined) body.defaultDriver = v.defaultDriver;
   for (const k of ['regDate', 'batchNo', 'taxDate', 'inspectionDate', 'npDate', 'pollutionDate', 'owner'] as const) {
     if (v[k] !== undefined) body[k] = v[k];

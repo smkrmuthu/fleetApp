@@ -295,15 +295,15 @@ export async function exportBackup(d: BackupData): Promise<void> {
     rows: [
       [
         th('Reg No'), th('Reg Date'), th('Age of Vehicle'), th('Batch #'), th('Tax Date'), th('Inspection Date'), th('NP Date'), th('FC Date'),
-        th('Pollution Cert Date'), th('Owner'), th('Model'), th('Renewal date'), th('Default driver')
+        th('Pollution Cert Date'), th('Owner'), th('Model'), th('Default driver')
       ],
       ...d.vehicles.map((v) => [
         v.id, dateCell(parseDisplayDate(v.regDate)), vehicleAge(v.regDate) === '—' ? '' : vehicleAge(v.regDate), blankIfDash(v.batchNo),
         dateCell(parseDisplayDate(v.taxDate)), dateCell(parseDisplayDate(v.inspectionDate)), dateCell(parseDisplayDate(v.npDate)), dateCell(parseDisplayDate(v.fcDate)),
-        dateCell(parseDisplayDate(v.pollutionDate)), blankIfDash(v.owner), blankIfDash(v.model), dateCell(parseDisplayDate(v.renewalDate)), v.defaultDriver ?? ''
+        dateCell(parseDisplayDate(v.pollutionDate)), blankIfDash(v.owner), blankIfDash(v.model), v.defaultDriver ?? ''
       ] as SheetCell[])
     ],
-    widths: [14, 13, 14, 12, 13, 15, 13, 13, 19, 20, 18, 13, 20],
+    widths: [14, 13, 14, 12, 13, 15, 13, 13, 19, 20, 18, 20],
     freezeRows: 1
   };
   const drivers: SheetSpec = {

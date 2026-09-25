@@ -1,11 +1,22 @@
 import { useState } from 'react';
 import type { DriverMaster, UserAccount, Vehicle } from '../types';
 import { BRANCH_OPTIONS, formatDisplayDate, parseDisplayDate, type VehicleEdit } from '../lib/api';
-import { vehicleAge } from '../utils/calc';
+import { dueStatus, vehicleAge } from '../utils/calc';
 import { RecordDialog, type DialogField } from './RecordDialog';
 
+// Every date on a truck that expires or falls due, most urgent first.
+function dueItems(v: Vehicle) {
+  return [
+    { name: 'Tax', date: v.taxDate }, { name: 'Inspection', date: v.inspectionDate }, { name: 'NP', date: v.npDate },
+    { name: 'FC', date: v.fcDate }, { name: 'Pollution', date: v.pollutionDate }
+  ]
+    .map((i) => ({ name: i.name, status: dueStatus(i.date) }))
+    .filter((i): i is { name: string; status: NonNullable<ReturnType<typeof dueStatus>> } => i.status !== null)
+    .sort((a, b) => Number(b.status.expired) - Number(a.status.expired));
+}
+
 const blankVehicle = {
-  id: '', model: '', fcDate: '', renewalDate: '', regDate: '', batchNo: '', taxDate: '', inspectionDate: '', npDate: '', pollutionDate: '', owner: ''
+  id: '', model: '', fcDate: '', regDate: '', batchNo: '', taxDate: '', inspectionDate: '', npDate: '', pollutionDate: '', owner: ''
 };
 
 interface Props {
@@ -44,8 +55,6 @@ export function People({
       id: newVehicle.id.trim(),
       model: newVehicle.model.trim() || '—',
       fcDate: newVehicle.fcDate || '—',
-      renewalDate: newVehicle.renewalDate || '—',
-      renewalDue: false,
       regDate: newVehicle.regDate || '—',
       batchNo: newVehicle.batchNo.trim() || '—',
       taxDate: newVehicle.taxDate || '—',
@@ -90,16 +99,19 @@ export function People({
       const fields: DialogField[] = [
         { key: 'reg', label: 'Registration no', display: v.id, value: v.id, locked: true, hint: "The registration number is how trips refer to this truck, so it can't be changed. To correct it, add the right one and delete this one." },
         { key: 'regDate', label: 'Reg Date', type: 'date', display: v.regDate, value: parseDisplayDate(v.regDate) },
-        { key: 'age', label: 'Age of Vehicle', display: vehicleAge(v.regDate), value: '', viewOnly: true },
+        {
+          key: 'age', label: 'Age of Vehicle', display: vehicleAge(v.regDate), value: '', locked: true,
+          computed: (vals) => vehicleAge(vals.regDate ? formatDisplayDate(vals.regDate) : ''),
+          hint: 'Worked out from the Reg Date and today\'s date.'
+        },
         { key: 'batchNo', label: 'Batch #', display: v.batchNo, value: blank(v.batchNo) },
-        { key: 'taxDate', label: 'Tax Date', type: 'date', display: v.taxDate, value: parseDisplayDate(v.taxDate) },
-        { key: 'inspectionDate', label: 'Inspection Date', type: 'date', display: v.inspectionDate, value: parseDisplayDate(v.inspectionDate) },
-        { key: 'npDate', label: 'NP Date', type: 'date', display: v.npDate, value: parseDisplayDate(v.npDate) },
-        { key: 'fcDate', label: 'FC Date', type: 'date', display: v.fcDate, value: parseDisplayDate(v.fcDate) },
-        { key: 'pollutionDate', label: 'Pollution Cert Date', type: 'date', display: v.pollutionDate, value: parseDisplayDate(v.pollutionDate) },
+        { key: 'taxDate', label: 'Tax Date', type: 'date', display: v.taxDate, value: parseDisplayDate(v.taxDate), flag: dueStatus(v.taxDate) },
+        { key: 'inspectionDate', label: 'Inspection Date', type: 'date', display: v.inspectionDate, value: parseDisplayDate(v.inspectionDate), flag: dueStatus(v.inspectionDate) },
+        { key: 'npDate', label: 'NP Date', type: 'date', display: v.npDate, value: parseDisplayDate(v.npDate), flag: dueStatus(v.npDate) },
+        { key: 'fcDate', label: 'FC Date', type: 'date', display: v.fcDate, value: parseDisplayDate(v.fcDate), flag: dueStatus(v.fcDate) },
+        { key: 'pollutionDate', label: 'Pollution Cert Date', type: 'date', display: v.pollutionDate, value: parseDisplayDate(v.pollutionDate), flag: dueStatus(v.pollutionDate) },
         { key: 'owner', label: 'Owner', display: v.owner, value: blank(v.owner) },
         { key: 'model', label: 'Model', display: v.model, value: blank(v.model) },
-        { key: 'renewalDate', label: 'Renewal date', type: 'date', display: v.renewalDate, value: parseDisplayDate(v.renewalDate) },
         {
           key: 'defaultDriver', label: 'Default driver', type: 'select', display: v.defaultDriver ?? '', value: v.defaultDriver ?? '',
           options: [{ value: '', label: 'No default driver' }, ...drivers.map((d) => ({ value: d.name, label: d.name }))],
@@ -111,7 +123,7 @@ export function People({
           key={`truck-${v.id}-${dialog.edit}`} title={v.id} subtitle="Truck" fields={fields} startInEdit={dialog.edit} canEdit onClose={close}
           onSave={(x) => onUpdateVehicle(v.id, {
             regDate: x.regDate, batchNo: x.batchNo, taxDate: x.taxDate, inspectionDate: x.inspectionDate, npDate: x.npDate,
-            fcDate: x.fcDate, pollutionDate: x.pollutionDate, owner: x.owner, model: x.model, renewalDate: x.renewalDate, defaultDriver: x.defaultDriver
+            fcDate: x.fcDate, pollutionDate: x.pollutionDate, owner: x.owner, model: x.model, defaultDriver: x.defaultDriver
           })}
         />
       );
@@ -215,10 +227,13 @@ export function People({
           <div className="field"><label>Owner</label><input className="input" type="text" placeholder="Owner name" value={newVehicle.owner} onChange={(e) => setNewVehicle((v) => ({ ...v, owner: e.target.value }))} /></div>
           <div className="field">
             <label>Age of Vehicle</label>
-            <input className="input" type="text" disabled value={vehicleAge(newVehicle.regDate ? formatDisplayDate(newVehicle.regDate) : '')} title="Worked out from the Reg Date" />
+            <input
+              className="input" type="text" disabled placeholder="Fills in from Reg Date"
+              value={newVehicle.regDate ? vehicleAge(formatDisplayDate(newVehicle.regDate)) : ''}
+              title="Worked out from the Reg Date and today's date"
+            />
           </div>
           <div className="field"><label>Model</label><input className="input" type="text" placeholder="Make and model" value={newVehicle.model} onChange={(e) => setNewVehicle((v) => ({ ...v, model: e.target.value }))} /></div>
-          <div className="field"><label>Renewal date</label><input className="input" type="date" value={newVehicle.renewalDate} onChange={(e) => setNewVehicle((v) => ({ ...v, renewalDate: e.target.value }))} /></div>
           <button type="button" className="btn btn-primary" style={{ justifySelf: 'start' }} onClick={addVehicle}>Add truck</button>
           {vehicleError && <div role="alert" style={{ color: 'var(--color-accent-700)', fontSize: 13 }}>{vehicleError}</div>}
         </div>
@@ -226,7 +241,7 @@ export function People({
       <div className="scroll-x" style={{ border: '2px solid var(--color-divider)', marginBottom: 30 }}>
         <table className="table" style={{ minWidth: 1000 }}>
           <thead>
-            <tr><th>Vehicle</th><th>Owner</th><th>Reg Date</th><th>Age</th><th>Model</th><th>FC Date</th><th>Renewal date</th><th className="col-actions"></th></tr>
+            <tr><th>Vehicle</th><th>Owner</th><th>Reg Date</th><th>Age</th><th>Model</th><th>FC Date</th><th>Due</th><th className="col-actions"></th></tr>
           </thead>
           <tbody>
             {vehicles.map((v) => (
@@ -237,8 +252,15 @@ export function People({
                 <td style={{ whiteSpace: 'nowrap' }}>{vehicleAge(v.regDate)}</td>
                 <td style={{ color: 'var(--color-neutral-700)' }}>{v.model}</td>
                 <td style={{ whiteSpace: 'nowrap' }}>{v.fcDate}</td>
-                <td style={{ whiteSpace: 'nowrap' }}>
-                  {v.renewalDue ? <span className="tag tag-accent">{v.renewalDate}</span> : <span>{v.renewalDate}</span>}
+                <td>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, maxWidth: 320 }}>
+                    {dueItems(v).map((item) => (
+                      <span key={item.name} className={item.status.expired ? 'tag tag-accent' : 'tag tag-outline'} title={`${item.name}: ${item.status.label}`}>
+                        {item.name} · {item.status.label}
+                      </span>
+                    ))}
+                    {dueItems(v).length === 0 && <span style={{ color: 'var(--color-neutral-700)' }}>—</span>}
+                  </div>
                 </td>
                 <td className="col-actions">
                   <div style={actions}>
@@ -297,8 +319,8 @@ export function People({
         </table>
       </div>
       <p style={{ color: 'var(--color-neutral-700)', maxWidth: '74ch', lineHeight: 1.6, marginTop: 16 }}>
-        Licences and FC renewals inside 60 days are flagged; the same check runs nightly and pushes a notification to
-        the manager. Office and Manager can add, edit or remove trucks and drivers; only a Manager can edit or delete
+        A truck's tax, inspection, NP, FC and pollution dates are highlighted in the Due column once they are within 60
+        days or past. Office and Manager can add, edit or remove trucks and drivers; only a Manager can edit or delete
         a user account.
       </p>
     </section>
