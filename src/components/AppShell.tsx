@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import type { AppNotification, Role, TabId } from '../types';
-import { ROLE_NOTE, ROLE_TABS, TAB_LABELS } from '../data/mockData';
+import { ROLE_TABS, TAB_LABELS } from '../data/mockData';
 import { NotificationBell } from './NotificationBell';
 import logoFull from '../assets/logo-full.png';
 
@@ -69,8 +69,8 @@ export function AppShell({
       <main className="app-shell-main">{children}</main>
 
       <footer className="app-shell-bar" style={{ borderTop: '2px solid var(--color-divider)', display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', fontSize: 12, color: 'var(--color-neutral-700)' }}>
-        <span>Fleet Ledger — prototype</span>
-        <span>{ROLE_NOTE[role]}</span>
+        <span>© {new Date().getFullYear()} Shree Mira Trader. All rights reserved.</span>
+        <span>Fleet Ledger · Goods movement &amp; expense log</span>
       </footer>
     </>
   );

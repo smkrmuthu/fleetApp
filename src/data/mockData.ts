@@ -72,12 +72,6 @@ export const TAB_LABELS: Record<TabId, string> = {
   schema: 'Data Model'
 };
 
-export const ROLE_NOTE: Record<Role, string> = {
-  Driver: 'Driver view — enter movements, see your own trip log.',
-  Office: 'Documentation view — enter movements, trip log, summary, and post monthly expenses.',
-  Manager: 'Manager view — full access across all operations, reports, and master records.'
-};
-
 export const USER_ROWS: UserAccount[] = [
   { name: 'Manager', role: 'Manager', phone: 'mgr@smt.com', branch: 'Chennai HQ', seen: 'Today, 09:12', access: 'All screens, month close', isManager: true },
   { name: 'Office Admin', role: 'Documentation', phone: 'office@smt.com', branch: 'Chennai HQ', seen: 'Today, 08:40', access: 'Movements, expenses, summary', isManager: false },
