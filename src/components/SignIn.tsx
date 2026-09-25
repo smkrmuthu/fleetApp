@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import logoMarkWhite from '../assets/logo-mark-white.png';
 import logoFullWhite from '../assets/logo-full-white.png';
+import logoFleetWhite from '../assets/logo-fleet-white.png';
 
 interface Props {
   onSignIn: (phone: string, password: string) => Promise<void>;
@@ -28,10 +29,14 @@ export function SignIn({ onSignIn }: Props) {
     <div className="sign-in-grid">
       <div className="sign-in-brand" style={{ background: 'var(--color-accent)', color: '#fff' }}>
         <img src={logoMarkWhite} alt="" className="sign-in-watermark" />
+        <img src={logoFleetWhite} alt="" className="sign-in-watermark-fleet" />
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
           <img src={logoFullWhite} alt="Shree Mira Trader" style={{ height: 64, width: 'auto' }} />
-          <div style={{ width: 2, alignSelf: 'stretch', background: '#fff', opacity: 0.6 }} />
-          <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 18, letterSpacing: '0.02em', textTransform: 'uppercase' }}>Fleet Ledger</div>
+          <div className="sign-in-divider" style={{ width: 2, alignSelf: 'stretch', background: '#fff', opacity: 0.6 }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <img src={logoFleetWhite} alt="" style={{ height: 34, width: 'auto' }} />
+            <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 18, letterSpacing: '0.02em', textTransform: 'uppercase' }}>Fleet Ledger</div>
+          </div>
         </div>
         <div style={{ alignSelf: 'center' }}>
           <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 'clamp(32px, 6.4vw, 72px)', lineHeight: 1.02, letterSpacing: '-0.03em' }}>
