@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { DriverMaster, UserAccount, Vehicle } from '../types';
 import { BRANCH_OPTIONS, parseDisplayDate, type VehicleEdit } from '../lib/api';
 import { dueStatus, vehicleAge } from '../utils/calc';
+import { DualScroll } from './DualScroll';
 import { RecordDialog, type DialogField } from './RecordDialog';
 
 // Every date on a truck that expires or falls due, most urgent first.
@@ -13,6 +14,13 @@ function dueItems(v: Vehicle) {
     .map((i) => ({ name: i.name, status: dueStatus(i.date) }))
     .filter((i): i is { name: string; status: NonNullable<ReturnType<typeof dueStatus>> } => i.status !== null)
     .sort((a, b) => Number(b.status.expired) - Number(a.status.expired));
+}
+
+// A date cell: plain when fine or not recorded, tagged when expired or due soon.
+function dueCell(date: string) {
+  const status = dueStatus(date);
+  if (!status) return <span style={{ whiteSpace: 'nowrap' }}>{date}</span>;
+  return <span className={status.expired ? 'tag tag-accent' : 'tag tag-outline'} title={status.label} style={{ whiteSpace: 'nowrap' }}>{date}</span>;
 }
 
 const blankVehicle = {
@@ -225,20 +233,29 @@ export function People({
           {vehicleError && <div role="alert" style={{ color: 'var(--color-accent-700)', fontSize: 13 }}>{vehicleError}</div>}
         </div>
       </div>
-      <div className="scroll-x" style={{ border: '2px solid var(--color-divider)', marginBottom: 30 }}>
-        <table className="table" style={{ minWidth: 1000 }}>
+      <div style={{ marginBottom: 30 }}>
+      <DualScroll>
+        <table className="table" style={{ minWidth: 1500 }}>
           <thead>
-            <tr><th>Vehicle</th><th>Owner</th><th>Reg Date</th><th>Age</th><th>Model</th><th>FC Date</th><th>Due</th><th className="col-actions"></th></tr>
+            <tr>
+              <th>Reg No</th><th>Reg Date</th><th>Age</th><th>Batch #</th><th>Tax Date</th><th>Inspection Date</th><th>NP Date</th>
+              <th>FC Date</th><th>Pollution Cert Date</th><th>Owner</th><th>Model</th><th>Due</th><th className="col-actions"></th>
+            </tr>
           </thead>
           <tbody>
             {vehicles.map((v) => (
               <tr key={v.id}>
                 <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{v.id}</td>
-                <td>{v.owner}</td>
                 <td style={{ whiteSpace: 'nowrap' }}>{v.regDate}</td>
                 <td style={{ whiteSpace: 'nowrap' }}>{vehicleAge(v.regDate)}</td>
+                <td>{v.batchNo}</td>
+                <td>{dueCell(v.taxDate)}</td>
+                <td>{dueCell(v.inspectionDate)}</td>
+                <td>{dueCell(v.npDate)}</td>
+                <td>{dueCell(v.fcDate)}</td>
+                <td>{dueCell(v.pollutionDate)}</td>
+                <td>{v.owner}</td>
                 <td style={{ color: 'var(--color-neutral-700)' }}>{v.model}</td>
-                <td style={{ whiteSpace: 'nowrap' }}>{v.fcDate}</td>
                 <td>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, maxWidth: 320 }}>
                     {dueItems(v).map((item) => (
@@ -259,10 +276,11 @@ export function People({
               </tr>
             ))}
             {vehicles.length === 0 && (
-              <tr><td colSpan={8} style={{ color: 'var(--color-neutral-700)' }}>No trucks yet.</td></tr>
+              <tr><td colSpan={13} style={{ color: 'var(--color-neutral-700)' }}>No trucks yet.</td></tr>
             )}
           </tbody>
         </table>
+      </DualScroll>
       </div>
 
       <h2 style={{ fontSize: 20, marginBottom: 12 }}>Drivers</h2>
