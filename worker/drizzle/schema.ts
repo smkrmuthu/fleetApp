@@ -308,6 +308,23 @@ export const driverLeaves = sqliteTable(
   })
 );
 
+export const vehicleUnavailability = sqliteTable(
+  'vehicle_unavailability',
+  {
+    id: text('id').primaryKey(),
+    orgId: text('org_id').notNull().references(() => orgs.id, { onDelete: 'cascade' }),
+    vehicleId: text('vehicle_id').notNull().references(() => vehicles.id),
+    startsAt: text('starts_at').notNull(),
+    endsAt: text('ends_at').notNull(),
+    remarks: text('remarks'),
+    createdBy: text('created_by').references(() => users.id),
+    createdAt: text('created_at').notNull().default(sql`(current_timestamp)`)
+  },
+  (t) => ({
+    vehicleIdx: index('vehicle_unavailability_vehicle').on(t.orgId, t.vehicleId)
+  })
+);
+
 // Atomic per-org counters (currently just the trip-number sequence). One row
 // per key, incremented with an upsert so two simultaneous trip creations can
 // never land on the same number.

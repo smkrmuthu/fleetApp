@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react';
-import type { DriverLeave, TripDocument, TripExpenseLine, TripFormState, TripStop } from '../types';
+import type { DriverLeave, TripDocument, TripExpenseLine, TripFormState, TripStop, VehicleUnavailability } from '../types';
 import { TRIP_EXPENSE_LABEL } from '../data/mockData';
 import { formatDisplayDate, formatDisplayDateTime } from '../lib/api';
-import { overlappingLeaves, rupees, toNumber } from '../utils/calc';
+import { overlappingLeaves, overlappingUnavailability, rupees, toNumber } from '../utils/calc';
 
 type Action = 'create' | 'start' | 'save' | 'complete';
 
@@ -21,6 +21,7 @@ interface Props {
   wasCompleted: boolean;
   totals: { km: number; expense: number; profit: number };
   leaves: DriverLeave[];
+  unavailability: VehicleUnavailability[];
   onConfirm: () => void;
   onBack: () => void;
   // Set when the review is shown as a dialog over the Trip Log rather than inside the form.
@@ -85,7 +86,7 @@ const NOTE: Partial<Record<Action, string>> = {
 const muted = { color: 'var(--color-neutral-700)' } as const;
 const changedColor = 'var(--color-accent-700)';
 
-export function MovementReview({ action, form, original, lines, originalLines, stops, originalStops, documents, originalDocuments, showFinancials, wasCompleted, totals, leaves, onConfirm, onBack, standalone }: Props) {
+export function MovementReview({ action, form, original, lines, originalLines, stops, originalStops, documents, originalDocuments, showFinancials, wasCompleted, totals, leaves, unavailability, onConfirm, onBack, standalone }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!standalone) rootRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -107,6 +108,7 @@ export function MovementReview({ action, form, original, lines, originalLines, s
   const stopsChanged = editing && stopSig(stops) !== stopSig(originalStops);
   const anyChange = changedCount + lineChanges + docChanges > 0 || stopsChanged;
   const leaveConflicts = overlappingLeaves(leaves, form.driver, form.loadDate, form.unloadDate);
+  const vehicleConflicts = overlappingUnavailability(unavailability, form.vehicle, form.loadDate, form.unloadDate);
 
   const tag = (text: string, color: string) => (
     <span style={{ fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, color, border: `1px solid ${color}`, padding: '0 5px', marginLeft: 6 }}>{text}</span>
@@ -131,6 +133,15 @@ export function MovementReview({ action, form, original, lines, originalLines, s
           <strong>{form.driver} is recorded on leave during these dates:</strong>
           {leaveConflicts.map((l) => (
             <div key={l.id}>{formatDisplayDateTime(l.startsAt)} → {formatDisplayDateTime(l.endsAt)}{l.remarks ? ` — ${l.remarks}` : ''}</div>
+          ))}
+        </div>
+      )}
+
+      {vehicleConflicts.length > 0 && (
+        <div role="status" style={{ padding: '10px 12px', fontSize: 13, borderBottom: '1px solid var(--color-neutral-300)', background: 'var(--color-accent-100)', color: 'var(--color-accent-800)', display: 'grid', gap: 4 }}>
+          <strong>{form.vehicle} is recorded unavailable during these dates:</strong>
+          {vehicleConflicts.map((w) => (
+            <div key={w.id}>{formatDisplayDateTime(w.startsAt)} → {formatDisplayDateTime(w.endsAt)}{w.remarks ? ` — ${w.remarks}` : ''}</div>
           ))}
         </div>
       )}

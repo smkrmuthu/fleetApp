@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { AppNotification, DriverLeave, DriverMaster, MasterSettings, MonthlyExpense, Role, TabId, Trip, UserAccount, Vehicle } from './types';
+import type { AppNotification, DriverLeave, DriverMaster, MasterSettings, MonthlyExpense, Role, TabId, Trip, UserAccount, Vehicle, VehicleUnavailability } from './types';
 import { ROLE_TABS } from './data/mockData';
 import { rupees, toIsoDate } from './utils/calc';
 import { exportBackup } from './lib/reports';
@@ -42,6 +42,7 @@ export function App() {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [master, setMaster] = useState<MasterSettings>({ dieselRate: null, adblueRate: null, loadingPoint: null });
   const [driverLeaves, setDriverLeaves] = useState<DriverLeave[]>([]);
+  const [vehicleUnavailability, setVehicleUnavailability] = useState<VehicleUnavailability[]>([]);
   const [expenseCategories, setExpenseCategories] = useState<string[]>([]);
   const [vehicleFilter, setVehicleFilter] = useState('all');
   const [driverFilter, setDriverFilter] = useState('');
@@ -56,8 +57,8 @@ export function App() {
       // Leaves are fetched for every role, not just Office/Manager — a driver
       // login can enter movements for other drivers too, and needs the same
       // on-leave warning in Add Movement.
-      const [v, d, t, e, r, l] = await Promise.all([
-        api.fetchVehicles(), api.fetchDrivers(), api.fetchTrips(), api.fetchMonthlyExpenses(), api.fetchMasterSettings(), api.fetchDriverLeaves()
+      const [v, d, t, e, r, l, u2] = await Promise.all([
+        api.fetchVehicles(), api.fetchDrivers(), api.fetchTrips(), api.fetchMonthlyExpenses(), api.fetchMasterSettings(), api.fetchDriverLeaves(), api.fetchVehicleUnavailability()
       ]);
       setVehicles(v);
       setDrivers(d);
@@ -65,6 +66,7 @@ export function App() {
       setExpenses(e);
       setMaster(r);
       setDriverLeaves(l);
+      setVehicleUnavailability(u2);
       if (currentRole !== 'Driver') {
         const [u, n, ec] = await Promise.all([api.fetchUsers(), api.fetchNotifications(), api.fetchExpenseCategories()]);
         setUsers(u);
@@ -297,6 +299,25 @@ export function App() {
     }
   }
 
+  async function addVehicleUnavailability(w: { vehicle: string; startsAt: string; endsAt: string; remarks?: string }): Promise<string | null> {
+    try {
+      await api.createVehicleUnavailability(w);
+      setVehicleUnavailability(await api.fetchVehicleUnavailability());
+      return null;
+    } catch (e) {
+      return e instanceof Error ? e.message : 'Could not save unavailability';
+    }
+  }
+
+  async function removeVehicleUnavailability(id: string) {
+    try {
+      await api.deleteVehicleUnavailability(id);
+      setVehicleUnavailability((prev) => prev.filter((w) => w.id !== id));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not delete unavailability');
+    }
+  }
+
   async function addExpenseCategory(name: string): Promise<string | null> {
     try {
       await api.createExpenseCategory(name);
@@ -432,6 +453,7 @@ export function App() {
             drivers={drivers}
             master={master}
             leaves={driverLeaves}
+            unavailability={vehicleUnavailability}
             defaultDriverName={role === 'Driver' ? currentUserName : undefined}
             editingTrip={editingTrip}
             onCancelEdit={cancelEditingTrip}
@@ -443,6 +465,7 @@ export function App() {
             vehicles={vehicles}
             drivers={drivers}
             leaves={driverLeaves}
+            unavailability={vehicleUnavailability}
             vehicleFilter={vehicleFilter}
             driverFilter={driverFilter}
             dateFrom={dateFrom}
@@ -519,6 +542,9 @@ export function App() {
             leaves={driverLeaves}
             onAddLeave={addDriverLeave}
             onRemoveLeave={removeDriverLeave}
+            unavailability={vehicleUnavailability}
+            onAddUnavailability={addVehicleUnavailability}
+            onRemoveUnavailability={removeVehicleUnavailability}
             categories={expenseCategories}
             onAddCategory={addExpenseCategory}
             onRemoveCategory={removeExpenseCategory}

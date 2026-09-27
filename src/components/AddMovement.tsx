@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import type { DriverLeave, DriverMaster, MasterSettings, Trip, TripDocument, TripExpenseKind, TripExpenseLine, TripFormState, TripStop, Vehicle } from '../types';
+import type { DriverLeave, DriverMaster, MasterSettings, Trip, TripDocument, TripExpenseKind, TripExpenseLine, TripFormState, TripStop, Vehicle, VehicleUnavailability } from '../types';
 import { TRIP_EXPENSE_LABEL } from '../data/mockData';
-import { dieselLitres, overlappingLeaves, rupees, todayIso, toNumber } from '../utils/calc';
+import { dieselLitres, overlappingLeaves, overlappingUnavailability, rupees, todayIso, toNumber } from '../utils/calc';
 import { MovementReview } from './MovementReview';
 import { fetchDocumentBlobUrl, fetchNextTripNumberPreview, formatDisplayDateTime, parseDisplayDate, scanReceipt, type ScannedReceipt } from '../lib/api';
 
@@ -91,12 +91,13 @@ interface Props {
   drivers: DriverMaster[];
   master: MasterSettings;
   leaves: DriverLeave[];
+  unavailability: VehicleUnavailability[];
   defaultDriverName?: string;
   editingTrip?: Trip | null;
   onCancelEdit?: () => void;
 }
 
-export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, leaves, defaultDriverName, editingTrip, onCancelEdit }: Props) {
+export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, leaves, unavailability, defaultDriverName, editingTrip, onCancelEdit }: Props) {
   const showFinancials = !driverOnly;
   const isEditing = !!editingTrip;
   const isCompleted = editingTrip?.status === 'approved';
@@ -282,6 +283,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, l
   const litres = dieselLitres(lines);
   const kmpl = litres ? (km / litres).toFixed(2) + ' km/l' : '—';
   const driverLeaveConflicts = overlappingLeaves(leaves, form.driver, form.loadDate, form.unloadDate);
+  const vehicleConflicts = overlappingUnavailability(unavailability, form.vehicle, form.loadDate, form.unloadDate);
 
   // Blank rows are ignored; a note or reading with no place is an error.
   const cleanStops: TripStop[] = stops
@@ -327,6 +329,9 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, l
       }
     }
     if (!form.vehicle) errs.vehicle = 'Select a vehicle.';
+    else if (overlappingUnavailability(unavailability, form.vehicle, form.loadDate, form.unloadDate).length > 0) {
+      errs.vehicle = 'This truck is recorded unavailable for these dates — pick another truck or a different date.';
+    }
     if (!form.driver) errs.driver = 'Select a driver.';
     if (completing) {
       if (toNumber(form.tons) <= 0) errs.tons = 'Loading weight is required to complete this movement.';
@@ -486,7 +491,14 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, l
               <label>Vehicle *</label>
               <select className={errorClass('vehicle')} value={form.vehicle} onChange={onVehicleChange}>
                 <option value="">Select vehicle</option>
-                {vehicles.map((v) => <option key={v.id} value={v.id}>{v.id}</option>)}
+                {vehicles.map((v) => {
+                  const unavailable = overlappingUnavailability(unavailability, v.id, form.loadDate, form.unloadDate).length > 0;
+                  return (
+                    <option key={v.id} value={v.id} disabled={unavailable && v.id !== form.vehicle}>
+                      {v.id}{unavailable ? ' (unavailable for these dates)' : ''}
+                    </option>
+                  );
+                })}
               </select>
             </div>
             <div className="field">
@@ -503,6 +515,15 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, l
             )}
             <div className="field field-span-2"><label>Remarks</label><input className="input" type="text" placeholder="Remarks" value={form.remarks} onChange={set('remarks')} /></div>
           </div>
+
+          {vehicleConflicts.length > 0 && !confirmAction && (
+            <div role="status" style={{ border: '2px solid var(--color-accent)', background: 'var(--color-accent-100)', color: 'var(--color-accent-800)', padding: '10px 14px', marginTop: 16, fontSize: 13, display: 'grid', gap: 4 }}>
+              <strong>{form.vehicle} is recorded unavailable during these dates:</strong>
+              {vehicleConflicts.map((w) => (
+                <div key={w.id}>{formatDisplayDateTime(w.startsAt)} → {formatDisplayDateTime(w.endsAt)}{w.remarks ? ` — ${w.remarks}` : ''}</div>
+              ))}
+            </div>
+          )}
 
           {driverLeaveConflicts.length > 0 && !confirmAction && (
             <div role="status" style={{ border: '2px solid var(--color-accent)', background: 'var(--color-accent-100)', color: 'var(--color-accent-800)', padding: '10px 14px', marginTop: 16, fontSize: 13, display: 'grid', gap: 4 }}>
@@ -790,6 +811,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, l
             <MovementReview
               action={confirmAction}
               leaves={leaves}
+              unavailability={unavailability}
               form={{ ...form, unloadDate: form.unloadDate || form.loadDate }}
               original={editingTrip ? formFromTrip(editingTrip) : null}
               lines={lines}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { DriverLeave, DriverMaster, MasterSettings, Vehicle } from '../types';
+import type { DriverLeave, DriverMaster, MasterSettings, Vehicle, VehicleUnavailability } from '../types';
 import { formatDisplayDateTime } from '../lib/api';
 import { formatLeaveDuration, leaveDurationMinutes } from '../utils/calc';
 
@@ -12,9 +12,16 @@ interface Props {
   leaves: DriverLeave[];
   onAddLeave: (l: { driver: string; startsAt: string; endsAt: string; remarks?: string }) => Promise<string | null>;
   onRemoveLeave: (id: string) => void;
+  unavailability: VehicleUnavailability[];
+  onAddUnavailability: (w: { vehicle: string; startsAt: string; endsAt: string; remarks?: string }) => Promise<string | null>;
+  onRemoveUnavailability: (id: string) => void;
   categories: string[];
   onAddCategory: (name: string) => Promise<string | null>;
   onRemoveCategory: (name: string) => void;
+}
+
+function blankUnavailabilityForm(defaultVehicle: string) {
+  return { vehicle: defaultVehicle, startsAt: '', endsAt: '', remarks: '' };
 }
 
 function blankLeaveForm(defaultDriver: string) {
@@ -23,7 +30,10 @@ function blankLeaveForm(defaultDriver: string) {
 
 const fmt = (n: number | null) => (n === null ? '' : String(n));
 
-export function Master({ vehicles, drivers, settings, onSave, onSetDefaultDriver, leaves, onAddLeave, onRemoveLeave, categories, onAddCategory, onRemoveCategory }: Props) {
+export function Master({
+  vehicles, drivers, settings, onSave, onSetDefaultDriver, leaves, onAddLeave, onRemoveLeave,
+  unavailability, onAddUnavailability, onRemoveUnavailability, categories, onAddCategory, onRemoveCategory
+}: Props) {
   const rates = settings;
   const [diesel, setDiesel] = useState(fmt(rates.dieselRate));
   const [adblue, setAdblue] = useState(fmt(rates.adblueRate));
@@ -114,6 +124,25 @@ export function Master({ vehicles, drivers, settings, onSave, onSetDefaultDriver
     setSavingLeave(false);
     if (err) setLeaveError(err);
     else setLeaveForm((f) => blankLeaveForm(f.driver));
+  }
+
+  const [unavailForm, setUnavailForm] = useState(() => blankUnavailabilityForm(vehicles[0]?.id ?? ''));
+  const [unavailError, setUnavailError] = useState('');
+  const [savingUnavail, setSavingUnavail] = useState(false);
+  const sortedUnavailability = [...unavailability].sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+
+  async function addUnavailability() {
+    if (!unavailForm.vehicle) return setUnavailError('Select a truck.');
+    if (!unavailForm.startsAt || !unavailForm.endsAt) return setUnavailError('Enter both the start and end date and time.');
+    if (unavailForm.endsAt <= unavailForm.startsAt) return setUnavailError('End must be after start.');
+    setUnavailError('');
+    setSavingUnavail(true);
+    const err = await onAddUnavailability({
+      vehicle: unavailForm.vehicle, startsAt: unavailForm.startsAt, endsAt: unavailForm.endsAt, remarks: unavailForm.remarks.trim() || undefined
+    });
+    setSavingUnavail(false);
+    if (err) setUnavailError(err);
+    else setUnavailForm((f) => blankUnavailabilityForm(f.vehicle));
   }
 
   const [newCategory, setNewCategory] = useState('');
@@ -306,6 +335,75 @@ export function Master({ vehicles, drivers, settings, onSave, onSetDefaultDriver
             ))}
             {sortedLeaves.length === 0 && (
               <tr><td colSpan={6} style={{ color: 'var(--color-neutral-700)' }}>No leave recorded yet.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <h2 style={{ fontSize: 20, marginBottom: 12 }}>Truck unavailability</h2>
+      <p style={{ color: 'var(--color-neutral-700)', fontSize: 13, marginTop: -4, marginBottom: 12, maxWidth: '74ch', lineHeight: 1.6 }}>
+        Record when a truck is off the road — servicing, a breakdown, or any other downtime. A truck can't be picked in
+        Add Movement for a trip that falls inside one of its recorded windows.
+      </p>
+      <div style={{ border: '2px solid var(--color-divider)', padding: 16, marginBottom: 20 }}>
+        <form className="filters-grid" onSubmit={(e) => { e.preventDefault(); addUnavailability(); }}>
+          <div className="field">
+            <label htmlFor="unavail-vehicle">Truck</label>
+            <select
+              id="unavail-vehicle" className="input" value={unavailForm.vehicle}
+              onChange={(e) => setUnavailForm((f) => ({ ...f, vehicle: e.target.value }))}
+            >
+              <option value="">Select truck</option>
+              {vehicles.map((v) => <option key={v.id} value={v.id}>{v.id}</option>)}
+            </select>
+          </div>
+          <div className="field">
+            <label htmlFor="unavail-from">From</label>
+            <input
+              id="unavail-from" className="input" type="datetime-local" value={unavailForm.startsAt}
+              onChange={(e) => setUnavailForm((f) => ({ ...f, startsAt: e.target.value }))}
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="unavail-to">To</label>
+            <input
+              id="unavail-to" className="input" type="datetime-local" value={unavailForm.endsAt}
+              onChange={(e) => setUnavailForm((f) => ({ ...f, endsAt: e.target.value }))}
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="unavail-remarks">Remarks</label>
+            <input
+              id="unavail-remarks" className="input" type="text" placeholder="Optional" maxLength={300}
+              value={unavailForm.remarks} onChange={(e) => setUnavailForm((f) => ({ ...f, remarks: e.target.value }))}
+            />
+          </div>
+          <button type="submit" className="btn btn-primary" style={{ justifySelf: 'start' }} disabled={savingUnavail}>
+            {savingUnavail ? 'Saving…' : 'Add unavailability'}
+          </button>
+          {unavailError && <div role="alert" style={{ color: 'var(--color-accent-700)', fontSize: 13 }}>{unavailError}</div>}
+        </form>
+      </div>
+      <div className="scroll-x" style={{ border: '2px solid var(--color-divider)', marginBottom: 30 }}>
+        <table className="table" style={{ minWidth: 640 }}>
+          <thead>
+            <tr><th>Truck</th><th>From</th><th>To</th><th>Duration</th><th>Remarks</th><th className="col-actions"></th></tr>
+          </thead>
+          <tbody>
+            {sortedUnavailability.map((w) => (
+              <tr key={w.id}>
+                <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{w.vehicle}</td>
+                <td style={{ whiteSpace: 'nowrap' }}>{formatDisplayDateTime(w.startsAt)}</td>
+                <td style={{ whiteSpace: 'nowrap' }}>{formatDisplayDateTime(w.endsAt)}</td>
+                <td style={{ whiteSpace: 'nowrap' }}>{formatLeaveDuration(leaveDurationMinutes(w.startsAt, w.endsAt))}</td>
+                <td style={{ color: 'var(--color-neutral-700)' }}>{w.remarks ?? '—'}</td>
+                <td className="col-actions">
+                  <button type="button" className="btn btn-ghost" style={{ color: 'var(--color-accent-700)' }} onClick={() => onRemoveUnavailability(w.id)}>Delete</button>
+                </td>
+              </tr>
+            ))}
+            {sortedUnavailability.length === 0 && (
+              <tr><td colSpan={6} style={{ color: 'var(--color-neutral-700)' }}>No unavailability recorded yet.</td></tr>
             )}
           </tbody>
         </table>

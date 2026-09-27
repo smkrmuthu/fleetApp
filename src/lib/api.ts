@@ -1,5 +1,5 @@
 import type {
-  AppNotification, DriverLeave, DriverMaster, ExpenseCategory, MasterSettings, MonthlyExpense, NotificationKind,
+  AppNotification, DriverLeave, DriverMaster, ExpenseCategory, MasterSettings, MonthlyExpense, NotificationKind, VehicleUnavailability,
   Role, TabId, Trip, TripDocument, TripExpenseKind, TripExpenseLine, TripStop, UserAccount, Vehicle
 } from '../types';
 
@@ -541,4 +541,29 @@ export async function createDriverLeave(l: { driver: string; startsAt: string; e
 
 export async function deleteDriverLeave(id: string): Promise<void> {
   await request(`/driver-leaves/${encodeURIComponent(id)}`, { method: 'DELETE' });
+}
+
+// ── vehicle unavailability ───────────────────────────────────────────────
+interface ApiVehicleUnavailability {
+  id: string; vehicleId: string; startsAt: string; endsAt: string; remarks: string | null;
+}
+
+function vehicleUnavailabilityFromApi(w: ApiVehicleUnavailability): VehicleUnavailability {
+  return { id: w.id, vehicle: w.vehicleId, startsAt: w.startsAt, endsAt: w.endsAt, remarks: w.remarks ?? undefined };
+}
+
+export async function fetchVehicleUnavailability(): Promise<VehicleUnavailability[]> {
+  const res = await request<{ vehicleUnavailability: ApiVehicleUnavailability[] }>('/vehicle-unavailability');
+  return res.vehicleUnavailability.map(vehicleUnavailabilityFromApi);
+}
+
+export async function createVehicleUnavailability(w: { vehicle: string; startsAt: string; endsAt: string; remarks?: string }): Promise<void> {
+  await request('/vehicle-unavailability', {
+    method: 'POST',
+    body: JSON.stringify({ vehicleId: w.vehicle, startsAt: w.startsAt, endsAt: w.endsAt, remarks: w.remarks || undefined })
+  });
+}
+
+export async function deleteVehicleUnavailability(id: string): Promise<void> {
+  await request(`/vehicle-unavailability/${encodeURIComponent(id)}`, { method: 'DELETE' });
 }

@@ -1,4 +1,4 @@
-import type { DriverLeave, Trip, TripExpenseLine } from '../types';
+import type { DriverLeave, Trip, TripExpenseLine, VehicleUnavailability } from '../types';
 import { parseDisplayDate } from '../lib/api';
 
 // Date#toISOString() normalizes to UTC, which silently shifts the date by
@@ -120,6 +120,15 @@ export function overlappingLeaves(leaves: DriverLeave[], driver: string, loadDat
   const tripStart = `${loadDate}T00:00`;
   const tripEnd = `${unloadDate || loadDate}T23:59`;
   return leaves.filter((l) => l.driver === driver && tripStart <= l.endsAt && l.startsAt <= tripEnd);
+}
+
+// Same overlap rule as overlappingLeaves, for a truck's recorded downtime
+// windows instead of a driver's leave.
+export function overlappingUnavailability(windows: VehicleUnavailability[], vehicle: string, loadDate: string, unloadDate: string): VehicleUnavailability[] {
+  if (!vehicle || !loadDate) return [];
+  const tripStart = `${loadDate}T00:00`;
+  const tripEnd = `${unloadDate || loadDate}T23:59`;
+  return windows.filter((w) => w.vehicle === vehicle && tripStart <= w.endsAt && w.startsAt <= tripEnd);
 }
 
 export function formatDuration(days: number | null): string {

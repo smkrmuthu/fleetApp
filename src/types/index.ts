@@ -39,6 +39,14 @@ export interface DriverLeave {
   remarks?: string;
 }
 
+export interface VehicleUnavailability {
+  id: string;
+  vehicle: string;
+  startsAt: string; // "2026-09-25T09:00", local, no timezone
+  endsAt: string;
+  remarks?: string;
+}
+
 export interface DriverMaster {
   name: string;
   licence: string;

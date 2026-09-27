@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useState } from 'react';
-import type { DriverLeave, DriverMaster, Role, Trip, Vehicle } from '../types';
+import type { DriverLeave, DriverMaster, Role, Trip, Vehicle, VehicleUnavailability } from '../types';
 import { formFromTrip } from './AddMovement';
 import { MovementReview } from './MovementReview';
 import { DualScroll } from './DualScroll';
@@ -7,7 +7,7 @@ import { exportTripLog } from '../lib/reports';
 import { useExport } from '../lib/useExport';
 import { TRIP_EXPENSE_LABEL } from '../data/mockData';
 import { fetchDocumentBlobUrl } from '../lib/api';
-import { dateInRange, formatDateRange, formatDuration, formatNum, rupees, tripCost, tripDurationDays } from '../utils/calc';
+import { dateInRange, formatDateRange, formatDuration, formatNum, overlappingUnavailability, rupees, tripCost, tripDurationDays } from '../utils/calc';
 
 const DETAIL_COLUMNS = 8; // Trip No., Loading date, Duration, Vehicle, Driver, Tons, KM, Status
 
@@ -125,6 +125,7 @@ interface Props {
   vehicles: Vehicle[];
   drivers: DriverMaster[];
   leaves: DriverLeave[];
+  unavailability: VehicleUnavailability[];
   vehicleFilter: string;
   driverFilter: string;
   dateFrom: string;
@@ -142,7 +143,7 @@ interface Props {
   role: Role;
 }
 
-export function TripLog({ trips, vehicles, drivers, leaves, vehicleFilter, driverFilter, dateFrom, dateTo, onVehicleFilter, onDriverFilter, onDateFrom, onDateTo, onResetFilters, onAddMovement, onApprove, onBackup, onEdit, onDelete, role }: Props) {
+export function TripLog({ trips, vehicles, drivers, leaves, unavailability, vehicleFilter, driverFilter, dateFrom, dateTo, onVehicleFilter, onDriverFilter, onDateFrom, onDateTo, onResetFilters, onAddMovement, onApprove, onBackup, onEdit, onDelete, role }: Props) {
   const isDriver = role === 'Driver';
   const isOffice = role === 'Office';
   const isManager = role === 'Manager';
@@ -178,6 +179,8 @@ export function TripLog({ trips, vehicles, drivers, leaves, vehicleFilter, drive
     if (!t.odoEnd) out.push('Odometer end is required.');
     else if (t.odoStart && t.odoEnd <= t.odoStart) out.push('Odometer end must be greater than odometer start.');
     t.stops.forEach((st, i) => { if (!st.odo) out.push(`Odometer reading is required at stop ${i + 1} (${st.location}).`); });
+    const vehicleConflicts = overlappingUnavailability(unavailability, t.vehicle, t.loadDate, t.unloadDate);
+    if (vehicleConflicts.length > 0) out.push(`${t.vehicle} is recorded unavailable during these dates.`);
     return out;
   }
 
@@ -369,6 +372,7 @@ export function TripLog({ trips, vehicles, drivers, leaves, vehicleFilter, drive
               <MovementReview
                 action="complete"
                 leaves={leaves}
+                unavailability={unavailability}
                 form={formFromTrip(completing)}
                 original={null}
                 lines={completing.expenses}
