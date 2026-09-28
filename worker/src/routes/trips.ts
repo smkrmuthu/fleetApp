@@ -83,6 +83,16 @@ function stopDateProblem(loadDate: string | null | undefined, unloadDate: string
   return null;
 }
 
+function isDriverAuthorizedForTrip(
+  auth: { role: string; userId: string; driverId?: string | null },
+  trip: { createdBy?: string | null; driverId?: string | null }
+): boolean {
+  if (auth.role !== 'driver') return true;
+  if (trip.createdBy === auth.userId) return true;
+  if (auth.driverId && trip.driverId === auth.driverId) return true;
+  return false;
+}
+
 // A movement can only be complete once it has its loading weight, both
 // odometer readings (end above start) and a reading at every stop.
 // Returns the first thing missing.
@@ -207,14 +217,17 @@ tripRoutes.post('/', async (c) => {
   const data = parsed.data;
 
   const db = getDb(c.env);
+  const isDriver = auth.role === 'driver';
   const [existing] = await db.select().from(trips).where(and(eq(trips.id, data.id), eq(trips.orgId, auth.orgId))).limit(1);
   if (existing) {
+    if (!isDriverAuthorizedForTrip(auth, existing)) {
+      return c.json({ error: { code: 'forbidden', message: 'Not your trip' } }, 403);
+    }
     const docs = (await fetchDocumentsByTrip(db, auth.orgId, [data.id])).get(data.id) ?? [];
     const stops = await db.select().from(tripStops).where(eq(tripStops.tripId, data.id)).orderBy(tripStops.seq);
-    return c.json({ ...existing, stops, documents: docs }, 200);
+    const existingSanitized = isDriver ? { ...existing, revenuePaise: 0 } : existing;
+    return c.json({ ...existingSanitized, stops, documents: docs }, 200);
   }
-
-  const isDriver = auth.role === 'driver';
   // A driver's own login is the account used to enter the trip, but the
   // driver named on it may be someone else — an office assistant keying
   // data for whoever's actually driving. Trust the submitted driver, only
@@ -261,7 +274,7 @@ tripRoutes.post('/', async (c) => {
     weightKg: data.weightKg,
     odoStart: data.odoStart,
     odoEnd: data.odoEnd,
-    revenuePaise: data.revenuePaise,
+    revenuePaise: isDriver ? 0 : data.revenuePaise,
     status: status as 'draft' | 'pending' | 'approved',
     remarks: data.remarks,
     createdBy: auth.userId,
@@ -319,11 +332,14 @@ tripRoutes.get('/', async (c) => {
     from: { column: trips.loadDate, op: 'gte' },
     to: { column: trips.loadDate, op: 'lte' }
   })];
-  // Temporarily unscoped: every driver login sees every trip in the org,
-  // same as office/manager. Edit/delete/expense/document routes still only
-  // let a driver touch what they themselves entered (trip.created_by) — this
-  // only widens what Trip Log displays. A real per-login filter is planned;
-  // this is a deliberate stopgap, not the intended long-term visibility rule.
+
+  // Drivers can only list movements they entered themselves or that are assigned to them
+  if (auth.role === 'driver') {
+    const isDriverOwner = auth.driverId
+      ? or(eq(trips.createdBy, auth.userId), eq(trips.driverId, auth.driverId))!
+      : eq(trips.createdBy, auth.userId);
+    conditions.push(isDriverOwner);
+  }
 
   if (cursor) {
     const [cursorCreatedAt, cursorId] = cursor.split('|');
@@ -358,7 +374,17 @@ tripRoutes.get('/', async (c) => {
     stopsByTrip.get(st.tripId)!.push(st);
   }
 
-  return c.json({ trips: rows.map((t) => ({ ...t, expenses: byTrip.get(t.id) ?? [], stops: stopsByTrip.get(t.id) ?? [], documents: docsByTrip.get(t.id) ?? [] })), nextCursor });
+  const isDriver = auth.role === 'driver';
+  return c.json({
+    trips: rows.map((t) => ({
+      ...t,
+      revenuePaise: isDriver ? 0 : t.revenuePaise,
+      expenses: byTrip.get(t.id) ?? [],
+      stops: stopsByTrip.get(t.id) ?? [],
+      documents: docsByTrip.get(t.id) ?? []
+    })),
+    nextCursor
+  });
 });
 
 // A read-only preview of the number the *next* trip will get — shown in the
@@ -380,13 +406,14 @@ tripRoutes.get('/:id', async (c) => {
   const db = getDb(c.env);
   const [trip] = await db.select().from(trips).where(and(eq(trips.id, id), eq(trips.orgId, auth.orgId))).limit(1);
   if (!trip) return c.json({ error: { code: 'not_found', message: 'Trip not found' } }, 404);
-  if (auth.role === 'driver' && trip.createdBy !== auth.userId) {
+  if (!isDriverAuthorizedForTrip(auth, trip)) {
     return c.json({ error: { code: 'forbidden', message: 'Not your trip' } }, 403);
   }
   const expenses = await db.select().from(tripExpenses).where(eq(tripExpenses.tripId, id));
   const stops = await db.select().from(tripStops).where(eq(tripStops.tripId, id)).orderBy(tripStops.seq);
   const documents = (await fetchDocumentsByTrip(db, auth.orgId, [id])).get(id) ?? [];
-  return c.json({ ...trip, expenses, stops, documents });
+  const tripSanitized = auth.role === 'driver' ? { ...trip, revenuePaise: 0 } : trip;
+  return c.json({ ...tripSanitized, expenses, stops, documents });
 });
 
 // A driver may only add stops to their own trip while it's still open
@@ -402,7 +429,7 @@ tripRoutes.post('/:id/expenses', async (c) => {
   const db = getDb(c.env);
   const [trip] = await db.select().from(trips).where(and(eq(trips.id, id), eq(trips.orgId, auth.orgId))).limit(1);
   if (!trip) return c.json({ error: { code: 'not_found', message: 'Trip not found' } }, 404);
-  if (auth.role === 'driver' && (trip.createdBy !== auth.userId || trip.status === 'approved')) {
+  if (!isDriverAuthorizedForTrip(auth, trip) || (auth.role === 'driver' && trip.status === 'approved')) {
     return c.json({ error: { code: 'forbidden', message: 'Can only add to your own open movement' } }, 403);
   }
   if (auth.role === 'office' && trip.status === 'approved') {
@@ -426,7 +453,7 @@ tripRoutes.delete('/:id/expenses/:expenseId', async (c) => {
 
   const [trip] = await db.select().from(trips).where(and(eq(trips.id, id), eq(trips.orgId, auth.orgId))).limit(1);
   if (!trip) return c.json({ error: { code: 'not_found', message: 'Trip not found' } }, 404);
-  if (auth.role === 'driver' && (trip.createdBy !== auth.userId || trip.status === 'approved')) {
+  if (!isDriverAuthorizedForTrip(auth, trip) || (auth.role === 'driver' && trip.status === 'approved')) {
     return c.json({ error: { code: 'forbidden', message: 'Can only change your own open movement' } }, 403);
   }
   if (auth.role === 'office' && trip.status === 'approved') {
@@ -457,7 +484,7 @@ tripRoutes.post('/:id/documents', async (c) => {
   const db = getDb(c.env);
   const [trip] = await db.select().from(trips).where(and(eq(trips.id, id), eq(trips.orgId, auth.orgId))).limit(1);
   if (!trip) return c.json({ error: { code: 'not_found', message: 'Trip not found' } }, 404);
-  if (auth.role === 'driver' && (trip.createdBy !== auth.userId || trip.status === 'approved')) {
+  if (!isDriverAuthorizedForTrip(auth, trip) || (auth.role === 'driver' && trip.status === 'approved')) {
     return c.json({ error: { code: 'forbidden', message: 'Can only attach files to your own open movement' } }, 403);
   }
   if (auth.role === 'office' && trip.status === 'approved') {
@@ -477,7 +504,7 @@ tripRoutes.delete('/:id/documents/:docId', async (c) => {
 
   const [trip] = await db.select().from(trips).where(and(eq(trips.id, id), eq(trips.orgId, auth.orgId))).limit(1);
   if (!trip) return c.json({ error: { code: 'not_found', message: 'Trip not found' } }, 404);
-  if (auth.role === 'driver' && (trip.createdBy !== auth.userId || trip.status === 'approved')) {
+  if (!isDriverAuthorizedForTrip(auth, trip) || (auth.role === 'driver' && trip.status === 'approved')) {
     return c.json({ error: { code: 'forbidden', message: 'Can only remove files from your own open movement' } }, 403);
   }
   if (auth.role === 'office' && trip.status === 'approved') {
@@ -507,7 +534,7 @@ tripRoutes.get('/:id/documents/:docId/file', async (c) => {
 
   const [trip] = await db.select().from(trips).where(and(eq(trips.id, id), eq(trips.orgId, auth.orgId))).limit(1);
   if (!trip) return c.json({ error: { code: 'not_found', message: 'Trip not found' } }, 404);
-  if (auth.role === 'driver' && trip.createdBy !== auth.userId) {
+  if (!isDriverAuthorizedForTrip(auth, trip)) {
     return c.json({ error: { code: 'forbidden', message: 'Not your movement' } }, 403);
   }
 
@@ -545,7 +572,7 @@ tripRoutes.patch('/:id', async (c) => {
   const db = getDb(c.env);
   const [existing] = await db.select().from(trips).where(and(eq(trips.id, id), eq(trips.orgId, auth.orgId))).limit(1);
   if (!existing) return c.json({ error: { code: 'not_found', message: 'Trip not found' } }, 404);
-  if (auth.role === 'driver' && (existing.createdBy !== auth.userId || existing.status === 'approved')) {
+  if (!isDriverAuthorizedForTrip(auth, existing) || (auth.role === 'driver' && existing.status === 'approved')) {
     return c.json({ error: { code: 'forbidden', message: 'Can only edit your own open movement' } }, 403);
   }
   if (auth.role === 'office' && existing.status === 'approved') {
@@ -577,6 +604,9 @@ tripRoutes.patch('/:id', async (c) => {
   }
 
   const { stops: newStops, ...tripPatch } = parsed.data;
+  if (auth.role === 'driver') {
+    delete tripPatch.revenuePaise;
+  }
   const storedStops = newStops ? [] : await db.select().from(tripStops).where(eq(tripStops.tripId, id)).orderBy(tripStops.seq);
   const effectiveStops: StopReading[] = newStops ?? storedStops;
 
@@ -603,7 +633,8 @@ tripRoutes.patch('/:id', async (c) => {
   await writeAudit(db, auth.orgId, 'trips', id, 'update', { ...tripPatch, ...(newStops ? { stops: newStops.map((st) => st.location) } : {}) }, auth.userId);
 
   const [row] = await db.select().from(trips).where(eq(trips.id, id)).limit(1);
-  return c.json(row);
+  const sanitizedRow = auth.role === 'driver' ? { ...row, revenuePaise: 0 } : row;
+  return c.json(sanitizedRow);
 });
 
 // Finalizes an open trip (draft, or a pending one left over from the old
@@ -654,7 +685,7 @@ tripRoutes.delete('/:id', async (c) => {
   const db = getDb(c.env);
   const [existing] = await db.select().from(trips).where(and(eq(trips.id, id), eq(trips.orgId, auth.orgId))).limit(1);
   if (!existing) return c.json({ error: { code: 'not_found', message: 'Trip not found' } }, 404);
-  if (auth.role === 'driver' && existing.createdBy !== auth.userId) {
+  if (!isDriverAuthorizedForTrip(auth, existing)) {
     return c.json({ error: { code: 'forbidden', message: 'Not your movement' } }, 403);
   }
   if (auth.role === 'driver' && existing.status !== 'draft') {
