@@ -131,6 +131,34 @@ export function overlappingUnavailability(windows: VehicleUnavailability[], vehi
   return windows.filter((w) => w.vehicle === vehicle && tripStart <= w.endsAt && w.startsAt <= tripEnd);
 }
 
+function daysBetweenIso(a: string, b: string): number {
+  const [ay, am, ad] = a.split('-').map(Number);
+  const [by, bm, bd] = b.split('-').map(Number);
+  return Math.round((Date.UTC(by, bm - 1, bd) - Date.UTC(ay, am - 1, ad)) / 86_400_000);
+}
+
+// For a Monthly Expense row, the loading date of the trip that most plausibly
+// goes with it: the trip (for the same vehicle) whose loading-to-unloading
+// span covers the expense's date, or failing that, whichever trip's span is
+// closest to it. Expenses aren't linked to a specific trip, so this is a
+// best-effort match, not a guarantee — '—' when the vehicle has no trips.
+export function matchingLoadingDate(trips: Trip[], vehicle: string, expenseDate: string): string {
+  const expenseIso = parseDisplayDate(expenseDate);
+  if (!vehicle || !expenseIso) return '—';
+  let best: string | null = null;
+  let bestDist = Infinity;
+  for (const t of trips) {
+    if (t.vehicle !== vehicle) continue;
+    const loadIso = parseDisplayDate(t.loadDate);
+    if (!loadIso) continue;
+    const unloadIso = parseDisplayDate(t.unloadDate) || loadIso;
+    if (expenseIso >= loadIso && expenseIso <= unloadIso) return t.loadDate;
+    const dist = Math.min(Math.abs(daysBetweenIso(loadIso, expenseIso)), Math.abs(daysBetweenIso(unloadIso, expenseIso)));
+    if (dist < bestDist) { bestDist = dist; best = t.loadDate; }
+  }
+  return best ?? '—';
+}
+
 export function formatDuration(days: number | null): string {
   if (days === null) return '—';
   const n = Math.max(days, 1);

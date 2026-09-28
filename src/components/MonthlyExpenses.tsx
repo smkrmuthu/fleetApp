@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import type { DriverMaster, ExpenseFormState, MonthlyExpense, Vehicle } from '../types';
+import type { DriverMaster, ExpenseFormState, MonthlyExpense, Trip, Vehicle } from '../types';
 import { categoryTint } from '../data/mockData';
 import { parseDisplayDate } from '../lib/api';
-import { dateInRange, formatDateRange, rupees, todayIso, toNumber } from '../utils/calc';
+import { dateInRange, formatDateRange, matchingLoadingDate, rupees, todayIso, toNumber } from '../utils/calc';
 
 function blankExpense(defaultVehicle: string, defaultCategory: string): ExpenseFormState {
   return { date: todayIso(), vehicle: defaultVehicle, driver: '', category: defaultCategory, amount: '0', remarks: '' };
@@ -10,6 +10,7 @@ function blankExpense(defaultVehicle: string, defaultCategory: string): ExpenseF
 
 interface Props {
   expenses: MonthlyExpense[];
+  trips: Trip[];
   vehicles: Vehicle[];
   drivers: DriverMaster[];
   dateFrom: string;
@@ -22,7 +23,7 @@ interface Props {
   categories: string[];
 }
 
-export function MonthlyExpenses({ expenses: allExpenses, vehicles, drivers, categories, dateFrom, dateTo, onDateFrom, onDateTo, onResetFilters, onAdd, onDelete }: Props) {
+export function MonthlyExpenses({ expenses: allExpenses, trips, vehicles, drivers, categories, dateFrom, dateTo, onDateFrom, onDateTo, onResetFilters, onAdd, onDelete }: Props) {
   const [exp, setExp] = useState<ExpenseFormState>(() => blankExpense(vehicles[0]?.id ?? '', categories[0] ?? ''));
   const [truckFilter, setTruckFilter] = useState('all');
   const [dateSort, setDateSort] = useState<'asc' | 'desc'>('asc');
@@ -132,7 +133,7 @@ export function MonthlyExpenses({ expenses: allExpenses, vehicles, drivers, cate
                 >
                   Date <span aria-hidden="true">{dateSort === 'asc' ? '▲' : '▼'}</span>
                 </button>
-              </th><th>Vehicle</th><th>Driver</th><th>Description</th><th>Remarks</th><th style={{ textAlign: 'right' }}>Amount</th><th></th>
+              </th><th>Vehicle</th><th>Loading date</th><th>Driver</th><th>Description</th><th>Remarks</th><th style={{ textAlign: 'right' }}>Amount</th><th></th>
             </tr>
           </thead>
           <tbody>
@@ -140,6 +141,7 @@ export function MonthlyExpenses({ expenses: allExpenses, vehicles, drivers, cate
               <tr key={e.id}>
                 <td style={{ whiteSpace: 'nowrap' }}>{e.date}</td>
                 <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{e.vehicle}</td>
+                <td style={{ whiteSpace: 'nowrap', color: 'var(--color-neutral-700)' }}>{matchingLoadingDate(trips, e.vehicle, e.date)}</td>
                 <td>{e.driver}</td>
                 <td>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 9 }}>

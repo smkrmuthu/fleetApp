@@ -486,6 +486,7 @@ export function App() {
         {tab === 'expenses' && (
           <MonthlyExpenses
             expenses={expenses}
+            trips={trips}
             vehicles={vehicles}
             drivers={drivers}
             categories={expenseCategories}
