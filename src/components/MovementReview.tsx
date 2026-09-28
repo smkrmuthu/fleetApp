@@ -77,9 +77,12 @@ const TITLE: Record<Action, string> = {
   complete: 'Review before completing this movement'
 };
 
-const NOTE: Partial<Record<Action, string>> = {
+const NOTE: Partial<Record<Action | 'createOpen', string>> = {
   start: 'This saves as an open movement — you or documentation can keep adding entries and complete it later.',
   create: 'This records the movement as complete — a driver can no longer edit or delete it.',
+  // No end odometer yet: saved as an open movement instead of an approved
+  // one, same as 'start' — see the create-without-odoEnd case in the worker.
+  createOpen: 'This saves as an open movement — the end odometer is still missing. Add it and approve the movement once the trip is finished.',
   complete: 'This marks the movement complete and locks it — a driver can no longer edit or delete it.'
 };
 
@@ -108,6 +111,7 @@ export function MovementReview({ action, form, original, lines, originalLines, s
   const stopsChanged = editing && stopSig(stops) !== stopSig(originalStops);
   const anyChange = changedCount + lineChanges + docChanges > 0 || stopsChanged;
   const leaveConflicts = overlappingLeaves(leaves, form.driver, form.loadDate, form.unloadDate);
+  const noteKey: Action | 'createOpen' = action === 'create' && !form.odoEnd ? 'createOpen' : action;
   const vehicleConflicts = overlappingUnavailability(unavailability, form.vehicle, form.loadDate, form.unloadDate);
 
   const tag = (text: string, color: string) => (
@@ -252,7 +256,7 @@ export function MovementReview({ action, form, original, lines, originalLines, s
             <span style={{ fontWeight: 700, color: totals.profit >= 0 ? 'var(--color-profit)' : 'var(--color-accent-700)' }}>{rupees(totals.profit)}</span>
           </div>
         )}
-        {NOTE[action] && !wasCompleted && <div style={{ ...muted, marginTop: 6 }}>{NOTE[action]}</div>}
+        {NOTE[noteKey] && !wasCompleted && <div style={{ ...muted, marginTop: 6 }}>{NOTE[noteKey]}</div>}
         {wasCompleted && <div style={{ ...muted, marginTop: 6 }}>This movement is already complete. Saving replaces what is recorded, and the change is kept in the audit log.</div>}
       </div>
 

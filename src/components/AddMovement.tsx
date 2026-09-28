@@ -290,11 +290,16 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, l
     .map((st) => ({ ...st, location: st.location.trim(), date: st.date || undefined, odo: st.odo && st.odo > 0 ? st.odo : undefined, note: (st.note ?? '').trim() }))
     .filter((st) => st.location);
 
-  function validate(completing: boolean): Record<string, string> {
+  // requireOdoEnd is narrower than completing: an Office/Manager "Add
+  // movement" is completing=true (it still requires the loading weight and
+  // start odometer up front) but requireOdoEnd=false — the end odometer is
+  // often not yet known, and the trip is saved as a still-open movement
+  // instead of an approved one until it's genuinely finished.
+  function validate(completing: boolean, requireOdoEnd: boolean): Record<string, string> {
     const errs: Record<string, string> = {};
     const orphan = stops.findIndex((st) => !st.location.trim() && ((st.note ?? '').trim() || st.odo));
     if (orphan >= 0) errs.stops = `Stop ${orphan + 1} has a note or reading but no place — enter the place or remove the stop.`;
-    else if (completing && cleanStops.some((st) => !st.odo)) {
+    else if (requireOdoEnd && cleanStops.some((st) => !st.odo)) {
       errs.stops = `Odometer reading is required at stop ${cleanStops.findIndex((st) => !st.odo) + 1} to complete this movement.`;
     } else {
       // readings only ever go up along the route: start, each stop, end
@@ -336,8 +341,8 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, l
     if (completing) {
       if (toNumber(form.tons) <= 0) errs.tons = 'Loading weight is required to complete this movement.';
       if (toNumber(form.odoStart) <= 0) errs.odoStart = 'Odometer start is required to complete this movement.';
-      if (toNumber(form.odoEnd) <= 0) errs.odoEnd = 'Odometer end is required to complete this movement.';
     }
+    if (requireOdoEnd && toNumber(form.odoEnd) <= 0) errs.odoEnd = 'Odometer end is required to complete this movement.';
     if (form.odoEnd && toNumber(form.odoEnd) <= toNumber(form.odoStart)) {
       errs.odoEnd = 'Odometer end must be greater than odometer start.';
     }
@@ -372,7 +377,11 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, l
   }
 
   function tryAction(action: SubmitAction, completing: boolean) {
-    const errs = validate(completing);
+    // 'create' is Office/Manager's initial Add Movement — the end odometer
+    // isn't required there (see validate's comment); every other completing
+    // action ('complete', or 'save' on an already-approved movement) does.
+    const requireOdoEnd = completing && action !== 'create';
+    const errs = validate(completing, requireOdoEnd);
     setErrors(errs);
     if (Object.keys(errs).length > 0) return;
     setConfirmAction(action);

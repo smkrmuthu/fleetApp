@@ -86,9 +86,19 @@ function stopDateProblem(loadDate: string | null | undefined, unloadDate: string
 // A movement can only be complete once it has its loading weight, both
 // odometer readings (end above start) and a reading at every stop.
 // Returns the first thing missing.
-function completionProblem(t: { weightKg?: number | null; odoStart?: number | null; odoEnd?: number | null }, stops: StopReading[] = []): Problem | null {
+// requireOdoEnd defaults to true (a movement isn't "complete" without it) —
+// callers pass false only at initial creation, where the loading-point
+// odometer is known but the trip is still in progress, so its end reading
+// naturally isn't yet.
+function completionProblem(
+  t: { weightKg?: number | null; odoStart?: number | null; odoEnd?: number | null },
+  stops: StopReading[] = [],
+  opts: { requireOdoEnd?: boolean } = {}
+): Problem | null {
+  const requireOdoEnd = opts.requireOdoEnd ?? true;
   if (!t.weightKg) return { message: 'Loading weight is required to complete this movement', field: 'weightKg' };
   if (!t.odoStart) return { message: 'Odometer start is required to complete this movement', field: 'odoStart' };
+  if (!requireOdoEnd) return stopOdometerProblem(t.odoStart, t.odoEnd, stops);
   if (!t.odoEnd) return { message: 'Odometer end is required to complete this movement', field: 'odoEnd' };
   if (t.odoEnd <= t.odoStart) return { message: 'Odometer end must be greater than odometer start', field: 'odoEnd' };
   const missing = stops.findIndex((st) => !st.odo);
@@ -210,13 +220,19 @@ tripRoutes.post('/', async (c) => {
   // data for whoever's actually driving. Trust the submitted driver, only
   // falling back to the logged-in driver when none was picked.
   const driverId = isDriver ? data.driverId ?? auth.driverId : data.driverId ?? null;
-  // A driver can only ever open a trip, never finalize it — see
-  // POST /:id/complete, which office/manager alone may call.
-  const status = isDriver ? 'draft' : 'approved';
+  // A driver can only ever open a trip, never finalize it. Office/Manager
+  // must give the loading weight and start odometer up front, but the end
+  // odometer (and per-stop readings) may still be unknown — such a trip is
+  // created 'pending' rather than 'approved', and is finalized later via
+  // /:id/approve once completionProblem (the strict, default check) passes.
   const now = nowIso();
 
-  const problem = isDriver ? stopOdometerProblem(data.odoStart, data.odoEnd, data.stops) : completionProblem(data, data.stops);
+  const problem = isDriver
+    ? stopOdometerProblem(data.odoStart, data.odoEnd, data.stops)
+    : completionProblem(data, data.stops, { requireOdoEnd: false });
   if (problem) return c.json({ error: { code: 'validation_error', ...problem } }, 422);
+
+  const status = isDriver ? 'draft' : completionProblem(data, data.stops) ? 'pending' : 'approved';
 
   const dateProb = stopDateProblem(data.loadDate, data.unloadDate, data.stops);
   if (dateProb) return c.json({ error: { code: 'validation_error', ...dateProb } }, 422);
