@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import type { Env, Vars } from '../types';
 import { requireAuth } from '../middleware/auth';
+import { checkRateLimit, getClientIp } from '../lib/rateLimit';
 
 export const receiptRoutes = new Hono<{ Bindings: Env; Variables: Vars }>();
 receiptRoutes.use('*', requireAuth);
@@ -36,6 +37,22 @@ Read the numbers carefully — they are the most important part. Respond with on
 // confirm (or correct) before it's added as a fuel/expense entry — this
 // endpoint never writes anything itself.
 receiptRoutes.post('/scan', async (c) => {
+  const auth = c.get('auth');
+  const clientIp = getClientIp(c.req.raw);
+
+  // Rate limit: max 10 OCR scans per minute per user account, and max 20 per minute per IP
+  const userLimit = checkRateLimit(auth.userId, { windowSeconds: 60, maxRequests: 10, keyPrefix: 'ocr_user' });
+  const ipLimit = checkRateLimit(clientIp, { windowSeconds: 60, maxRequests: 20, keyPrefix: 'ocr_ip' });
+
+  if (!userLimit.allowed || !ipLimit.allowed) {
+    const resetIn = Math.max(userLimit.resetInSeconds, ipLimit.resetInSeconds);
+    c.header('Retry-After', String(resetIn));
+    return c.json(
+      { error: { code: 'rate_limited', message: `Receipt scanning rate limit reached. Please wait ${resetIn} seconds before trying again.` } },
+      429
+    );
+  }
+
   const body = await c.req.json().catch(() => null);
   const parsed = scanRequestSchema.safeParse(body);
   if (!parsed.success) return c.json({ error: { code: 'validation_error', message: parsed.error.message } }, 422);
