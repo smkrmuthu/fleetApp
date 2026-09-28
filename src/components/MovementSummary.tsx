@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import type { DriverMaster, MonthlyExpense, Trip, Vehicle } from '../types';
+import type { VehicleAgg } from '../utils/aggregate';
 import { aggregateByVehicle } from '../utils/aggregate';
 import { dateInRange, formatDateRange, formatNum, rupees, tripCost } from '../utils/calc';
 import { exportSummaryExcel, exportSummaryPdf, type Stat, type SummaryData } from '../lib/reports';
@@ -42,6 +44,47 @@ export function MovementSummary({ trips, expenses, vehicles, drivers, vehicleFil
   const monthlyTotal = expenseRows.reduce((a, e) => a + e.amount, 0);
 
   const byVehicle = aggregateByVehicle(rows, expenseRows, vehicles);
+
+  type SortKey = 'id' | 'model' | 'trips' | 'km' | 'tons' | 'tripExpense' | 'monthly' | 'revenue' | 'profit' | 'costPerKm';
+  const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' } | null>(null);
+
+  function toggleSort(key: SortKey) {
+    setSort((prev) => (!prev || prev.key !== key ? { key, dir: 'desc' } : prev.dir === 'desc' ? { key, dir: 'asc' } : null));
+  }
+
+  function sortValue(b: VehicleAgg, key: SortKey): number | string {
+    if (key === 'id') return b.id;
+    if (key === 'model') return b.model;
+    if (key === 'costPerKm') return b.km ? b.cost / b.km : -1;
+    return b[key];
+  }
+
+  const sortedByVehicle = sort
+    ? [...byVehicle].sort((a, b) => {
+        const av = sortValue(a, sort.key);
+        const bv = sortValue(b, sort.key);
+        const cmp = typeof av === 'string' ? av.localeCompare(bv as string) : (av as number) - (bv as number);
+        return sort.dir === 'asc' ? cmp : -cmp;
+      })
+    : byVehicle;
+
+  function sortHeader(key: SortKey, label: string, align: 'left' | 'right' = 'left') {
+    const dir = sort?.key === key ? sort.dir : null;
+    return (
+      <th style={align === 'right' ? { textAlign: 'right' } : undefined} aria-sort={dir === 'asc' ? 'ascending' : dir === 'desc' ? 'descending' : 'none'}>
+        <button
+          type="button" className="btn btn-ghost" onClick={() => toggleSort(key)}
+          style={{
+            padding: 0, font: 'inherit', letterSpacing: 'inherit', textTransform: 'inherit', color: 'inherit',
+            display: 'inline-flex', gap: 6, alignItems: 'center', flexDirection: align === 'right' ? 'row-reverse' : 'row'
+          }}
+          title={dir === 'asc' ? 'Ascending — click for descending' : dir === 'desc' ? 'Descending — click to stop sorting' : `Not sorted — click to sort by ${label}`}
+        >
+          {label} <span aria-hidden="true">{dir === 'asc' ? '▲' : dir === 'desc' ? '▼' : '↕'}</span>
+        </button>
+      </th>
+    );
+  }
 
   const avgPerKm = totals.km ? totals.exp / totals.km : 0;
   const profit = totals.rev - totals.exp - monthlyTotal;
@@ -129,14 +172,20 @@ export function MovementSummary({ trips, expenses, vehicles, drivers, vehicleFil
         <table className="table" style={{ minWidth: 940 }}>
           <thead>
             <tr>
-              <th>Vehicle</th><th>Model</th><th style={{ textAlign: 'right' }}>Trips</th><th style={{ textAlign: 'right' }}>KM</th>
-              <th style={{ textAlign: 'right' }}>Tons</th><th style={{ textAlign: 'right' }}>Trip expense</th>
-              <th style={{ textAlign: 'right' }}>Monthly expense</th><th style={{ textAlign: 'right' }}>Revenue</th>
-              <th style={{ textAlign: 'right' }}>Profit</th><th style={{ textAlign: 'right' }}>₹/km</th>
+              {sortHeader('id', 'Vehicle')}
+              {sortHeader('model', 'Model')}
+              {sortHeader('trips', 'Trips', 'right')}
+              {sortHeader('km', 'KM', 'right')}
+              {sortHeader('tons', 'Tons', 'right')}
+              {sortHeader('tripExpense', 'Trip expense', 'right')}
+              {sortHeader('monthly', 'Monthly expense', 'right')}
+              {sortHeader('revenue', 'Revenue', 'right')}
+              {sortHeader('profit', 'Profit', 'right')}
+              {sortHeader('costPerKm', '₹/km', 'right')}
             </tr>
           </thead>
           <tbody>
-            {byVehicle.map((b) => (
+            {sortedByVehicle.map((b) => (
               <tr key={b.id}>
                 <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{b.id}</td>
                 <td style={{ color: 'var(--color-neutral-700)' }}>{b.model}</td>
