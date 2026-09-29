@@ -2,7 +2,8 @@ import { useState } from 'react';
 import type { DriverMaster, ExpenseFormState, MonthlyExpense, Trip, Vehicle } from '../types';
 import { categoryTint } from '../data/mockData';
 import { parseDisplayDate } from '../lib/api';
-import { dateInRange, formatDateRange, matchingLoadingDate, rupees, todayIso, toNumber } from '../utils/calc';
+import { dateInRange, formatDateRange, matchingLoadingDate, rupees, todayIso, toNumber, yearOptions } from '../utils/calc';
+import { MonthYearFilter } from './MonthYearFilter';
 
 function blankExpense(defaultVehicle: string, defaultCategory: string): ExpenseFormState {
   return { date: todayIso(), vehicle: defaultVehicle, driver: '', category: defaultCategory, amount: '0', remarks: '' };
@@ -90,6 +91,7 @@ export function MonthlyExpenses({ expenses: allExpenses, trips, vehicles, driver
         <div className="filters-grid">
           <div className="field"><label>Date from</label><input className="input" type="date" value={dateFrom} onChange={(e) => onDateFrom(e.target.value)} /></div>
           <div className="field"><label>Date to</label><input className="input" type="date" value={dateTo} onChange={(e) => onDateTo(e.target.value)} /></div>
+          <MonthYearFilter dateFrom={dateFrom} dateTo={dateTo} onDateFrom={onDateFrom} onDateTo={onDateTo} years={yearOptions(allExpenses.map((e) => e.date))} />
           <div className="field">
             <label>Truck no</label>
             <select className="input" value={truckFilter} onChange={(e) => setTruckFilter(e.target.value)}>

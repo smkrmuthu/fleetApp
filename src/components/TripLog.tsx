@@ -7,7 +7,8 @@ import { exportTripLog } from '../lib/reports';
 import { useExport } from '../lib/useExport';
 import { TRIP_EXPENSE_LABEL } from '../data/mockData';
 import { fetchDocumentBlobUrl, parseDisplayDate } from '../lib/api';
-import { dateInRange, formatDateRange, formatDuration, formatNum, overlappingUnavailability, rupees, tripCost, tripDurationDays } from '../utils/calc';
+import { dateInRange, formatDateRange, formatDuration, formatNum, overlappingUnavailability, rupees, tripCost, tripDurationDays, yearOptions } from '../utils/calc';
+import { MonthYearFilter } from './MonthYearFilter';
 
 const DETAIL_COLUMNS = 8; // Trip No., Loading date, Duration, Vehicle, Driver, Tons, KM, Status
 
@@ -239,6 +240,7 @@ export function TripLog({ trips, vehicles, drivers, leaves, unavailability, vehi
         <div className="filters-grid">
           <div className="field"><label>Loading date from</label><input className="input" type="date" value={dateFrom} onChange={(e) => onDateFrom(e.target.value)} /></div>
           <div className="field"><label>Loading date to</label><input className="input" type="date" value={dateTo} onChange={(e) => onDateTo(e.target.value)} /></div>
+          <MonthYearFilter dateFrom={dateFrom} dateTo={dateTo} onDateFrom={onDateFrom} onDateTo={onDateTo} years={yearOptions(trips.map((t) => t.loadDate))} />
           <div className="field">
             <label>Vehicle</label>
             <select className="input" value={vehicleFilter} onChange={(e) => onVehicleFilter(e.target.value)}>
