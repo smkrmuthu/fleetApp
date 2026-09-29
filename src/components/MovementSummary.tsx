@@ -2,7 +2,8 @@ import { useState } from 'react';
 import type { DriverMaster, MonthlyExpense, Trip, Vehicle } from '../types';
 import type { VehicleAgg } from '../utils/aggregate';
 import { aggregateByVehicle } from '../utils/aggregate';
-import { dateInRange, formatDateRange, formatNum, rupees, tripCost } from '../utils/calc';
+import { dateInRange, formatDateRange, formatNum, rupees, tripCost, yearOptions } from '../utils/calc';
+import { MonthYearFilter } from './MonthYearFilter';
 import { exportSummaryExcel, exportSummaryPdf, type Stat, type SummaryData } from '../lib/reports';
 import { useExport } from '../lib/useExport';
 
@@ -136,6 +137,7 @@ export function MovementSummary({ trips, expenses, vehicles, drivers, vehicleFil
         <div className="filters-grid">
           <div className="field"><label>Loading date from</label><input className="input" type="date" value={dateFrom} onChange={(e) => onDateFrom(e.target.value)} /></div>
           <div className="field"><label>Loading date to</label><input className="input" type="date" value={dateTo} onChange={(e) => onDateTo(e.target.value)} /></div>
+          <MonthYearFilter dateFrom={dateFrom} dateTo={dateTo} onDateFrom={onDateFrom} onDateTo={onDateTo} years={yearOptions([...trips.map((t) => t.loadDate), ...expenses.map((e) => e.date)])} />
           <div className="field">
             <label>Vehicle</label>
             <select className="input" value={vehicleFilter} onChange={(e) => onVehicleFilter(e.target.value)}>

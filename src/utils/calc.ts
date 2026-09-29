@@ -57,6 +57,18 @@ export function dieselLitres(lines: TripExpenseLine[]): number {
 // Trip/expense dates are stored as display strings ("14 Sep 2026") once
 // they come back from the API — parse back to ISO to compare against a
 // `type="date"` filter input's value.
+// Every calendar year that appears among a set of display dates ("27 Sep 2026"),
+// newest first, always including the current year even if it's not in the data —
+// so a Month/Year filter always has today's year to pick.
+export function yearOptions(displayDates: string[]): number[] {
+  const years = new Set<number>([new Date().getFullYear()]);
+  for (const d of displayDates) {
+    const iso = parseDisplayDate(d);
+    if (iso) years.add(Number(iso.slice(0, 4)));
+  }
+  return [...years].sort((a, b) => b - a);
+}
+
 export function dateInRange(displayDate: string, from: string, to: string): boolean {
   const iso = parseDisplayDate(displayDate);
   if (!iso) return true;
