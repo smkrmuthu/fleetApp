@@ -348,6 +348,16 @@ export function App() {
     }
   }
 
+  async function addUser(u: { name: string; phone: string; role: string; password: string; branchId: string }): Promise<string | null> {
+    try {
+      await api.createUser(u);
+      setUsers(await api.fetchUsers());
+      return null;
+    } catch (e) {
+      return e instanceof Error ? e.message : 'Could not create account';
+    }
+  }
+
   async function editUser(id: string, u: { name: string; phone: string; role: string; branchId: string }): Promise<string | null> {
     try {
       await api.updateUser(id, u);
@@ -543,6 +553,7 @@ export function App() {
             vehicles={vehicles}
             drivers={drivers}
             users={users}
+            onAddUser={addUser}
             onAddVehicle={addVehicle}
             onRemoveVehicle={removeVehicle}
             onAddDriver={addDriver}

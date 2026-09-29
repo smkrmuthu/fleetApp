@@ -246,6 +246,16 @@ export async function fetchUsers(): Promise<(UserAccount & { id: string })[]> {
   return res.users.map(userFromApi);
 }
 
+// The server route is still named /invite (a real SMS/email invite flow is
+// future work — see its own comment) but a Manager sets the password
+// directly here, so the account is usable immediately.
+export async function createUser(u: { name: string; phone: string; role: string; password: string; branchId: string }): Promise<void> {
+  await request('/users/invite', {
+    method: 'POST',
+    body: JSON.stringify({ fullName: u.name, phone: u.phone, role: u.role, password: u.password, branchId: orUndefined(u.branchId) })
+  });
+}
+
 export async function updateUser(id: string, u: { name: string; phone: string; role: string; branchId: string }): Promise<void> {
   await request(`/users/${encodeURIComponent(id)}`, {
     method: 'PATCH',

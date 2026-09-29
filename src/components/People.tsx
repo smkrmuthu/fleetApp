@@ -82,6 +82,88 @@ function ChangePasswordDialog({
   );
 }
 
+// A Manager creating an account directly, with an initial password they set
+// themselves — there's no SMS/email invite step yet (see the API comment).
+function AddUserDialog({ onSave, onClose }: { onSave: (u: { name: string; phone: string; role: string; password: string; branchId: string }) => Promise<string | null>; onClose: () => void }) {
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [role, setRole] = useState('driver');
+  const [branchId, setBranchId] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  async function save() {
+    if (!name.trim()) return setError('Enter a name.');
+    if (!phone.trim()) return setError('Enter a mobile number.');
+    if (password.length < 6) return setError('Password must be at least 6 characters.');
+    if (password !== confirm) return setError("Passwords don't match.");
+    setError('');
+    setSaving(true);
+    const err = await onSave({ name: name.trim(), phone: phone.trim(), role, password, branchId });
+    setSaving(false);
+    if (err) setError(err);
+    else onClose();
+  }
+
+  return (
+    <div
+      style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(32,30,29,0.55)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '6vh 16px', overflowY: 'auto' }}
+      onMouseDown={(e) => { if (e.target === e.currentTarget && !saving) onClose(); }}
+    >
+      <div style={{ background: 'var(--color-bg)', border: '2px solid var(--color-text)', width: '100%', maxWidth: 460 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, padding: '18px 20px 14px', borderBottom: '2px solid var(--color-divider)' }}>
+          <div>
+            <div className="kicker">New account</div>
+            <h2 style={{ fontSize: 22, letterSpacing: '-0.01em', marginTop: 2 }}>Add user</h2>
+          </div>
+          <button type="button" className="btn btn-ghost" aria-label="Close" onClick={onClose} style={{ fontSize: 18, lineHeight: 1, padding: '2px 8px' }}>×</button>
+        </div>
+        <form style={{ padding: 20, display: 'grid', gap: 14 }} onSubmit={(e) => { e.preventDefault(); save(); }}>
+          <div className="field">
+            <label htmlFor="new-user-name">Name</label>
+            <input id="new-user-name" className="input" autoFocus value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+          <div className="field">
+            <label htmlFor="new-user-phone">Mobile</label>
+            <input id="new-user-phone" className="input" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
+            <div style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 4 }}>This is what they'll sign in with.</div>
+          </div>
+          <div className="field">
+            <label htmlFor="new-user-role">Role</label>
+            <select id="new-user-role" className="input" value={role} onChange={(e) => setRole(e.target.value)}>
+              <option value="driver">Driver</option>
+              <option value="office">Documentation (Office)</option>
+              <option value="manager">Manager</option>
+            </select>
+          </div>
+          <div className="field">
+            <label htmlFor="new-user-branch">Branch</label>
+            <select id="new-user-branch" className="input" value={branchId} onChange={(e) => setBranchId(e.target.value)}>
+              <option value="">None</option>
+              {BRANCH_OPTIONS.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+            </select>
+          </div>
+          <div className="field">
+            <label htmlFor="new-user-password">Password</label>
+            <input id="new-user-password" className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+          </div>
+          <div className="field">
+            <label htmlFor="new-user-confirm">Confirm password</label>
+            <input id="new-user-confirm" className="input" type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
+          </div>
+          {error && <div role="alert" style={{ color: 'var(--color-accent-700)', fontSize: 13 }}>{error}</div>}
+          <div style={{ display: 'flex', gap: 10, paddingTop: 4 }}>
+            <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Adding…' : 'Add user'}</button>
+            <button type="button" className="btn btn-ghost" disabled={saving} onClick={onClose}>Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 const blankVehicle = {
   id: '', model: '', fcDate: '', regDate: '', batchNo: '', taxDate: '', inspectionDate: '', npDate: '', pollutionDate: '', owner: ''
 };
@@ -90,6 +172,7 @@ interface Props {
   vehicles: Vehicle[];
   drivers: DriverMaster[];
   users: (UserAccount & { id: string })[];
+  onAddUser: (u: { name: string; phone: string; role: string; password: string; branchId: string }) => Promise<string | null>;
   onAddVehicle: (v: Vehicle) => Promise<string | null>;
   onRemoveVehicle: (id: string) => void;
   onAddDriver: (d: DriverMaster) => Promise<string | null>;
@@ -104,11 +187,12 @@ interface Props {
 }
 
 export function People({
-  vehicles, drivers, users, onAddVehicle, onRemoveVehicle, onAddDriver, onRemoveDriver, onRemoveUser,
+  vehicles, drivers, users, onAddUser, onAddVehicle, onRemoveVehicle, onAddDriver, onRemoveDriver, onRemoveUser,
   onUpdateVehicle, onUpdateDriver, onUpdateUser, onChangeUserPassword, canDeleteAccounts, canEditAccounts
 }: Props) {
   const [dialog, setDialog] = useState<{ kind: 'user' | 'truck' | 'driver'; key: string; edit: boolean } | null>(null);
   const [passwordFor, setPasswordFor] = useState<{ id: string; name: string } | null>(null);
+  const [addingUser, setAddingUser] = useState(false);
   const [newVehicle, setNewVehicle] = useState(blankVehicle);
   const [newDriver, setNewDriver] = useState({ name: '', licence: '', expiry: '' });
   const [vehicleError, setVehicleError] = useState('');
@@ -242,6 +326,7 @@ export function People({
           onSave={(password) => onChangeUserPassword(passwordFor.id, password)}
         />
       )}
+      {addingUser && <AddUserDialog onClose={() => setAddingUser(false)} onSave={onAddUser} />}
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap', marginBottom: 18 }}>
         <div>
           <div className="kicker">Shree Mira Trader · {users.length} accounts, 3 branches</div>
@@ -249,7 +334,7 @@ export function People({
           <p style={{ color: 'var(--color-neutral-700)', marginTop: 6, fontSize: 13 }}>Manage the fleet's trucks, drivers and user accounts.</p>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
-          <button type="button" className="btn btn-primary">Invite user</button>
+          {canEditAccounts && <button type="button" className="btn btn-primary" onClick={() => setAddingUser(true)}>Add user</button>}
         </div>
       </div>
 
