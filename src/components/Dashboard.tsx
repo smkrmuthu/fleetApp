@@ -94,19 +94,20 @@ export function Dashboard({ trips, expenses, vehicles, drivers, leaves, unavaila
 
   return (
     <section>
-      <div style={{ marginBottom: 18 }}>
-        <div className="kicker">Manager · {label}</div>
-        <h1 style={{ fontSize: 34, letterSpacing: '-0.02em' }}>Dashboard</h1>
-        <p style={{ color: 'var(--color-neutral-700)', marginTop: 6, fontSize: 13 }}>
-          Where things stand right now — this month's numbers, and what needs your attention.
-        </p>
-      </div>
-
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 24 }}>
-        <button type="button" className="btn btn-primary" onClick={() => onTabChange('addtrip')}>Add movement</button>
-        <button type="button" className="btn btn-secondary" onClick={() => onTabChange('triplog')}>Trip Log</button>
-        <button type="button" className="btn btn-secondary" onClick={() => onTabChange('people')}>People</button>
-        <button type="button" className="btn btn-secondary" onClick={() => onTabChange('master')}>Master</button>
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap', marginBottom: 24 }}>
+        <div>
+          <div className="kicker">Manager · {label}</div>
+          <h1 style={{ fontSize: 34, letterSpacing: '-0.02em' }}>Dashboard</h1>
+          <p style={{ color: 'var(--color-neutral-700)', marginTop: 6, fontSize: 13 }}>
+            Where things stand right now — this month's numbers, and what needs your attention.
+          </p>
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
+          <button type="button" className="btn btn-primary" style={{ padding: '4px 12px', fontSize: 13 }} onClick={() => onTabChange('addtrip')}>Add movement</button>
+          <button type="button" className="btn btn-secondary" style={{ padding: '4px 12px', fontSize: 13 }} onClick={() => onTabChange('triplog')}>Trip Log</button>
+          <button type="button" className="btn btn-secondary" style={{ padding: '4px 12px', fontSize: 13 }} onClick={() => onTabChange('people')}>People</button>
+          <button type="button" className="btn btn-secondary" style={{ padding: '4px 12px', fontSize: 13 }} onClick={() => onTabChange('master')}>Master</button>
+        </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 2, background: 'var(--color-divider)', border: '2px solid var(--color-divider)', marginBottom: 28 }}>
