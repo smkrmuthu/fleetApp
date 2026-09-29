@@ -129,7 +129,7 @@ async function nextTripNumber(db: ReturnType<typeof getDb>, orgId: string): Prom
 
 const stopSchema = z.object({
   location: z.string().trim().min(1, 'Stop location is required').max(200),
-  date: z.string().optional(),
+  date: z.string().min(1, 'Stop date is required'),
   odo: z.number().int().positive().nullish(),
   note: z.string().trim().max(200).nullish()
 });
@@ -297,7 +297,7 @@ tripRoutes.post('/', async (c) => {
   }));
 
   const stopRows = data.stops.map((st, i) => ({
-    id: newId(), orgId: auth.orgId, tripId: data.id, seq: i + 1, location: st.location, odo: st.odo ?? null, note: st.note || null, createdAt: now
+    id: newId(), orgId: auth.orgId, tripId: data.id, seq: i + 1, location: st.location, date: st.date, odo: st.odo ?? null, note: st.note || null, createdAt: now
   }));
 
   const statements = [db.insert(trips).values(tripValues)];
@@ -624,7 +624,7 @@ tripRoutes.patch('/:id', async (c) => {
   await db.update(trips).set({ ...tripPatch, updatedAt: now }).where(eq(trips.id, id));
   if (newStops) {
     const rows = newStops.map((st, i) => ({
-      id: newId(), orgId: auth.orgId, tripId: id, seq: i + 1, location: st.location, odo: st.odo ?? null, note: st.note || null, createdAt: now
+      id: newId(), orgId: auth.orgId, tripId: id, seq: i + 1, location: st.location, date: st.date, odo: st.odo ?? null, note: st.note || null, createdAt: now
     }));
     const statements: any[] = [db.delete(tripStops).where(and(eq(tripStops.tripId, id), eq(tripStops.orgId, auth.orgId)))];
     for (const row of rows) statements.push(db.insert(tripStops).values(row));

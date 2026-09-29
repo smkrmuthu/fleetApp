@@ -314,6 +314,10 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, l
         errs.odoEnd = `Odometer end can't be lower than the last stop's reading (${prev}).`;
       }
     }
+    if (!errs.stops) {
+      const missingDate = cleanStops.findIndex((st) => !st.date);
+      if (missingDate >= 0) errs.stops = `Stop ${missingDate + 1} needs a date.`;
+    }
     // Stop dates must only advance along the route: loading date -> Stop 1 -> Stop 2 -> ... -> unloading date
     if (!errs.stops) {
       let prevDate = form.loadDate;

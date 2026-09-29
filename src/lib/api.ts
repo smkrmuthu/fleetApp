@@ -315,7 +315,7 @@ interface ApiTrip {
   odoStart: number | null; odoEnd: number | null; revenuePaise: number; status: 'draft' | 'pending' | 'approved' | 'void';
   expenses: ApiTripExpense[];
   documents?: ApiTripDocument[];
-  stops?: { id: string; location: string; odo: number | null; note: string | null }[];
+  stops?: { id: string; location: string; date: string | null; odo: number | null; note: string | null }[];
   remarks?: string | null;
 }
 
@@ -330,7 +330,7 @@ function tripFromApi(t: ApiTrip): Trip {
       id: e.id, date: formatDisplayDate(e.spentOn), kind: e.kind, litres: e.litres ?? undefined,
       ratePerLitre: e.ratePaise != null ? paiseToRupees(e.ratePaise) : undefined, amount: paiseToRupees(e.amountPaise), details: e.details ?? undefined
     })),
-    stops: (t.stops ?? []).map((st) => ({ id: st.id, location: st.location, odo: st.odo ?? undefined, note: st.note ?? undefined })),
+    stops: (t.stops ?? []).map((st) => ({ id: st.id, location: st.location, date: st.date ?? undefined, odo: st.odo ?? undefined, note: st.note ?? undefined })),
     documents: (t.documents ?? []).map((d) => ({ id: d.id, filename: d.filename, mimeType: d.mimeType ?? undefined }))
   };
 }
