@@ -358,6 +358,15 @@ export function App() {
     }
   }
 
+  async function changeUserPassword(id: string, password: string): Promise<string | null> {
+    try {
+      await api.changeUserPassword(id, password);
+      return null;
+    } catch (e) {
+      return e instanceof Error ? e.message : 'Could not change password';
+    }
+  }
+
   async function removeVehicle(id: string) {
     try {
       await api.deleteVehicle(id);
@@ -540,6 +549,7 @@ export function App() {
             onUpdateVehicle={editVehicle}
             onUpdateDriver={editDriver}
             onUpdateUser={editUser}
+            onChangeUserPassword={changeUserPassword}
             onRemoveDriver={removeDriver}
             onRemoveUser={removeUser}
             canDeleteAccounts={role === 'Manager'}

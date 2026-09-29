@@ -257,6 +257,10 @@ export async function deleteUser(id: string): Promise<void> {
   await request(`/users/${encodeURIComponent(id)}`, { method: 'DELETE' });
 }
 
+export async function changeUserPassword(id: string, password: string): Promise<void> {
+  await request(`/users/${encodeURIComponent(id)}/password`, { method: 'POST', body: JSON.stringify({ password }) });
+}
+
 // ── monthly expenses ─────────────────────────────────────────────────────
 interface ApiMonthlyExpense {
   id: string; vehicleId: string; driverId: string | null; spentOn: string; category: string; amountPaise: number; remarks: string | null;

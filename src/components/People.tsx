@@ -23,6 +23,65 @@ function dueCell(date: string) {
   return <span className={status.expired ? 'tag tag-accent' : 'tag tag-outline'} title={status.label} style={{ whiteSpace: 'nowrap' }}>{date}</span>;
 }
 
+// A minimal, focused dialog — just the two password fields — rather than
+// folding this into the account Edit dialog, since a password is never
+// something to display back, only ever set.
+function ChangePasswordDialog({
+  userName, onSave, onClose
+}: {
+  userName: string;
+  onSave: (password: string) => Promise<string | null>;
+  onClose: () => void;
+}) {
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  async function save() {
+    if (password.length < 6) return setError('Password must be at least 6 characters.');
+    if (password !== confirm) return setError("Passwords don't match.");
+    setError('');
+    setSaving(true);
+    const err = await onSave(password);
+    setSaving(false);
+    if (err) setError(err);
+    else onClose();
+  }
+
+  return (
+    <div
+      style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(32,30,29,0.55)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '6vh 16px', overflowY: 'auto' }}
+      onMouseDown={(e) => { if (e.target === e.currentTarget && !saving) onClose(); }}
+    >
+      <div style={{ background: 'var(--color-bg)', border: '2px solid var(--color-text)', width: '100%', maxWidth: 420 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, padding: '18px 20px 14px', borderBottom: '2px solid var(--color-divider)' }}>
+          <div>
+            <div className="kicker">Change password</div>
+            <h2 style={{ fontSize: 22, letterSpacing: '-0.01em', marginTop: 2 }}>{userName}</h2>
+          </div>
+          <button type="button" className="btn btn-ghost" aria-label="Close" onClick={onClose} style={{ fontSize: 18, lineHeight: 1, padding: '2px 8px' }}>×</button>
+        </div>
+        <form style={{ padding: 20, display: 'grid', gap: 14 }} onSubmit={(e) => { e.preventDefault(); save(); }}>
+          <div className="field">
+            <label htmlFor="new-password">New password</label>
+            <input id="new-password" className="input" type="password" autoFocus value={password} onChange={(e) => setPassword(e.target.value)} />
+          </div>
+          <div className="field">
+            <label htmlFor="confirm-password">Confirm password</label>
+            <input id="confirm-password" className="input" type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
+          </div>
+          {error && <div role="alert" style={{ color: 'var(--color-accent-700)', fontSize: 13 }}>{error}</div>}
+          <div style={{ display: 'flex', gap: 10, paddingTop: 4 }}>
+            <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving…' : 'Save password'}</button>
+            <button type="button" className="btn btn-ghost" disabled={saving} onClick={onClose}>Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 const blankVehicle = {
   id: '', model: '', fcDate: '', regDate: '', batchNo: '', taxDate: '', inspectionDate: '', npDate: '', pollutionDate: '', owner: ''
 };
@@ -39,15 +98,17 @@ interface Props {
   onUpdateVehicle: (id: string, v: VehicleEdit) => Promise<string | null>;
   onUpdateDriver: (name: string, d: { licence: string; expiry: string; credential: string }) => Promise<string | null>;
   onUpdateUser: (id: string, u: { name: string; phone: string; role: string; branchId: string }) => Promise<string | null>;
+  onChangeUserPassword: (id: string, password: string) => Promise<string | null>;
   canDeleteAccounts: boolean;
   canEditAccounts: boolean;
 }
 
 export function People({
   vehicles, drivers, users, onAddVehicle, onRemoveVehicle, onAddDriver, onRemoveDriver, onRemoveUser,
-  onUpdateVehicle, onUpdateDriver, onUpdateUser, canDeleteAccounts, canEditAccounts
+  onUpdateVehicle, onUpdateDriver, onUpdateUser, onChangeUserPassword, canDeleteAccounts, canEditAccounts
 }: Props) {
   const [dialog, setDialog] = useState<{ kind: 'user' | 'truck' | 'driver'; key: string; edit: boolean } | null>(null);
+  const [passwordFor, setPasswordFor] = useState<{ id: string; name: string } | null>(null);
   const [newVehicle, setNewVehicle] = useState(blankVehicle);
   const [newDriver, setNewDriver] = useState({ name: '', licence: '', expiry: '' });
   const [vehicleError, setVehicleError] = useState('');
@@ -174,6 +235,13 @@ export function People({
   return (
     <section>
       {renderDialog()}
+      {passwordFor && (
+        <ChangePasswordDialog
+          userName={passwordFor.name}
+          onClose={() => setPasswordFor(null)}
+          onSave={(password) => onChangeUserPassword(passwordFor.id, password)}
+        />
+      )}
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap', marginBottom: 18 }}>
         <div>
           <div className="kicker">Shree Mira Trader · {users.length} accounts, 3 branches</div>
@@ -207,6 +275,7 @@ export function People({
                   <div style={actions}>
                     <button type="button" className="btn btn-ghost" style={rowBtn} onClick={() => setDialog({ kind: 'user', key: u.id, edit: false })}>View</button>
                     {canEditAccounts && <button type="button" className="btn btn-ghost" style={rowBtn} onClick={() => setDialog({ kind: 'user', key: u.id, edit: true })}>Edit</button>}
+                    {canEditAccounts && <button type="button" className="btn btn-ghost" style={rowBtn} onClick={() => setPasswordFor({ id: u.id, name: u.name })}>Change password</button>}
                     {canDeleteAccounts && <button type="button" className="btn btn-ghost" onClick={() => onRemoveUser(u.id)}>Delete account</button>}
                   </div>
                 </td>

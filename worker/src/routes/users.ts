@@ -92,6 +92,29 @@ userRoutes.patch('/:id', requireRole('manager'), async (c) => {
   return c.json(safe);
 });
 
+const passwordSchema = z.object({ password: z.string().min(6, 'Password must be at least 6 characters') });
+
+// Manager sets a user's password directly — there's no "forgot password"
+// self-service flow yet (see the /invite comment above), so this is also
+// how a locked-out user gets back in. The new password is never logged;
+// the audit entry only records that a reset happened and by whom.
+userRoutes.post('/:id/password', requireRole('manager'), async (c) => {
+  const auth = c.get('auth');
+  const id = c.req.param('id')!;
+  const body = await c.req.json().catch(() => null);
+  const parsed = passwordSchema.safeParse(body);
+  if (!parsed.success) return c.json({ error: { code: 'validation_error', message: parsed.error.issues[0]?.message ?? 'Enter a password' } }, 422);
+
+  const db = getDb(c.env);
+  const [existing] = await db.select().from(users).where(and(eq(users.id, id), eq(users.orgId, auth.orgId))).limit(1);
+  if (!existing) return c.json({ error: { code: 'not_found', message: 'User not found' } }, 404);
+
+  const { hash, salt } = await hashPassword(parsed.data.password);
+  await db.update(users).set({ passwordHash: hash, passwordSalt: salt }).where(and(eq(users.id, id), eq(users.orgId, auth.orgId)));
+  await writeAudit(db, auth.orgId, 'users', id, 'password_reset', {}, auth.userId);
+  return c.json({ ok: true });
+});
+
 // Manager only — Office can manage vehicles/drivers but never deletes a
 // user account.
 userRoutes.delete('/:id', requireRole('manager'), async (c) => {
