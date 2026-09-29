@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import type { DriverLeave, DriverMaster, MonthlyExpense, TabId, Trip, Vehicle, VehicleUnavailability } from '../types';
 import { parseDisplayDate } from '../lib/api';
-import { dueStatus, formatNum, rupees, tripCost } from '../utils/calc';
+import { dueStatus, formatDateRange, formatNum, rupees, tripCost, yearOptions } from '../utils/calc';
+import { MonthYearFilter } from './MonthYearFilter';
 
 interface Props {
   trips: Trip[];
@@ -13,15 +15,14 @@ interface Props {
   onEditTrip: (t: Trip) => void;
 }
 
-function currentMonthRange(): { from: string; to: string; label: string } {
+function currentMonthRange(): { from: string; to: string } {
   const now = new Date();
   const y = now.getFullYear();
   const m = now.getMonth();
   const pad = (n: number) => String(n).padStart(2, '0');
   const from = `${y}-${pad(m + 1)}-01`;
   const to = `${y}-${pad(m + 1)}-${pad(new Date(y, m + 1, 0).getDate())}`;
-  const label = now.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
-  return { from, to, label };
+  return { from, to };
 }
 
 // A naive "YYYY-MM-DDTHH:MM" for right now, in the same local-no-timezone
@@ -37,14 +38,16 @@ const alertHeading = { fontSize: 13, fontWeight: 700, marginBottom: 10, display:
 const rowStyle = { display: 'flex', justifyContent: 'space-between', gap: 12, padding: '7px 0', borderBottom: '1px solid var(--color-neutral-300)', fontSize: 13 } as const;
 
 export function Dashboard({ trips, expenses, vehicles, drivers, leaves, unavailability, onTabChange, onEditTrip }: Props) {
-  const { from, to, label } = currentMonthRange();
+  const [dateFrom, setDateFrom] = useState(() => currentMonthRange().from);
+  const [dateTo, setDateTo] = useState(() => currentMonthRange().to);
+  const label = formatDateRange(dateFrom, dateTo);
   const monthTrips = trips.filter((t) => {
     const d = parseDisplayDate(t.loadDate);
-    return d && d >= from && d <= to;
+    return d && d >= dateFrom && d <= dateTo;
   });
   const monthExpenses = expenses.filter((e) => {
     const d = parseDisplayDate(e.date);
-    return d && d >= from && d <= to;
+    return d && d >= dateFrom && d <= dateTo;
   });
   const totals = monthTrips.reduce(
     (a, t) => {
@@ -99,7 +102,7 @@ export function Dashboard({ trips, expenses, vehicles, drivers, leaves, unavaila
           <div className="kicker">Manager · {label}</div>
           <h1 style={{ fontSize: 34, letterSpacing: '-0.02em' }}>Dashboard</h1>
           <p style={{ color: 'var(--color-neutral-700)', marginTop: 6, fontSize: 13 }}>
-            Where things stand right now — this month's numbers, and what needs your attention.
+            Where things stand right now — the numbers for the period below, and what needs your attention today.
           </p>
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
@@ -107,6 +110,21 @@ export function Dashboard({ trips, expenses, vehicles, drivers, leaves, unavaila
           <button type="button" className="btn btn-secondary" style={{ padding: '4px 12px', fontSize: 13 }} onClick={() => onTabChange('triplog')}>Trip Log</button>
           <button type="button" className="btn btn-secondary" style={{ padding: '4px 12px', fontSize: 13 }} onClick={() => onTabChange('people')}>People</button>
           <button type="button" className="btn btn-secondary" style={{ padding: '4px 12px', fontSize: 13 }} onClick={() => onTabChange('master')}>Master</button>
+        </div>
+      </div>
+
+      <div style={{ border: '2px solid var(--color-divider)', padding: 16, marginBottom: 24 }}>
+        <div className="filters-grid">
+          <MonthYearFilter
+            dateFrom={dateFrom} dateTo={dateTo} onDateFrom={setDateFrom} onDateTo={setDateTo}
+            years={yearOptions([...trips.map((t) => t.loadDate), ...expenses.map((e) => e.date)])}
+          />
+          <button
+            type="button" className="btn btn-ghost" style={{ justifySelf: 'start' }}
+            onClick={() => { setDateFrom(currentMonthRange().from); setDateTo(currentMonthRange().to); }}
+          >
+            Back to this month
+          </button>
         </div>
       </div>
 
