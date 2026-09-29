@@ -15,6 +15,24 @@ interface Props {
   onEditTrip: (t: Trip) => void;
 }
 
+// The 6 calendar months up to and including this one, oldest first — a fixed
+// recent-history window, independent of whatever period the Month/Year
+// filter above has picked for the KPI tiles.
+function lastMonths(n: number): { from: string; to: string; label: string }[] {
+  const now = new Date();
+  const pad = (x: number) => String(x).padStart(2, '0');
+  const out: { from: string; to: string; label: string }[] = [];
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const y = d.getFullYear();
+    const m = d.getMonth();
+    const from = `${y}-${pad(m + 1)}-01`;
+    const to = `${y}-${pad(m + 1)}-${pad(new Date(y, m + 1, 0).getDate())}`;
+    out.push({ from, to, label: d.toLocaleDateString('en-IN', { month: 'short' }) });
+  }
+  return out;
+}
+
 function currentMonthRange(): { from: string; to: string } {
   const now = new Date();
   const y = now.getFullYear();
@@ -93,6 +111,38 @@ export function Dashboard({ trips, expenses, vehicles, drivers, leaves, unavaila
   const onLeaveNow = leaves.filter((l) => l.startsAt <= now && now <= l.endsAt);
   const unavailableNow = unavailability.filter((w) => w.startsAt <= now && now <= w.endsAt);
 
+  // Revenue & profit trend, fixed to the last 6 real calendar months.
+  const trend = lastMonths(6).map((bucket) => {
+    const bTrips = trips.filter((t) => {
+      const d = parseDisplayDate(t.loadDate);
+      return d && d >= bucket.from && d <= bucket.to;
+    });
+    const bExpenses = expenses.filter((e) => {
+      const d = parseDisplayDate(e.date);
+      return d && d >= bucket.from && d <= bucket.to;
+    });
+    const revenue = bTrips.reduce((a, t) => a + t.revenue, 0);
+    const cost = bTrips.reduce((a, t) => a + tripCost(t).expense, 0) + bExpenses.reduce((a, e) => a + e.amount, 0);
+    return { label: bucket.label, revenue, profit: revenue - cost };
+  });
+  // Revenue and profit get independent scales, not a shared one — a single
+  // very bad month's loss would otherwise dwarf normal revenue bars and
+  // crush the other five months to invisibility.
+  const chartH = 120;
+  const maxRevenue = Math.max(1, ...trend.map((t) => t.revenue));
+  const revenueScale = chartH / maxRevenue;
+  const maxProfitUp = Math.max(1, ...trend.map((t) => Math.max(0, t.profit)));
+  const maxProfitDown = Math.max(0, ...trend.map((t) => (t.profit < 0 ? -t.profit : 0)));
+  const profitZeroY = (maxProfitUp / (maxProfitUp + maxProfitDown)) * chartH;
+  const profitScale = chartH / (maxProfitUp + maxProfitDown);
+
+  // Revenue by vehicle, for whichever period the filter above is set to.
+  const byVehicleRevenue = vehicles
+    .map((v) => ({ vehicle: v.id, revenue: monthTrips.filter((t) => t.vehicle === v.id).reduce((a, t) => a + t.revenue, 0) }))
+    .filter((v) => v.revenue > 0)
+    .sort((a, b) => b.revenue - a.revenue);
+  const maxVehicleRevenue = Math.max(1, ...byVehicleRevenue.map((v) => v.revenue));
+
   const recent = trips.slice(0, 6);
 
   return (
@@ -135,6 +185,79 @@ export function Dashboard({ trips, expenses, vehicles, drivers, leaves, unavaila
             <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 26, letterSpacing: '-0.02em', lineHeight: 1, color: s.accent }}>{s.value}</div>
           </div>
         ))}
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16, marginBottom: 28 }}>
+        <div style={cardStyle}>
+          <div style={alertHeading}><span>Revenue — last 6 months</span></div>
+          <div style={{ position: 'relative', height: chartH, marginTop: 4, display: 'flex', alignItems: 'flex-end' }}>
+            {trend.map((t) => (
+              <div key={t.label} style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+                <div
+                  title={`${t.label}: ${rupees(t.revenue)}`}
+                  style={{ width: 16, height: Math.max(1, t.revenue * revenueScale), background: 'var(--color-neutral-800)', borderRadius: '2px 2px 0 0' }}
+                />
+              </div>
+            ))}
+          </div>
+          <div style={{ display: 'flex', marginTop: 6 }}>
+            {trend.map((t) => (
+              <div key={t.label} style={{ flex: 1, textAlign: 'center', fontSize: 11, color: 'var(--color-neutral-700)' }}>{t.label}</div>
+            ))}
+          </div>
+        </div>
+
+        <div style={cardStyle}>
+          <div style={alertHeading}>
+            <span>Profit — last 6 months</span>
+            <span style={{ display: 'flex', gap: 10, fontWeight: 400, fontSize: 12, color: 'var(--color-neutral-700)' }}>
+              <span><span style={{ display: 'inline-block', width: 9, height: 9, background: 'var(--color-profit)', marginRight: 5 }} />Profit</span>
+              <span><span style={{ display: 'inline-block', width: 9, height: 9, background: 'var(--color-accent-700)', marginRight: 5 }} />Loss</span>
+            </span>
+          </div>
+          <div style={{ position: 'relative', height: chartH, marginTop: 4 }}>
+            <div style={{ position: 'absolute', left: 0, right: 0, top: profitZeroY, height: 1, background: 'var(--color-divider)' }} />
+            <div style={{ position: 'absolute', inset: 0, display: 'flex' }}>
+              {trend.map((t) => (
+                <div key={t.label} style={{ flex: 1, position: 'relative', display: 'flex', justifyContent: 'center' }}>
+                  {t.profit >= 0 ? (
+                    <div
+                      title={`${t.label}: Profit ${rupees(t.profit)}`}
+                      style={{ width: 16, position: 'absolute', bottom: chartH - profitZeroY, height: Math.max(1, t.profit * profitScale), background: 'var(--color-profit)', borderRadius: '2px 2px 0 0' }}
+                    />
+                  ) : (
+                    <div
+                      title={`${t.label}: Loss ${rupees(-t.profit)}`}
+                      style={{ width: 16, position: 'absolute', top: profitZeroY, height: Math.max(1, -t.profit * profitScale), background: 'var(--color-accent-700)', borderRadius: '0 0 2px 2px' }}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+          <div style={{ display: 'flex', marginTop: 6 }}>
+            {trend.map((t) => (
+              <div key={t.label} style={{ flex: 1, textAlign: 'center', fontSize: 11, color: 'var(--color-neutral-700)' }}>{t.label}</div>
+            ))}
+          </div>
+        </div>
+
+        <div style={cardStyle}>
+          <div style={alertHeading}><span>Revenue by truck — {label}</span></div>
+          {byVehicleRevenue.length === 0 ? (
+            <div style={{ fontSize: 13, color: 'var(--color-neutral-700)' }}>No movements with revenue in this period.</div>
+          ) : (
+            byVehicleRevenue.map((v) => (
+              <div key={v.vehicle} style={{ display: 'grid', gridTemplateColumns: '90px minmax(0,1fr) auto', alignItems: 'center', gap: 10, padding: '6px 0' }}>
+                <div style={{ fontWeight: 600, fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{v.vehicle}</div>
+                <div style={{ height: 14, background: 'var(--color-neutral-200)' }}>
+                  <div title={rupees(v.revenue)} style={{ height: 14, background: 'var(--color-accent)', width: `${Math.round((v.revenue / maxVehicleRevenue) * 100)}%` }} />
+                </div>
+                <div style={{ fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' }}>{rupees(v.revenue)}</div>
+              </div>
+            ))
+          )}
+        </div>
       </div>
 
       <h2 style={{ fontSize: 20, marginBottom: 12 }}>Needs attention</h2>
