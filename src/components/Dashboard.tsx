@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { DriverLeave, DriverMaster, MonthlyExpense, TabId, Trip, Vehicle, VehicleUnavailability } from '../types';
 import { parseDisplayDate } from '../lib/api';
-import { dueStatus, formatDateRange, formatNum, rupees, tripCost, yearOptions } from '../utils/calc';
+import { dieselLitres, dueStatus, formatDateRange, formatNum, rupees, tripCost, tripDurationDays, yearOptions } from '../utils/calc';
 import { MonthYearFilter } from './MonthYearFilter';
 
 interface Props {
@@ -54,6 +54,50 @@ function nowDateTime(): string {
 const cardStyle: React.CSSProperties = { border: '2px solid var(--color-divider)', padding: 16 };
 const alertHeading = { fontSize: 13, fontWeight: 700, marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 } as const;
 const rowStyle = { display: 'flex', justifyContent: 'space-between', gap: 12, padding: '7px 0', borderBottom: '1px solid var(--color-neutral-300)', fontSize: 13 } as const;
+
+interface VehicleSeries { key: string; label: string; color: string; fmt: (n: number) => string }
+
+// A small grouped column chart, one group per truck — shared scale across
+// every bar in the chart (matching how the reference sheet this was modelled
+// on pairs very different metrics, e.g. trip counts against km/l mileage).
+function VehicleGroupChart({ title, data, series }: { title: string; data: Record<string, number | string>[]; series: VehicleSeries[] }) {
+  const chartH = 120;
+  const max = Math.max(1, ...data.flatMap((d) => series.map((s) => Number(d[s.key]))));
+  return (
+    <div style={cardStyle}>
+      <div style={alertHeading}>
+        <span>{title}</span>
+        {series.length > 1 && (
+          <span style={{ display: 'flex', gap: 10, fontWeight: 400, fontSize: 12, color: 'var(--color-neutral-700)' }}>
+            {series.map((s) => (
+              <span key={s.key}><span style={{ display: 'inline-block', width: 9, height: 9, background: s.color, marginRight: 5 }} />{s.label}</span>
+            ))}
+          </span>
+        )}
+      </div>
+      <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
+        {data.map((d) => (
+          <div key={d.id as string} style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'flex-end', gap: 3, height: chartH }}>
+            {series.map((s) => {
+              const val = Number(d[s.key]);
+              return (
+                <div key={s.key} style={{ display: 'flex', flexDirection: 'column-reverse', alignItems: 'center', gap: 2 }}>
+                  <div title={`${d.id}: ${s.label} ${s.fmt(val)}`} style={{ width: 14, height: Math.max(1, (val / max) * chartH), background: s.color, borderRadius: '2px 2px 0 0' }} />
+                  <div style={{ fontSize: 10, color: 'var(--color-neutral-700)', whiteSpace: 'nowrap' }}>{s.fmt(val)}</div>
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+      <div style={{ display: 'flex', marginTop: 6 }}>
+        {data.map((d) => (
+          <div key={d.id as string} style={{ flex: 1, textAlign: 'center', fontSize: 11, color: 'var(--color-neutral-700)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.id}</div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export function Dashboard({ trips, expenses, vehicles, drivers, leaves, unavailability, onTabChange, onEditTrip }: Props) {
   const [dateFrom, setDateFrom] = useState(() => currentMonthRange().from);
@@ -142,6 +186,25 @@ export function Dashboard({ trips, expenses, vehicles, drivers, leaves, unavaila
     .filter((v) => v.revenue > 0)
     .sort((a, b) => b.revenue - a.revenue);
   const maxVehicleRevenue = Math.max(1, ...byVehicleRevenue.map((v) => v.revenue));
+
+  // Full per-truck breakdown for the filtered period — trucks with no
+  // movements in it are left out rather than shown as a row of zeroes.
+  const vehicleStats = vehicles
+    .map((v) => {
+      const vTrips = monthTrips.filter((t) => t.vehicle === v.id);
+      const km = vTrips.reduce((a, t) => a + t.km, 0);
+      const dieselL = vTrips.reduce((a, t) => a + dieselLitres(t.expenses), 0);
+      const tons = vTrips.reduce((a, t) => a + t.tons, 0);
+      const onRoadDays = vTrips.reduce((a, t) => a + (tripDurationDays(t.loadDate, t.unloadDate) ?? 0), 0);
+      const tripExpense = vTrips.reduce((a, t) => a + tripCost(t).expense, 0);
+      const fixed = monthExpenses.filter((e) => e.vehicle === v.id).reduce((a, e) => a + e.amount, 0);
+      const revenue = vTrips.reduce((a, t) => a + t.revenue, 0);
+      return {
+        id: v.id, trips: vTrips.length, km, onRoadDays, dieselL, tons,
+        mileage: dieselL ? km / dieselL : 0, expense: tripExpense + fixed, revenue, perTon: tons ? revenue / tons : 0
+      };
+    })
+    .filter((v) => v.trips > 0);
 
   const recent = trips.slice(0, 6);
 
@@ -259,6 +322,71 @@ export function Dashboard({ trips, expenses, vehicles, drivers, leaves, unavaila
           )}
         </div>
       </div>
+
+      <h2 style={{ fontSize: 20, marginBottom: 12 }}>Fleet performance, by truck — {label}</h2>
+      {vehicleStats.length === 0 ? (
+        <div style={{ border: '2px solid var(--color-divider)', padding: 16, color: 'var(--color-neutral-700)', marginBottom: 28 }}>No movements in this period.</div>
+      ) : (
+        <>
+          <div className="scroll-x" style={{ border: '2px solid var(--color-divider)', marginBottom: 16 }}>
+            <table className="table" style={{ minWidth: 900 }}>
+              <thead>
+                <tr>
+                  <th>Truck</th><th style={{ textAlign: 'right' }}>Trips</th><th style={{ textAlign: 'right' }}>KM</th>
+                  <th style={{ textAlign: 'right' }}>On-road days</th><th style={{ textAlign: 'right' }}>Diesel (L)</th>
+                  <th style={{ textAlign: 'right' }}>Load (t)</th><th style={{ textAlign: 'right' }}>Mileage (km/L)</th>
+                  <th style={{ textAlign: 'right' }}>Expense</th><th style={{ textAlign: 'right' }}>Revenue</th><th style={{ textAlign: 'right' }}>₹/ton</th>
+                </tr>
+              </thead>
+              <tbody>
+                {vehicleStats.map((v) => (
+                  <tr key={v.id}>
+                    <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{v.id}</td>
+                    <td style={{ textAlign: 'right' }}>{formatNum(v.trips)}</td>
+                    <td style={{ textAlign: 'right' }}>{formatNum(v.km)}</td>
+                    <td style={{ textAlign: 'right' }}>{formatNum(v.onRoadDays)}</td>
+                    <td style={{ textAlign: 'right' }}>{formatNum(v.dieselL)}</td>
+                    <td style={{ textAlign: 'right' }}>{formatNum(v.tons, 1)}</td>
+                    <td style={{ textAlign: 'right' }}>{v.mileage ? v.mileage.toFixed(2) : '—'}</td>
+                    <td style={{ textAlign: 'right' }}>{rupees(v.expense)}</td>
+                    <td style={{ textAlign: 'right' }}>{rupees(v.revenue)}</td>
+                    <td style={{ textAlign: 'right' }}>{v.perTon ? rupees(v.perTon) : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16, marginBottom: 28 }}>
+            <VehicleGroupChart
+              title="Trips vs Mileage" data={vehicleStats}
+              series={[
+                { key: 'trips', label: 'Trips', color: 'var(--color-neutral-800)', fmt: (n) => formatNum(n) },
+                { key: 'mileage', label: 'Mileage (km/L)', color: 'var(--color-accent)', fmt: (n) => n.toFixed(2) }
+              ]}
+            />
+            <VehicleGroupChart
+              title="KM vs Diesel vs Load" data={vehicleStats}
+              series={[
+                { key: 'km', label: 'KM', color: 'var(--color-neutral-800)', fmt: (n) => formatNum(n) },
+                { key: 'dieselL', label: 'Diesel (L)', color: 'var(--color-accent)', fmt: (n) => formatNum(n) },
+                { key: 'tons', label: 'Load (t)', color: 'var(--color-profit)', fmt: (n) => formatNum(n, 1) }
+              ]}
+            />
+            <VehicleGroupChart
+              title="Expense vs Revenue" data={vehicleStats}
+              series={[
+                { key: 'expense', label: 'Expense', color: 'var(--color-accent-700)', fmt: (n) => rupees(n) },
+                { key: 'revenue', label: 'Revenue', color: 'var(--color-profit)', fmt: (n) => rupees(n) }
+              ]}
+            />
+            <VehicleGroupChart
+              title="On-road days" data={vehicleStats}
+              series={[{ key: 'onRoadDays', label: 'On-road days', color: 'var(--color-neutral-800)', fmt: (n) => formatNum(n) }]}
+            />
+          </div>
+        </>
+      )}
 
       <h2 style={{ fontSize: 20, marginBottom: 12 }}>Needs attention</h2>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16, marginBottom: 28 }}>
