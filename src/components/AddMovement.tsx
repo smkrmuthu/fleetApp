@@ -154,9 +154,9 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, l
     setErrors({});
   };
 
-  // A truck's default driver is only a starting point on a new movement — the
-  // dropdown stays editable. It isn't applied when editing a saved movement,
-  // so changing the truck there can't quietly swap who drove it.
+  // A truck's default driver is only a starting point, filled in whenever the
+  // truck is picked or changed — on a new movement or an existing one alike.
+  // The dropdown right next to it stays fully editable.
   const defaultDriverFor = (vehicleId: string): string => {
     const name = vehicles.find((v) => v.id === vehicleId)?.defaultDriver;
     return name && drivers.some((d) => d.name === name) ? name : '';
@@ -167,7 +167,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, l
   // just displays whatever the trip already has, or is blank until saved.
   const onVehicleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const vehicleId = e.target.value;
-    const defaultDriver = isEditing ? '' : defaultDriverFor(vehicleId);
+    const defaultDriver = defaultDriverFor(vehicleId);
     setForm((f) => ({ ...f, vehicle: vehicleId, driver: defaultDriver || f.driver }));
     setErrors({});
   };
@@ -429,7 +429,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, l
       setScanFile({ base64, mimeType, filename: file.name });
       if (!form.vehicle && result.vehicleNo) {
         const match = vehicles.find((v) => normalizeReg(v.id) === normalizeReg(result.vehicleNo!));
-        if (match) setForm((f) => ({ ...f, vehicle: match.id, driver: f.driver || (isEditing ? '' : defaultDriverFor(match.id)) }));
+        if (match) setForm((f) => ({ ...f, vehicle: match.id, driver: f.driver || defaultDriverFor(match.id) }));
       }
     } catch (err) {
       setScanErrorMsg(err instanceof Error ? err.message : 'Could not read the receipt — try again or enter it manually');
