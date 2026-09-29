@@ -7,6 +7,7 @@ import * as api from './lib/api';
 import { SignIn } from './components/SignIn';
 import { AppShell } from './components/AppShell';
 import { PwaInstall } from './components/PwaInstall';
+import { Dashboard } from './components/Dashboard';
 import { MovementSummary } from './components/MovementSummary';
 import { AddMovement } from './components/AddMovement';
 import { TripLog } from './components/TripLog';
@@ -427,6 +428,18 @@ export function App() {
         )}
         {loading && <div style={{ color: 'var(--color-neutral-700)', marginBottom: 16 }}>Loading…</div>}
 
+        {tab === 'dashboard' && (
+          <Dashboard
+            trips={trips}
+            expenses={expenses}
+            vehicles={vehicles}
+            drivers={drivers}
+            leaves={driverLeaves}
+            unavailability={vehicleUnavailability}
+            onTabChange={setTab}
+            onEditTrip={startEditingTrip}
+          />
+        )}
         {tab === 'summary' && (
           <MovementSummary
             trips={trips}

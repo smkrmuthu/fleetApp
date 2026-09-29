@@ -65,7 +65,7 @@ export function dateInRange(displayDate: string, from: string, to: string): bool
 
 export const DUE_SOON_DAYS = 60;
 
-export interface DueStatus { label: string; expired: boolean }
+export interface DueStatus { label: string; expired: boolean; days: number }
 
 // Whether an expiry-type date ("05 Nov 2026") has passed or is coming up within
 // DUE_SOON_DAYS. Null when there's no date or it's comfortably in the future.
@@ -75,9 +75,9 @@ export function dueStatus(displayDate: string, now: Date = new Date()): DueStatu
   const [y, m, d] = iso.split('-').map(Number);
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const days = Math.round((new Date(y, m - 1, d).getTime() - today.getTime()) / 86_400_000);
-  if (days < 0) return { label: days === -1 ? 'Expired yesterday' : `Expired ${-days} days ago`, expired: true };
-  if (days === 0) return { label: 'Due today', expired: false };
-  if (days <= DUE_SOON_DAYS) return { label: days === 1 ? 'Due tomorrow' : `Due in ${days} days`, expired: false };
+  if (days < 0) return { label: days === -1 ? 'Expired yesterday' : `Expired ${-days} days ago`, expired: true, days };
+  if (days === 0) return { label: 'Due today', expired: false, days };
+  if (days <= DUE_SOON_DAYS) return { label: days === 1 ? 'Due tomorrow' : `Due in ${days} days`, expired: false, days };
   return null;
 }
 

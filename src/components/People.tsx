@@ -13,7 +13,7 @@ function dueItems(v: Vehicle) {
   ]
     .map((i) => ({ name: i.name, status: dueStatus(i.date) }))
     .filter((i): i is { name: string; status: NonNullable<ReturnType<typeof dueStatus>> } => i.status !== null)
-    .sort((a, b) => Number(b.status.expired) - Number(a.status.expired));
+    .sort((a, b) => a.status.days - b.status.days);
 }
 
 // A date cell: plain when fine or not recorded, tagged when expired or due soon.

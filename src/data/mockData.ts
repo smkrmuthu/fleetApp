@@ -51,10 +51,11 @@ export const TRIP_EXPENSE_LABEL: Record<string, string> = {
 export const ROLE_TABS: Record<Role, TabId[]> = {
   Driver: ['addtrip', 'triplog'],
   Office: ['addtrip', 'triplog', 'summary', 'expenses'],
-  Manager: ['summary', 'addtrip', 'triplog', 'expenses', 'report', 'people', 'master', 'schema']
+  Manager: ['dashboard', 'summary', 'addtrip', 'triplog', 'expenses', 'report', 'people', 'master', 'schema']
 };
 
 export const TAB_LABELS: Record<TabId, string> = {
+  dashboard: 'Dashboard',
   summary: 'Movement Summary',
   addtrip: 'Add Movement',
   triplog: 'Trip Log',
