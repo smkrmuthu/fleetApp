@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import type { AppNotification, Role, TabId } from '../types';
 import { ROLE_TABS, TAB_LABELS } from '../data/mockData';
 import { NotificationBell } from './NotificationBell';
@@ -20,6 +20,10 @@ export function AppShell({
   role, userName, tab, onTabChange, onSignOut, notifications, onOpenNotification, onMarkAllNotificationsRead, children
 }: Props) {
   const tabs = ROLE_TABS[role];
+  const activeTabRef = useRef<HTMLButtonElement | null>(null);
+  useEffect(() => {
+    activeTabRef.current?.scrollIntoView({ inline: 'center', block: 'nearest' });
+  }, [tab]);
 
   return (
     <>
@@ -29,7 +33,7 @@ export function AppShell({
           <div style={{ width: 2, alignSelf: 'stretch', background: 'var(--color-divider)' }} />
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 14 }}>
             <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 20, letterSpacing: '-0.02em', textTransform: 'uppercase' }}>Fleet Ledger</div>
-            <div style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--color-neutral-700)' }}>Goods movement &amp; expense log</div>
+            <div className="app-header-subtitle" style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--color-neutral-700)' }}>Goods movement &amp; expense log</div>
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
@@ -39,7 +43,7 @@ export function AppShell({
             )}
             <div style={{ textAlign: 'right', lineHeight: 1.25 }}>
               <div style={{ fontWeight: 600 }}>{userName} · {role}</div>
-              <div style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-neutral-700)' }}>Shree Mira Trader · Chennai</div>
+              <div className="app-user-sub" style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-neutral-700)' }}>Shree Mira Trader · Chennai</div>
             </div>
             <button type="button" className="btn btn-ghost" onClick={onSignOut}>Sign out</button>
           </div>
@@ -50,6 +54,7 @@ export function AppShell({
         {tabs.map((t) => (
           <button
             key={t}
+            ref={t === tab ? activeTabRef : undefined}
             type="button"
             onClick={() => onTabChange(t)}
             style={{

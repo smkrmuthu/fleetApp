@@ -166,8 +166,17 @@ input, select, textarea { font-family: var(--font-body); }
 .scroll-top::-webkit-scrollbar-thumb, .scroll-body::-webkit-scrollbar-thumb { background: var(--color-neutral-600); border-radius: 0; }
 .scroll-top::-webkit-scrollbar-thumb:hover, .scroll-body::-webkit-scrollbar-thumb:hover { background: var(--color-neutral-800); }
 
-.app-shell-main { padding: 24px; max-width: 1680px; margin: 0 auto; }
-.app-shell-bar { padding: 14px 24px; }
+/* iOS/Android devices with a notch, dynamic island, or home-indicator gesture
+   bar report their unsafe edges via env(safe-area-inset-*) once the viewport
+   meta declares viewport-fit=cover (see index.html) — these keep the header,
+   footer and main content clear of them instead of sitting flush underneath. */
+.app-shell-main {
+  padding: 24px max(24px, env(safe-area-inset-right)) 24px max(24px, env(safe-area-inset-left));
+  max-width: 1680px; margin: 0 auto;
+}
+.app-shell-bar {
+  padding: max(14px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
+}
 
 /* — responsive layout helpers — */
 .sign-in-grid {
@@ -197,8 +206,8 @@ input, select, textarea { font-family: var(--font-body); }
 .movement-sidebar { position: sticky; top: 20px; }
 
 @media (max-width: 760px) {
-  .app-shell-main { padding: 14px; }
-  .app-shell-bar { padding: 10px 14px; }
+  .app-shell-main { padding: 14px max(14px, env(safe-area-inset-right)) 14px max(14px, env(safe-area-inset-left)); }
+  .app-shell-bar { padding: max(10px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left)); }
 
   .sign-in-grid { grid-template-columns: 1fr; }
   .sign-in-brand { min-height: auto; padding: 28px 20px 24px; grid-template-rows: auto auto auto; gap: 28px; }
@@ -224,4 +233,8 @@ input, select, textarea { font-family: var(--font-body); }
 
   /* Route rows wrap on a phone: no column captions or alignment spacers */
   .route-head, .route-spacer { display: none !important; }
+
+  /* Decorative header/footer restatements — the logo already says who this
+     is; dropping them stops the bar wrapping into a ragged multi-line mess. */
+  .app-header-subtitle, .app-user-sub { display: none; }
 }

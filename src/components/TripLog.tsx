@@ -214,7 +214,7 @@ export function TripLog({ trips, vehicles, drivers, leaves, unavailability, vehi
         </div>
         {showActions && (
           <div style={{ display: 'grid', gap: 6, justifyItems: 'end' }}>
-            <div style={{ display: 'flex', gap: 10 }}>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
             <button
               type="button" className="btn btn-secondary" disabled={!!exporting}
               onClick={() => runExport('xlsx', () => exportTripLog(

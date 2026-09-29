@@ -755,8 +755,8 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, l
                     <span style={{ fontWeight: 600 }}>{f.value}</span>
                   </div>
                 ))}
-                <div style={{ padding: 12, display: 'flex', gap: 10 }}>
-                  <button type="button" className="btn btn-primary btn-block" onClick={addScannedEntry}>Add as an entry</button>
+                <div style={{ padding: 12, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  <button type="button" className="btn btn-primary btn-block" style={{ flex: '1 1 auto' }} onClick={addScannedEntry}>Add as an entry</button>
                   <button type="button" className="btn btn-ghost" onClick={discardScan}>Discard</button>
                 </div>
               </div>

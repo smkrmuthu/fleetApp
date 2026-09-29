@@ -69,7 +69,7 @@ export function MonthlyReport({ trips: allTrips, expenses: allExpenses, vehicles
           <p style={{ color: 'var(--color-neutral-700)', marginTop: 6, fontSize: 13 }}>The full financial picture — revenue, cost, profit and per-vehicle economics.</p>
         </div>
         <div style={{ display: 'grid', gap: 6, justifyItems: 'end' }}>
-          <div style={{ display: 'flex', gap: 10 }}>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
             <button type="button" className="btn btn-secondary" disabled={!!busy} onClick={() => run('xlsx', () => exportReportExcel(exportData()))}>
               {busy === 'xlsx' ? 'Preparing…' : 'Export Excel'}
             </button>

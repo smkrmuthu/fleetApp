@@ -27,7 +27,7 @@ function Banner({ children, onDismiss }: { children: React.ReactNode; onDismiss?
       style={{
         position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 300,
         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16,
-        flexWrap: 'wrap', padding: '10px 16px', background: 'var(--color-text)', color: 'var(--color-bg)',
+        flexWrap: 'wrap', padding: '10px 16px calc(10px + env(safe-area-inset-bottom))', background: 'var(--color-text)', color: 'var(--color-bg)',
         fontSize: 13
       }}
     >
