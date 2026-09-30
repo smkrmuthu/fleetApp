@@ -3,10 +3,11 @@ main = "src/index.ts"
 compatibility_date = "2026-01-01"
 
 # Comma-separated list of origins allowed to call this API — the frontend is
-# deployed to GitHub Pages and (via Capacitor) the iOS and Android apps, which
-# serve their bundled web content from fixed origins regardless of device.
+# deployed to GitHub Pages and Cloudflare Workers (fleetapp), and (via
+# Capacitor) the iOS and Android apps, which serve their bundled web content
+# from fixed origins regardless of device.
 [vars]
-ALLOWED_ORIGIN = "https://smkrmuthu.github.io,capacitor://localhost,https://localhost,http://localhost:5180"
+ALLOWED_ORIGIN = "https://smkrmuthu.github.io,https://fleetapp.smkrmuthu.workers.dev,capacitor://localhost,https://localhost,http://localhost:5180"
 
 [[d1_databases]]
 binding = "DB"
