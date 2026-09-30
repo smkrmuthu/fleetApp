@@ -192,18 +192,19 @@ export function TripLog({ trips, vehicles, drivers, leaves, unavailability, vehi
     setCompleting(null);
   }
 
-  const [loadDateSort, setLoadDateSort] = useState<'asc' | 'desc' | null>(null);
+  // Always sorted by loading date (never raw entry order) — entry order
+  // grouped trips by whichever vehicle was being logged in one sitting,
+  // which read as random once loading dates were the thing being scanned.
+  const [loadDateSort, setLoadDateSort] = useState<'asc' | 'desc'>('desc');
   const filteredRows = trips.filter(
     (t) => (vehicleFilter === 'all' || t.vehicle === vehicleFilter) &&
       (!driverFilter || t.driver === driverFilter) &&
       dateInRange(t.loadDate, dateFrom, dateTo)
   );
-  const rows = loadDateSort
-    ? [...filteredRows].sort((a, b) => {
-        const cmp = parseDisplayDate(a.loadDate).localeCompare(parseDisplayDate(b.loadDate));
-        return loadDateSort === 'asc' ? cmp : -cmp;
-      })
-    : filteredRows;
+  const rows = [...filteredRows].sort((a, b) => {
+    const cmp = parseDisplayDate(a.loadDate).localeCompare(parseDisplayDate(b.loadDate));
+    return loadDateSort === 'asc' ? cmp : -cmp;
+  });
 
   return (
     <section>
@@ -271,14 +272,14 @@ export function TripLog({ trips, vehicles, drivers, leaves, unavailability, vehi
             <thead>
               <tr>
                 <th className="col-first">Trip No.</th>
-                <th aria-sort={loadDateSort === 'asc' ? 'ascending' : loadDateSort === 'desc' ? 'descending' : 'none'}>
+                <th aria-sort={loadDateSort === 'asc' ? 'ascending' : 'descending'}>
                   <button
                     type="button" className="btn btn-ghost"
-                    onClick={() => setLoadDateSort((s) => (s === null ? 'desc' : s === 'desc' ? 'asc' : null))}
+                    onClick={() => setLoadDateSort((s) => (s === 'asc' ? 'desc' : 'asc'))}
                     style={{ padding: 0, font: 'inherit', letterSpacing: 'inherit', textTransform: 'inherit', color: 'inherit', display: 'inline-flex', gap: 6, alignItems: 'center' }}
-                    title={loadDateSort === 'asc' ? 'Oldest first — click for newest first' : loadDateSort === 'desc' ? 'Newest first — click to stop sorting' : 'Not sorted — click for newest first'}
+                    title={loadDateSort === 'asc' ? 'Oldest first — click for newest first' : 'Newest first — click for oldest first'}
                   >
-                    Loading Date <span aria-hidden="true">{loadDateSort === 'asc' ? '▲' : loadDateSort === 'desc' ? '▼' : '↕'}</span>
+                    Loading Date <span aria-hidden="true">{loadDateSort === 'asc' ? '▲' : '▼'}</span>
                   </button>
                 </th><th>Duration</th><th>Vehicle</th><th>Driver</th>
                 <th style={{ textAlign: 'right' }}>Tons</th><th style={{ textAlign: 'right' }}>KM</th>
