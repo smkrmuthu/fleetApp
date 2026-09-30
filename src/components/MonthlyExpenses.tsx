@@ -1,12 +1,29 @@
-import { useState } from 'react';
-import type { DriverMaster, ExpenseFormState, MonthlyExpense, Trip, Vehicle } from '../types';
+import { useRef, useState } from 'react';
+import type { DriverMaster, ExpenseFormState, MonthlyExpense, Trip, TripDocument, Vehicle } from '../types';
 import { categoryTint } from '../data/mockData';
-import { parseDisplayDate } from '../lib/api';
+import { fetchMonthlyExpenseDocumentBlobUrl, parseDisplayDate } from '../lib/api';
 import { dateInRange, formatDateRange, matchingLoadingDate, rupees, todayIso, toNumber, yearOptions } from '../utils/calc';
 import { MonthYearFilter } from './MonthYearFilter';
 
 function blankExpense(defaultVehicle: string, defaultCategory: string): ExpenseFormState {
   return { date: todayIso(), vehicle: defaultVehicle, driver: '', category: defaultCategory, amount: '0', remarks: '' };
+}
+
+// Mirrors the server's allowlist (worker/src/lib/fileValidation.ts) so a
+// rejected file gets an immediate, specific message — the server's
+// magic-byte check remains the actual security boundary.
+const ACCEPTED_DOCUMENT_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'application/pdf'];
+
+function fileToBase64(file: File): Promise<{ base64: string; mimeType: string }> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      resolve({ base64: result.slice(result.indexOf(',') + 1), mimeType: file.type || 'image/jpeg' });
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
 }
 
 interface Props {
@@ -26,6 +43,10 @@ interface Props {
 
 export function MonthlyExpenses({ expenses: allExpenses, trips, vehicles, drivers, categories, dateFrom, dateTo, onDateFrom, onDateTo, onResetFilters, onAdd, onDelete }: Props) {
   const [exp, setExp] = useState<ExpenseFormState>(() => blankExpense(vehicles[0]?.id ?? '', categories[0] ?? ''));
+  const [documents, setDocuments] = useState<TripDocument[]>([]);
+  const [docErrorMsg, setDocErrorMsg] = useState('');
+  const [viewingDoc, setViewingDoc] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [truckFilter, setTruckFilter] = useState('all');
   const [dateSort, setDateSort] = useState<'asc' | 'desc'>('asc');
   const expenses = allExpenses
@@ -38,13 +59,61 @@ export function MonthlyExpenses({ expenses: allExpenses, trips, vehicles, driver
   const set = (k: keyof ExpenseFormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setExp((f) => ({ ...f, [k]: e.target.value } as ExpenseFormState));
 
+  async function onFilesChosen(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    const rejected: string[] = [];
+    for (const file of files) {
+      // An empty file.type (common for camera captures on some devices) is
+      // let through — fileToBase64 falls back to image/jpeg for those, and
+      // the server's magic-byte check is the real gate either way.
+      if (file.type && !ACCEPTED_DOCUMENT_TYPES.includes(file.type)) {
+        rejected.push(file.name);
+        continue;
+      }
+      try {
+        const { base64, mimeType } = await fileToBase64(file);
+        setDocuments((prev) => [...prev, { id: 'x' + Date.now() + Math.random().toString(36).slice(2), filename: file.name, mimeType, base64 }]);
+      } catch {
+        // a file that failed to read locally is simply skipped
+      }
+    }
+    setDocErrorMsg(rejected.length ? `${rejected.join(', ')} — only photos and PDF files are supported.` : '');
+  }
+
+  function removeDocument(id: string) {
+    setDocuments((prev) => prev.filter((d) => d.id !== id));
+  }
+
+  async function viewDocument(expenseId: string, doc: TripDocument) {
+    if (doc.base64) {
+      const byteChars = atob(doc.base64);
+      const bytes = new Uint8Array(byteChars.length);
+      for (let i = 0; i < byteChars.length; i++) bytes[i] = byteChars.charCodeAt(i);
+      const url = URL.createObjectURL(new Blob([bytes], { type: doc.mimeType || 'application/octet-stream' }));
+      window.open(url, '_blank');
+      return;
+    }
+    setViewingDoc(doc.id);
+    try {
+      const url = await fetchMonthlyExpenseDocumentBlobUrl(expenseId, doc.id);
+      window.open(url, '_blank');
+    } catch {
+      setDocErrorMsg('Could not open that file — try again.');
+    } finally {
+      setViewingDoc(null);
+    }
+  }
+
   function addExpense() {
     if (!toNumber(exp.amount)) return;
     onAdd({
       id: 'e' + Date.now(), date: exp.date, vehicle: exp.vehicle, driver: exp.driver || '—',
-      category: exp.category, amount: toNumber(exp.amount), remarks: exp.remarks || '—'
+      category: exp.category, amount: toNumber(exp.amount), remarks: exp.remarks || '—', documents
     });
     setExp((f) => ({ ...f, amount: '0', remarks: '' }));
+    setDocuments([]);
+    setDocErrorMsg('');
   }
 
   const byKind = new Map<string, number>();
@@ -84,6 +153,27 @@ export function MonthlyExpenses({ expenses: allExpenses, trips, vehicles, driver
           <div className="field"><label>Amount (₹)</label><input className="input" type="number" value={exp.amount} onChange={set('amount')} /></div>
           <div className="field"><label>Remarks</label><input className="input" type="text" placeholder="Remarks" value={exp.remarks} onChange={set('remarks')} /></div>
           <button type="button" className="btn btn-primary" style={{ justifySelf: 'start' }} onClick={addExpense} disabled={categories.length === 0}>Add expense</button>
+        </div>
+
+        <div style={{ marginTop: 16, borderTop: '2px solid var(--color-divider)', paddingTop: 16 }}>
+          <div style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--color-neutral-700)', marginBottom: 12 }}>Bills</div>
+          <input ref={fileInputRef} type="file" multiple accept="image/*,.pdf" onChange={onFilesChosen} style={{ marginBottom: docErrorMsg || documents.length ? 10 : 0 }} />
+          {docErrorMsg && (
+            <div style={{ fontSize: 12, color: 'var(--color-accent-800)', marginBottom: 10 }}>{docErrorMsg}</div>
+          )}
+          {documents.length > 0 && (
+            <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 6 }}>
+              {documents.map((d) => (
+                <li key={d.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, fontSize: 13, background: 'var(--color-surface)', padding: '6px 10px' }}>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.filename}</span>
+                  <span style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                    <button type="button" className="btn btn-ghost" style={{ padding: '0 4px', fontSize: 12 }} onClick={() => viewDocument('', d)}>View</button>
+                    <button type="button" className="btn btn-ghost" style={{ padding: '0 4px', fontSize: 12 }} onClick={() => removeDocument(d.id)}>Remove</button>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
 
@@ -135,7 +225,7 @@ export function MonthlyExpenses({ expenses: allExpenses, trips, vehicles, driver
                 >
                   Date <span aria-hidden="true">{dateSort === 'asc' ? '▲' : '▼'}</span>
                 </button>
-              </th><th>Vehicle</th><th>Loading date</th><th>Driver</th><th>Description</th><th>Remarks</th><th style={{ textAlign: 'right' }}>Amount</th><th></th>
+              </th><th>Vehicle</th><th>Loading date</th><th>Driver</th><th>Description</th><th>Remarks</th><th style={{ textAlign: 'right' }}>Amount</th><th>Bills</th><th></th>
             </tr>
           </thead>
           <tbody>
@@ -153,6 +243,22 @@ export function MonthlyExpenses({ expenses: allExpenses, trips, vehicles, driver
                 </td>
                 <td style={{ color: 'var(--color-neutral-700)' }}>{e.remarks}</td>
                 <td style={{ textAlign: 'right', fontWeight: 700 }}>{rupees(e.amount)}</td>
+                <td>
+                  {e.documents.length === 0 ? (
+                    <span style={{ color: 'var(--color-neutral-700)' }}>—</span>
+                  ) : (
+                    <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      {e.documents.map((d) => (
+                        <button
+                          key={d.id} type="button" className="btn btn-ghost" style={{ padding: 0, fontSize: 12, justifyContent: 'flex-start', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                          disabled={viewingDoc === d.id} onClick={() => viewDocument(e.id, d)} title={d.filename}
+                        >
+                          {viewingDoc === d.id ? 'Opening…' : d.filename}
+                        </button>
+                      ))}
+                    </span>
+                  )}
+                </td>
                 <td style={{ textAlign: 'right' }}>
                   <button type="button" className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 12, color: 'var(--color-accent-700)' }} onClick={() => onDelete(e)}>
                     Delete

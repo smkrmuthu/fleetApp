@@ -242,6 +242,24 @@ export const receipts = sqliteTable('receipts', {
   createdAt: text('created_at').notNull().default(sql`(current_timestamp)`)
 });
 
+// A monthly expense's supporting bills — a photo/PDF per file, same
+// multi-file pattern as trip_documents (monthly_expenses.receipt_id above is
+// a separate, older single-receipt column that nothing writes to).
+export const monthlyExpenseDocuments = sqliteTable(
+  'monthly_expense_documents',
+  {
+    id: text('id').primaryKey(),
+    orgId: text('org_id').notNull().references(() => orgs.id, { onDelete: 'cascade' }),
+    monthlyExpenseId: text('monthly_expense_id').notNull().references(() => monthlyExpenses.id, { onDelete: 'cascade' }),
+    receiptId: text('receipt_id').notNull().references(() => receipts.id),
+    createdBy: text('created_by').references(() => users.id),
+    createdAt: text('created_at').notNull().default(sql`(current_timestamp)`)
+  },
+  (t) => ({
+    expenseIdx: index('monthly_expense_documents_expense').on(t.orgId, t.monthlyExpenseId)
+  })
+);
+
 export const notifications = sqliteTable(
   'notifications',
   {

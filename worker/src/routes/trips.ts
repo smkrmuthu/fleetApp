@@ -5,7 +5,7 @@ import type { Env, Vars } from '../types';
 import { getDb, newId, nowIso } from '../db';
 import { trips, tripExpenses, notifications, receipts, tripDocuments, tripStops, drivers, counters } from '../../drizzle/schema';
 import { base64ToBytes, filenameFromKey, storageKeyFor } from '../lib/storage';
-import { ALLOWED_DOCUMENT_MIME_TYPES, matchesDeclaredType, sanitizeFilenameForHeader } from '../lib/fileValidation';
+import { ALLOWED_DOCUMENT_MIME_TYPES, MAX_DOCUMENT_BASE64_LENGTH, documentInputSchema, sanitizeFilenameForHeader } from '../lib/fileValidation';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { buildFilters, combine, parsePagination } from '../lib/filters';
 import { writeAudit } from '../lib/audit';
@@ -24,20 +24,6 @@ const expenseLineSchema = z
     details: z.string().optional()
   })
   .refine((l) => l.kind !== 'other' || !!l.details?.trim(), { message: "details is required when kind = 'other'", path: ['details'] });
-
-// mimeType is a client-supplied claim — the .refine() below re-derives the
-// truth from the file's own magic bytes so an attacker can't label an HTML
-// or SVG payload as an image to get it stored (and later served) as one.
-const documentInputSchema = z
-  .object({
-    filename: z.string().min(1),
-    mimeType: z.enum(ALLOWED_DOCUMENT_MIME_TYPES),
-    base64: z.string().min(1)
-  })
-  .refine((doc) => matchesDeclaredType(doc.mimeType, base64ToBytes(doc.base64)), {
-    message: 'File content does not match its declared type',
-    path: ['mimeType']
-  });
 
 type Problem = { message: string; field: string };
 type StopReading = { odo?: number | null };
@@ -165,8 +151,6 @@ const completeSchema = z.object({
   unloadDate: z.string().optional(),
   remarks: z.string().optional()
 });
-
-const MAX_DOCUMENT_BASE64_LENGTH = 12_000_000;
 
 // Uploads one file to R2 and links it to the trip via a receipts row +
 // a trip_documents row. Returns the shape the frontend renders directly.

@@ -150,6 +150,7 @@ export interface MonthlyExpense {
   category: ExpenseCategory;
   amount: number;
   remarks: string;
+  documents: TripDocument[];
 }
 
 export interface TripFormState {

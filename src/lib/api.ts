@@ -275,12 +275,14 @@ export async function changeUserPassword(id: string, password: string): Promise<
 // ── monthly expenses ─────────────────────────────────────────────────────
 interface ApiMonthlyExpense {
   id: string; vehicleId: string; driverId: string | null; spentOn: string; category: string; amountPaise: number; remarks: string | null;
+  documents?: { id: string; filename: string; mimeType: string | null }[];
 }
 
 function monthlyExpenseFromApi(e: ApiMonthlyExpense): MonthlyExpense {
   return {
     id: e.id, date: formatDisplayDate(e.spentOn), vehicle: e.vehicleId, driver: e.driverId ?? '—',
-    category: e.category, amount: paiseToRupees(e.amountPaise), remarks: e.remarks ?? '—'
+    category: e.category, amount: paiseToRupees(e.amountPaise), remarks: e.remarks ?? '—',
+    documents: (e.documents ?? []).map((d) => ({ id: d.id, filename: d.filename, mimeType: d.mimeType ?? undefined }))
   };
 }
 
@@ -293,14 +295,37 @@ export async function fetchMonthlyExpenses(): Promise<MonthlyExpense[]> {
   return res.monthlyExpenses.map(monthlyExpenseFromApi);
 }
 
-export async function createMonthlyExpense(e: { vehicle: string; driver: string; date: string; category: ExpenseCategory; amount: number; remarks: string }): Promise<void> {
+export async function createMonthlyExpense(e: { vehicle: string; driver: string; date: string; category: ExpenseCategory; amount: number; remarks: string; documents: TripDocument[] }): Promise<void> {
   await request('/monthly-expenses', {
     method: 'POST',
     body: JSON.stringify({
       vehicleId: e.vehicle, driverId: orUndefined(e.driver), spentOn: e.date,
-      category: e.category, amountPaise: rupeesToPaise(e.amount), remarks: e.remarks || undefined
+      category: e.category, amountPaise: rupeesToPaise(e.amount), remarks: e.remarks || undefined,
+      documents: e.documents.filter((d) => d.base64).map((d) => ({ filename: d.filename, mimeType: d.mimeType || 'application/octet-stream', base64: d.base64 }))
     })
   });
+}
+
+export async function uploadMonthlyExpenseDocument(expenseId: string, doc: TripDocument): Promise<TripDocument> {
+  const res = await request<{ id: string; filename: string; mimeType: string | null }>(`/monthly-expenses/${encodeURIComponent(expenseId)}/documents`, {
+    method: 'POST',
+    body: JSON.stringify({ filename: doc.filename, mimeType: doc.mimeType || 'application/octet-stream', base64: doc.base64 })
+  });
+  return { id: res.id, filename: res.filename, mimeType: res.mimeType ?? undefined };
+}
+
+export async function deleteMonthlyExpenseDocument(expenseId: string, docId: string): Promise<void> {
+  await request(`/monthly-expenses/${encodeURIComponent(expenseId)}/documents/${encodeURIComponent(docId)}`, { method: 'DELETE' });
+}
+
+export async function fetchMonthlyExpenseDocumentBlobUrl(expenseId: string, docId: string): Promise<string> {
+  const token = getToken();
+  const res = await fetch(`${API_BASE}/monthly-expenses/${encodeURIComponent(expenseId)}/documents/${encodeURIComponent(docId)}/file`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {}
+  });
+  if (!res.ok) throw new ApiError('Could not load the file', res.status);
+  const blob = await res.blob();
+  return URL.createObjectURL(blob);
 }
 
 // ── expense descriptions (Master) ───────────────────────────────────────

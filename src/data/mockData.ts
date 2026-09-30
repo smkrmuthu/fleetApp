@@ -1,12 +1,12 @@
 import type { AppNotification, DriverMaster, MonthlyExpense, Role, TabId, UserAccount } from '../types';
 
 export const MONTHLY_EXPENSES: MonthlyExpense[] = [
-  { id: 'e1', date: '01 Sep', vehicle: 'TN38 AB 4412', driver: 'Murugan S', category: 'Detention / halting charges', amount: 28600, remarks: 'EWB 2710 0345 6789 · yard halt' },
-  { id: 'e2', date: '02 Sep', vehicle: 'TN45 CQ 9087', driver: 'Rafiq A', category: 'Permit / tax', amount: 12400, remarks: 'Sept transit permit' },
-  { id: 'e3', date: '04 Sep', vehicle: 'KA01 MD 7731', driver: 'Prakash N', category: 'Detention / halting charges', amount: 19800, remarks: '2 days, EWB 1145 0032 8871' },
-  { id: 'e4', date: '06 Sep', vehicle: 'TN52 BK 2290', driver: 'Ilango R', category: 'Loan / lease', amount: 56200, remarks: 'EMI' },
-  { id: 'e5', date: '07 Sep', vehicle: 'TN38 AB 4412', driver: 'Murugan S', category: 'Insurance', amount: 18400, remarks: 'Goods-in-transit insurance, Q3' },
-  { id: 'e6', date: '09 Sep', vehicle: 'TN45 CQ 9087', driver: 'Rafiq A', category: 'Maintenance', amount: 5200, remarks: 'Oil change' }
+  { id: 'e1', date: '01 Sep', vehicle: 'TN38 AB 4412', driver: 'Murugan S', category: 'Detention / halting charges', amount: 28600, remarks: 'EWB 2710 0345 6789 · yard halt', documents: [] },
+  { id: 'e2', date: '02 Sep', vehicle: 'TN45 CQ 9087', driver: 'Rafiq A', category: 'Permit / tax', amount: 12400, remarks: 'Sept transit permit', documents: [] },
+  { id: 'e3', date: '04 Sep', vehicle: 'KA01 MD 7731', driver: 'Prakash N', category: 'Detention / halting charges', amount: 19800, remarks: '2 days, EWB 1145 0032 8871', documents: [] },
+  { id: 'e4', date: '06 Sep', vehicle: 'TN52 BK 2290', driver: 'Ilango R', category: 'Loan / lease', amount: 56200, remarks: 'EMI', documents: [] },
+  { id: 'e5', date: '07 Sep', vehicle: 'TN38 AB 4412', driver: 'Murugan S', category: 'Insurance', amount: 18400, remarks: 'Goods-in-transit insurance, Q3', documents: [] },
+  { id: 'e6', date: '09 Sep', vehicle: 'TN45 CQ 9087', driver: 'Rafiq A', category: 'Maintenance', amount: 5200, remarks: 'Oil change', documents: [] }
 ];
 
 // Fixed swatches for the descriptions that ship by default, so they don't

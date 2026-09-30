@@ -1,8 +1,9 @@
-// A trip document's storage key embeds the filename after a `__` separator
-// (a uuid receipt id never contains one) so the original filename survives
-// without needing its own database column.
-export function storageKeyFor(orgId: string, tripId: string, receiptId: string, filename: string): string {
-  return `${orgId}/${tripId}/${receiptId}__${filename}`;
+// A document's storage key embeds the filename after a `__` separator (a
+// uuid receipt id never contains one) so the original filename survives
+// without needing its own database column. `parentId` is whatever entity
+// the document is attached to — a trip id, a monthly expense id, etc.
+export function storageKeyFor(orgId: string, parentId: string, receiptId: string, filename: string): string {
+  return `${orgId}/${parentId}/${receiptId}__${filename}`;
 }
 
 export function filenameFromKey(key: string): string {

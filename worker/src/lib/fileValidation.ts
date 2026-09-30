@@ -1,9 +1,12 @@
-// Trip document uploads (fuel/toll receipts, invoices) are the one place a
-// Driver can put attacker-controlled bytes in front of Office/Manager, who
-// then open them. mimeType alone is a client-supplied claim — matching it
-// against the file's actual magic bytes is what stops someone uploading an
-// HTML/SVG payload labelled as a JPEG to get it served (and rendered) as
-// something else entirely.
+// Document uploads (fuel/toll receipts, invoices, monthly-expense bills) are
+// the one place a Driver/Office user can put attacker-controlled bytes in
+// front of someone else, who then opens them. mimeType alone is a
+// client-supplied claim — matching it against the file's actual magic bytes
+// is what stops someone uploading an HTML/SVG payload labelled as a JPEG to
+// get it served (and rendered) as something else entirely.
+
+import { z } from 'zod';
+import { base64ToBytes } from './storage';
 
 function bytesStartWith(bytes: Uint8Array, offset: number, ascii: string): boolean {
   if (bytes.length < offset + ascii.length) return false;
@@ -46,3 +49,19 @@ export function matchesDeclaredType(mimeType: string, bytes: Uint8Array): boolea
 export function sanitizeFilenameForHeader(filename: string): string {
   return filename.replace(/["\r\n]/g, '_');
 }
+
+export const MAX_DOCUMENT_BASE64_LENGTH = 12_000_000;
+
+// mimeType is a client-supplied claim — the .refine() below re-derives the
+// truth from the file's own magic bytes so an attacker can't label an HTML
+// or SVG payload as an image to get it stored (and later served) as one.
+export const documentInputSchema = z
+  .object({
+    filename: z.string().min(1),
+    mimeType: z.enum(ALLOWED_DOCUMENT_MIME_TYPES),
+    base64: z.string().min(1)
+  })
+  .refine((doc) => matchesDeclaredType(doc.mimeType, base64ToBytes(doc.base64)), {
+    message: 'File content does not match its declared type',
+    path: ['mimeType']
+  });
