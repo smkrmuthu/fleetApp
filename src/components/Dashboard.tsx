@@ -74,7 +74,7 @@ function VehicleGroupChart({ title, data, series }: { title: string; data: Recor
       </div>
       <div style={{ display: 'flex', marginTop: 6 }}>
         {data.map((d) => (
-          <div key={d.id as string} style={{ flex: 1, textAlign: 'center', fontSize: 11, color: 'var(--color-neutral-700)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.id}</div>
+          <div key={d.id as string} style={{ flex: 1, textAlign: 'center', fontSize: 11, fontWeight: 700, color: 'var(--color-neutral-700)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.id}</div>
         ))}
       </div>
     </div>
