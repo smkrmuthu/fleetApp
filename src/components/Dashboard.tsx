@@ -43,7 +43,7 @@ interface VehicleSeries { key: string; label: string; color: string; fmt: (n: nu
 // every bar in the chart (matching how the reference sheet this was modelled
 // on pairs very different metrics, e.g. trip counts against km/l mileage).
 function VehicleGroupChart({ title, data, series }: { title: string; data: Record<string, number | string>[]; series: VehicleSeries[] }) {
-  const chartH = 120;
+  const chartH = 160;
   const max = Math.max(1, ...data.flatMap((d) => series.map((s) => Number(d[s.key]))));
   return (
     <div style={cardStyle}>
@@ -64,7 +64,7 @@ function VehicleGroupChart({ title, data, series }: { title: string; data: Recor
               const val = Number(d[s.key]);
               return (
                 <div key={s.key} style={{ display: 'flex', flexDirection: 'column-reverse', alignItems: 'center', gap: 2 }}>
-                  <div title={`${d.id}: ${s.label} ${s.fmt(val)}`} style={{ width: 14, height: Math.max(1, (val / max) * chartH), background: s.color, borderRadius: '2px 2px 0 0' }} />
+                  <div title={`${d.id}: ${s.label} ${s.fmt(val)}`} style={{ width: 18, height: Math.max(1, (val / max) * chartH), background: s.color, borderRadius: '2px 2px 0 0' }} />
                   <div style={{ fontSize: 10, color: 'var(--color-neutral-700)', whiteSpace: 'nowrap' }}>{s.fmt(val)}</div>
                 </div>
               );
@@ -204,7 +204,7 @@ export function Dashboard({ trips, expenses, vehicles, drivers, leaves, unavaila
             </table>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16, marginBottom: 28 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16, marginBottom: 28 }}>
             <VehicleGroupChart
               title="Trips vs Mileage" data={vehicleStats}
               series={[
@@ -226,10 +226,6 @@ export function Dashboard({ trips, expenses, vehicles, drivers, leaves, unavaila
                 { key: 'expense', label: 'Expense', color: 'var(--color-accent-700)', fmt: (n) => rupees(n) },
                 { key: 'revenue', label: 'Revenue', color: 'var(--color-profit)', fmt: (n) => rupees(n) }
               ]}
-            />
-            <VehicleGroupChart
-              title="On-road days" data={vehicleStats}
-              series={[{ key: 'onRoadDays', label: 'On-road days', color: 'var(--color-neutral-800)', fmt: (n) => formatNum(n) }]}
             />
           </div>
         </>
