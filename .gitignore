@@ -10,3 +10,4 @@ android/build/
 android/local.properties
 .wrangler/
 worker/.dev.vars
+worker/backups/

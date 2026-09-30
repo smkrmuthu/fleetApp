@@ -24,7 +24,8 @@ const inviteSchema = z.object({
   role: z.enum(['driver', 'office', 'manager']),
   password: z.string().min(6),
   branchId: z.string().optional(),
-  driverId: z.string().optional()
+  driverId: z.string().optional(),
+  userId: z.string().optional()
 });
 
 // A real invite flow (SMS/email link, user sets their own password) is
@@ -36,6 +37,11 @@ userRoutes.post('/invite', requireRole('manager'), async (c) => {
   if (!parsed.success) return c.json({ error: { code: 'validation_error', message: parsed.error.message } }, 422);
 
   const db = getDb(c.env);
+  if (parsed.data.userId) {
+    const [clash] = await db.select().from(users).where(and(eq(users.orgId, auth.orgId), eq(users.userId, parsed.data.userId))).limit(1);
+    if (clash) return c.json({ error: { code: 'conflict', message: `User ID "${parsed.data.userId}" is already used by ${clash.fullName}` } }, 409);
+  }
+
   const { password, ...rest } = parsed.data;
   const { hash, salt } = await hashPassword(password);
   const id = newId();
@@ -52,7 +58,8 @@ const patchSchema = z.object({
   fullName: z.string().trim().min(1).optional(),
   phone: z.string().trim().min(6).optional(),
   role: z.enum(['driver', 'office', 'manager']).optional(),
-  branchId: z.string().nullable().optional()
+  branchId: z.string().nullable().optional(),
+  userId: z.string().nullable().optional()
 });
 
 userRoutes.patch('/:id', requireRole('manager'), async (c) => {
@@ -75,12 +82,18 @@ userRoutes.patch('/:id', requireRole('manager'), async (c) => {
     const [clash] = await db.select().from(users).where(and(eq(users.orgId, auth.orgId), eq(users.phone, parsed.data.phone))).limit(1);
     if (clash) return c.json({ error: { code: 'conflict', message: `${parsed.data.phone} is already used by ${clash.fullName}` } }, 409);
   }
+  const nextUserId = parsed.data.userId && parsed.data.userId.trim() ? parsed.data.userId.trim() : null;
+  if (nextUserId && nextUserId !== existing.userId) {
+    const [clash] = await db.select().from(users).where(and(eq(users.orgId, auth.orgId), eq(users.userId, nextUserId))).limit(1);
+    if (clash) return c.json({ error: { code: 'conflict', message: `User ID "${nextUserId}" is already used by ${clash.fullName}` } }, 409);
+  }
 
   const changes: Record<string, string | null> = {};
   if (parsed.data.fullName !== undefined) changes.fullName = parsed.data.fullName;
   if (parsed.data.phone !== undefined) changes.phone = parsed.data.phone;
   if (parsed.data.role !== undefined) changes.role = parsed.data.role;
   if (parsed.data.branchId !== undefined) changes.branchId = parsed.data.branchId && parsed.data.branchId.trim() ? parsed.data.branchId : null;
+  if (parsed.data.userId !== undefined) changes.userId = nextUserId;
   if (Object.keys(changes).length === 0) return c.json({ error: { code: 'validation_error', message: 'Nothing to update' } }, 422);
 
   await db.update(users).set(changes as any).where(and(eq(users.id, id), eq(users.orgId, auth.orgId)));

@@ -4,11 +4,11 @@ import logoFullWhite from '../assets/logo-full-white.png';
 import logoFleetWhite from '../assets/logo-fleet-white.png';
 
 interface Props {
-  onSignIn: (phone: string, password: string) => Promise<void>;
+  onSignIn: (identifier: string, password: string) => Promise<void>;
 }
 
 export function SignIn({ onSignIn }: Props) {
-  const [phone, setPhone] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [pass, setPass] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -58,12 +58,12 @@ export function SignIn({ onSignIn }: Props) {
           style={{ display: 'grid', gap: 16 }}
           onSubmit={(e) => {
             e.preventDefault();
-            attempt(phone, pass);
+            attempt(identifier, pass);
           }}
         >
           <div className="field">
-            <label>Email or Mobile number</label>
-            <input className="input" type="text" placeholder="name@smt.com" value={phone} onChange={(e) => setPhone(e.target.value)} autoFocus />
+            <label>Mobile number or User ID</label>
+            <input className="input" type="text" placeholder="Mobile number or User ID" value={identifier} onChange={(e) => setIdentifier(e.target.value)} autoFocus />
           </div>
           <div className="field">
             <label>Password</label>

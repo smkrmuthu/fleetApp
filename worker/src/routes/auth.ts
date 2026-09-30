@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { eq } from 'drizzle-orm';
+import { eq, or } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Env, Vars } from '../types';
 import { getDb } from '../db';
@@ -11,7 +11,13 @@ import { checkRateLimit, getClientIp } from '../lib/rateLimit';
 
 export const authRoutes = new Hono<{ Bindings: Env; Variables: Vars }>();
 
-const loginSchema = z.object({ phone: z.string().min(6), password: z.string().min(1) });
+// `identifier` is either the phone number or the optional Manager-set User ID
+// (see users.userId) — either works with the account's password. `phone` is
+// accepted too, purely so an already-deployed frontend build doesn't break
+// during the rollout window before it picks up the `identifier` rename.
+const loginSchema = z
+  .object({ identifier: z.string().min(1).optional(), phone: z.string().min(1).optional(), password: z.string().min(1) })
+  .refine((v) => v.identifier || v.phone, { message: 'identifier required' });
 
 // OTP sign-in (POST /auth/otp:request, /auth/otp:verify) is not implemented
 // yet — it needs an SMS provider (Twilio or similar) this deployment isn't
@@ -30,26 +36,29 @@ authRoutes.post('/password', async (c) => {
 
   const body = await c.req.json().catch(() => null);
   const parsed = loginSchema.safeParse(body);
-  if (!parsed.success) return c.json({ error: { code: 'validation_error', message: 'phone and password required' } }, 422);
+  if (!parsed.success) return c.json({ error: { code: 'validation_error', message: 'Phone/User ID and password required' } }, 422);
 
-  const phoneKey = parsed.data.phone.toLowerCase().trim();
-  const phoneLimit = checkRateLimit(phoneKey, { windowSeconds: 60, maxRequests: 5, keyPrefix: 'auth_account' });
-  if (!phoneLimit.allowed) {
-    c.header('Retry-After', String(phoneLimit.resetInSeconds));
+  const identifier = (parsed.data.identifier ?? parsed.data.phone)!;
+  const identifierKey = identifier.toLowerCase().trim();
+  const identifierLimit = checkRateLimit(identifierKey, { windowSeconds: 60, maxRequests: 5, keyPrefix: 'auth_account' });
+  if (!identifierLimit.allowed) {
+    c.header('Retry-After', String(identifierLimit.resetInSeconds));
     return c.json(
-      { error: { code: 'rate_limited', message: `Too many sign-in attempts for this account. Please wait ${phoneLimit.resetInSeconds} seconds.` } },
+      { error: { code: 'rate_limited', message: `Too many sign-in attempts for this account. Please wait ${identifierLimit.resetInSeconds} seconds.` } },
       429
     );
   }
 
   const db = getDb(c.env);
-  const [user] = await db.select().from(users).where(eq(users.phone, parsed.data.phone)).limit(1);
+  const [user] = await db.select().from(users)
+    .where(or(eq(users.phone, identifier), eq(users.userId, identifier)))
+    .limit(1);
   if (!user || !user.passwordHash || !user.passwordSalt || user.disabledAt) {
-    return c.json({ error: { code: 'invalid_credentials', message: 'Phone or password is incorrect' } }, 401);
+    return c.json({ error: { code: 'invalid_credentials', message: 'Phone/User ID or password is incorrect' } }, 401);
   }
 
   const ok = await verifyPassword(parsed.data.password, user.passwordHash, user.passwordSalt);
-  if (!ok) return c.json({ error: { code: 'invalid_credentials', message: 'Phone or password is incorrect' } }, 401);
+  if (!ok) return c.json({ error: { code: 'invalid_credentials', message: 'Phone/User ID or password is incorrect' } }, 401);
 
   const access = await signAccessToken(
     { orgId: user.orgId, userId: user.id, role: user.role, driverId: user.driverId },

@@ -84,9 +84,10 @@ function ChangePasswordDialog({
 
 // A Manager creating an account directly, with an initial password they set
 // themselves — there's no SMS/email invite step yet (see the API comment).
-function AddUserDialog({ onSave, onClose }: { onSave: (u: { name: string; phone: string; role: string; password: string; branchId: string }) => Promise<string | null>; onClose: () => void }) {
+function AddUserDialog({ onSave, onClose }: { onSave: (u: { name: string; phone: string; role: string; password: string; branchId: string; userId: string }) => Promise<string | null>; onClose: () => void }) {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [userId, setUserId] = useState('');
   const [role, setRole] = useState('driver');
   const [branchId, setBranchId] = useState('');
   const [password, setPassword] = useState('');
@@ -101,7 +102,7 @@ function AddUserDialog({ onSave, onClose }: { onSave: (u: { name: string; phone:
     if (password !== confirm) return setError("Passwords don't match.");
     setError('');
     setSaving(true);
-    const err = await onSave({ name: name.trim(), phone: phone.trim(), role, password, branchId });
+    const err = await onSave({ name: name.trim(), phone: phone.trim(), role, password, branchId, userId: userId.trim() });
     setSaving(false);
     if (err) setError(err);
     else onClose();
@@ -129,6 +130,11 @@ function AddUserDialog({ onSave, onClose }: { onSave: (u: { name: string; phone:
             <label htmlFor="new-user-phone">Mobile</label>
             <input id="new-user-phone" className="input" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
             <div style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 4 }}>This is what they'll sign in with.</div>
+          </div>
+          <div className="field">
+            <label htmlFor="new-user-userid">User ID (optional)</label>
+            <input id="new-user-userid" className="input" value={userId} onChange={(e) => setUserId(e.target.value)} />
+            <div style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 4 }}>An alternate sign-in name, if you'd rather they not use the mobile number.</div>
           </div>
           <div className="field">
             <label htmlFor="new-user-role">Role</label>
@@ -172,7 +178,7 @@ interface Props {
   vehicles: Vehicle[];
   drivers: DriverMaster[];
   users: (UserAccount & { id: string })[];
-  onAddUser: (u: { name: string; phone: string; role: string; password: string; branchId: string }) => Promise<string | null>;
+  onAddUser: (u: { name: string; phone: string; role: string; password: string; branchId: string; userId: string }) => Promise<string | null>;
   onAddVehicle: (v: Vehicle) => Promise<string | null>;
   onRemoveVehicle: (id: string) => void;
   onAddDriver: (d: DriverMaster) => Promise<string | null>;
@@ -180,7 +186,7 @@ interface Props {
   onRemoveUser: (id: string) => void;
   onUpdateVehicle: (id: string, v: VehicleEdit) => Promise<string | null>;
   onUpdateDriver: (name: string, d: { licence: string; expiry: string; credential: string }) => Promise<string | null>;
-  onUpdateUser: (id: string, u: { name: string; phone: string; role: string; branchId: string }) => Promise<string | null>;
+  onUpdateUser: (id: string, u: { name: string; phone: string; role: string; branchId: string; userId: string }) => Promise<string | null>;
   onChangeUserPassword: (id: string, password: string) => Promise<string | null>;
   canDeleteAccounts: boolean;
   canEditAccounts: boolean;
@@ -299,6 +305,7 @@ export function People({
     const fields: DialogField[] = [
       { key: 'name', label: 'Name', display: u.name, value: u.name, required: true },
       { key: 'phone', label: 'Mobile', type: 'tel', display: u.phone, value: u.phone, required: true, hint: 'This is the number they sign in with.' },
+      { key: 'userId', label: 'User ID', display: u.userId || '—', value: u.userId ?? '', hint: "An alternate sign-in name, if you'd rather they not use the mobile number." },
       {
         key: 'role', label: 'Role', type: 'select', display: u.role, value: u.roleKey ?? 'driver',
         options: [{ value: 'driver', label: 'Driver' }, { value: 'office', label: 'Documentation (Office)' }, { value: 'manager', label: 'Manager' }],
@@ -311,7 +318,7 @@ export function People({
     return (
       <RecordDialog
         key={`user-${u.id}-${dialog.edit}`} title={u.name} subtitle="User account" fields={fields} startInEdit={dialog.edit} canEdit={canEditAccounts} onClose={close}
-        onSave={(x) => onUpdateUser(u.id, { name: x.name, phone: x.phone, role: x.role, branchId: x.branchId })}
+        onSave={(x) => onUpdateUser(u.id, { name: x.name, phone: x.phone, role: x.role, branchId: x.branchId, userId: x.userId })}
       />
     );
   }
@@ -343,7 +350,7 @@ export function People({
         <table className="table" style={{ minWidth: 1150 }}>
           <thead>
             <tr>
-              <th>Name</th><th>Role</th><th>Mobile</th><th>Branch</th><th>Can see</th><th>Last active</th>
+              <th>Name</th><th>Role</th><th>Mobile</th><th>User ID</th><th>Branch</th><th>Can see</th><th>Last active</th>
               <th className="col-actions"></th>
             </tr>
           </thead>
@@ -353,6 +360,7 @@ export function People({
                 <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{u.name}</td>
                 <td>{u.isManager ? <span className="tag tag-accent">{u.role}</span> : <span className="tag tag-outline">{u.role}</span>}</td>
                 <td style={{ fontFamily: 'ui-monospace, monospace', fontSize: 12, whiteSpace: 'nowrap' }}>{u.phone}</td>
+                <td style={{ fontFamily: 'ui-monospace, monospace', fontSize: 12, whiteSpace: 'nowrap' }}>{u.userId || '—'}</td>
                 <td>{u.branch}</td>
                 <td style={{ color: 'var(--color-neutral-700)' }}>{u.access}</td>
                 <td style={{ whiteSpace: 'nowrap' }}>{u.seen}</td>

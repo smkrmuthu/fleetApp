@@ -41,6 +41,10 @@ export const users = sqliteTable(
     role: text('role', { enum: ['driver', 'office', 'manager'] }).notNull(),
     fullName: text('full_name').notNull(),
     phone: text('phone').notNull(),
+    // Optional alternate sign-in name, Manager-set — lets a user log in with
+    // this instead of their phone number. Nullable, and SQLite unique indexes
+    // treat multiple NULLs as distinct, so phone-only accounts are unaffected.
+    userId: text('user_id'),
     passwordHash: text('password_hash'),
     passwordSalt: text('password_salt'),
     driverId: text('driver_id').references((): any => drivers.id),
@@ -48,7 +52,8 @@ export const users = sqliteTable(
     disabledAt: text('disabled_at')
   },
   (t) => ({
-    orgPhoneUnique: uniqueIndex('users_org_phone').on(t.orgId, t.phone)
+    orgPhoneUnique: uniqueIndex('users_org_phone').on(t.orgId, t.phone),
+    orgUserIdUnique: uniqueIndex('users_org_user_id').on(t.orgId, t.userId)
   })
 );
 

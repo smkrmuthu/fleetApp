@@ -99,8 +99,8 @@ export function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function signIn(phone: string, password: string) {
-    const { role: r, name } = await api.login(phone, password);
+  async function signIn(identifier: string, password: string) {
+    const { role: r, name } = await api.login(identifier, password);
     setRole(r);
     setCurrentUserName(name);
     setTab(ROLE_TABS[r][0]);
@@ -348,7 +348,7 @@ export function App() {
     }
   }
 
-  async function addUser(u: { name: string; phone: string; role: string; password: string; branchId: string }): Promise<string | null> {
+  async function addUser(u: { name: string; phone: string; role: string; password: string; branchId: string; userId: string }): Promise<string | null> {
     try {
       await api.createUser(u);
       setUsers(await api.fetchUsers());
@@ -358,7 +358,7 @@ export function App() {
     }
   }
 
-  async function editUser(id: string, u: { name: string; phone: string; role: string; branchId: string }): Promise<string | null> {
+  async function editUser(id: string, u: { name: string; phone: string; role: string; branchId: string; userId: string }): Promise<string | null> {
     try {
       await api.updateUser(id, u);
       setUsers(await api.fetchUsers());

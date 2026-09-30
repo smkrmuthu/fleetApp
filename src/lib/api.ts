@@ -121,10 +121,11 @@ const BRANCH_NAME: Record<string, string> = {
 export const BRANCH_OPTIONS = Object.entries(BRANCH_NAME).map(([id, name]) => ({ id, name }));
 
 // ── auth ─────────────────────────────────────────────────────────────────
-export async function login(phone: string, password: string): Promise<{ role: Role; name: string }> {
+// `identifier` is either the phone number or a user's optional User ID.
+export async function login(identifier: string, password: string): Promise<{ role: Role; name: string }> {
   const res = await request<{ access: string; user: { name: string; role: ApiRole } }>('/auth/password', {
     method: 'POST',
-    body: JSON.stringify({ phone, password })
+    body: JSON.stringify({ identifier, password })
   });
   setToken(res.access);
   return { role: ROLE_FROM_API[res.user.role], name: res.user.name };
@@ -228,7 +229,7 @@ export async function deleteDriver(name: string): Promise<void> {
 
 // ── users ────────────────────────────────────────────────────────────────
 interface ApiUser {
-  id: string; fullName: string; role: ApiRole; phone: string; branchId: string | null; lastSeenAt: string | null;
+  id: string; fullName: string; role: ApiRole; phone: string; branchId: string | null; userId: string | null; lastSeenAt: string | null;
 }
 
 function userFromApi(u: ApiUser): UserAccount & { id: string } {
@@ -237,7 +238,7 @@ function userFromApi(u: ApiUser): UserAccount & { id: string } {
     id: u.id, name: u.fullName, role: roleLabel, phone: u.phone,
     branch: (u.branchId && BRANCH_NAME[u.branchId]) ?? '—',
     access: ROLE_ACCESS[u.role], seen: formatSeen(u.lastSeenAt), isManager: u.role === 'manager',
-    roleKey: u.role, branchId: u.branchId ?? ''
+    roleKey: u.role, branchId: u.branchId ?? '', userId: u.userId ?? ''
   };
 }
 
@@ -249,17 +250,17 @@ export async function fetchUsers(): Promise<(UserAccount & { id: string })[]> {
 // The server route is still named /invite (a real SMS/email invite flow is
 // future work — see its own comment) but a Manager sets the password
 // directly here, so the account is usable immediately.
-export async function createUser(u: { name: string; phone: string; role: string; password: string; branchId: string }): Promise<void> {
+export async function createUser(u: { name: string; phone: string; role: string; password: string; branchId: string; userId: string }): Promise<void> {
   await request('/users/invite', {
     method: 'POST',
-    body: JSON.stringify({ fullName: u.name, phone: u.phone, role: u.role, password: u.password, branchId: orUndefined(u.branchId) })
+    body: JSON.stringify({ fullName: u.name, phone: u.phone, role: u.role, password: u.password, branchId: orUndefined(u.branchId), userId: orUndefined(u.userId) })
   });
 }
 
-export async function updateUser(id: string, u: { name: string; phone: string; role: string; branchId: string }): Promise<void> {
+export async function updateUser(id: string, u: { name: string; phone: string; role: string; branchId: string; userId: string }): Promise<void> {
   await request(`/users/${encodeURIComponent(id)}`, {
     method: 'PATCH',
-    body: JSON.stringify({ fullName: u.name, phone: u.phone, role: u.role, branchId: u.branchId })
+    body: JSON.stringify({ fullName: u.name, phone: u.phone, role: u.role, branchId: u.branchId, userId: u.userId })
   });
 }
 
