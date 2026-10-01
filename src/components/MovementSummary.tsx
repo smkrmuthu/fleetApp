@@ -93,7 +93,7 @@ export function MovementSummary({ trips, expenses, vehicles, drivers, vehicleFil
     { label: 'Movements', value: formatNum(rows.length), raw: rows.length, fmt: 'int', note: 'gated this month' },
     { label: 'Vehicles', value: formatNum(byVehicle.filter((b) => b.trips).length), raw: byVehicle.filter((b) => b.trips).length, fmt: 'int', note: `active of ${vehicles.length}` },
     { label: 'Total km', value: formatNum(totals.km), raw: totals.km, fmt: 'int', note: 'odometer based' },
-    { label: 'Total tons', value: formatNum(totals.tons, 1), raw: totals.tons, fmt: 'dec', note: 'loading weight' },
+    { label: 'Total tons', value: formatNum(totals.tons, 2), raw: totals.tons, fmt: 'dec', note: 'loading weight' },
     { label: 'Trip expense', value: rupees(totals.exp), raw: totals.exp, fmt: 'money', note: 'diesel, toll, other' },
     { label: 'Fixed costs', value: rupees(monthlyTotal), raw: monthlyTotal, fmt: 'money', note: 'permits, insurance, EMI' },
     { label: 'Avg ₹/km', value: totals.km ? rupees(avgPerKm) : '₹0', raw: avgPerKm, fmt: 'money', note: 'running cost' },
@@ -193,7 +193,7 @@ export function MovementSummary({ trips, expenses, vehicles, drivers, vehicleFil
                 <td style={{ color: 'var(--color-neutral-700)' }}>{b.model}</td>
                 <td style={{ textAlign: 'right' }}>{formatNum(b.trips)}</td>
                 <td style={{ textAlign: 'right' }}>{formatNum(b.km)}</td>
-                <td style={{ textAlign: 'right' }}>{formatNum(b.tons, 1)}</td>
+                <td style={{ textAlign: 'right' }}>{formatNum(b.tons, 2)}</td>
                 <td style={{ textAlign: 'right' }}>{rupees(b.tripExpense)}</td>
                 <td style={{ textAlign: 'right' }}>{rupees(b.monthly)}</td>
                 <td style={{ textAlign: 'right' }}>{rupees(b.revenue)}</td>
