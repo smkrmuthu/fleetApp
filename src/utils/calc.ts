@@ -22,7 +22,7 @@ export function toNumber(v: string | number | undefined | null): number {
 }
 
 export function rupees(v: number): string {
-  return '₹' + Math.round(v).toLocaleString('en-IN');
+  return '₹' + v.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 export function formatNum(v: number, decimals = 0): string {
