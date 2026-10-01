@@ -47,7 +47,16 @@ export function SignIn({ onSignIn }: Props) {
             Track every trip, fuel stop, and expense across your fleet — from the road to the ledger, in one place for your whole team.
           </div>
         </div>
-        <div style={{ fontSize: 12, letterSpacing: '0.1em', textTransform: 'uppercase', opacity: 0.85 }}>Shree Mira Trader · Chennai &amp; Cochin</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+          <div style={{ fontSize: 12, letterSpacing: '0.1em', textTransform: 'uppercase', opacity: 0.85 }}>Shree Mira Trader · Chennai &amp; Cochin</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', opacity: 0.7 }}>
+            <span>Powered by</span>
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+              <path d="M2 9.5L7 3l5 6.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <span style={{ fontWeight: 700 }}>OneupTech</span>
+          </div>
+        </div>
       </div>
 
       <div className="sign-in-form-panel" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
