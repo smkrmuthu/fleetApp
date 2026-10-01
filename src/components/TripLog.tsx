@@ -10,7 +10,7 @@ import { fetchDocumentBlobUrl, parseDisplayDate } from '../lib/api';
 import { dateInRange, formatDateRange, formatDuration, formatNum, overlappingUnavailability, rupees, tripCost, tripDurationDays, yearOptions } from '../utils/calc';
 import { MonthYearFilter } from './MonthYearFilter';
 
-const DETAIL_COLUMNS = 8; // Trip No., Loading date, Duration, Vehicle, Driver, Tons, KM, Status
+const DETAIL_COLUMNS = 9; // Trip No., Loading date, Duration, Vehicle, Driver, Tons, Odo Meter start, KM, Status
 
 // Everything that used to sit in its own column — item no., the fuel/expense
 // breakdown, revenue/profit, odometer, docs, remarks — now lives here,
@@ -282,7 +282,7 @@ export function TripLog({ trips, vehicles, drivers, leaves, unavailability, vehi
                     Loading Date <span aria-hidden="true">{loadDateSort === 'asc' ? '▲' : '▼'}</span>
                   </button>
                 </th><th>Duration</th><th>Vehicle</th><th>Driver</th>
-                <th style={{ textAlign: 'right' }}>Tons</th><th style={{ textAlign: 'right' }}>KM</th>
+                <th style={{ textAlign: 'right' }}>Tons</th><th style={{ textAlign: 'right' }}>Odo Meter start</th><th style={{ textAlign: 'right' }}>KM</th>
                 <th>Status</th>
               </tr>
             </thead>
@@ -308,7 +308,8 @@ export function TripLog({ trips, vehicles, drivers, leaves, unavailability, vehi
                       <td style={{ whiteSpace: 'nowrap', color: 'var(--color-neutral-700)' }}>{formatDuration(tripDurationDays(t.loadDate, t.unloadDate))}</td>
                       <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{t.vehicle}</td>
                       <td>{t.driver}</td>
-                      <td style={{ textAlign: 'right' }}>{formatNum(t.tons, 1)}</td>
+                      <td style={{ textAlign: 'right' }}>{formatNum(t.tons, 2)}</td>
+                      <td style={{ textAlign: 'right' }}>{t.odoStart != null ? formatNum(t.odoStart) : '—'}</td>
                       <td style={{ textAlign: 'right' }}>{formatNum(t.km)}</td>
                       <td style={{ whiteSpace: 'nowrap' }}>
                         {t.status !== 'approved' ? (
@@ -374,7 +375,7 @@ export function TripLog({ trips, vehicles, drivers, leaves, unavailability, vehi
               <div><div className="stat-label" style={{ marginBottom: 2 }}>Vehicle</div><div style={{ fontWeight: 600 }}>{viewing.vehicle}</div></div>
               <div><div className="stat-label" style={{ marginBottom: 2 }}>Driver</div><div style={{ fontWeight: 600 }}>{viewing.driver}</div></div>
               <div><div className="stat-label" style={{ marginBottom: 2 }}>Duration</div><div style={{ fontWeight: 600 }}>{formatDuration(tripDurationDays(viewing.loadDate, viewing.unloadDate))}</div></div>
-              <div><div className="stat-label" style={{ marginBottom: 2 }}>Tons / KM</div><div style={{ fontWeight: 600 }}>{formatNum(viewing.tons, 1)} / {formatNum(viewing.km)}</div></div>
+              <div><div className="stat-label" style={{ marginBottom: 2 }}>Tons / KM</div><div style={{ fontWeight: 600 }}>{formatNum(viewing.tons, 2)} / {formatNum(viewing.km)}</div></div>
             </div>
             <TripDetailBody t={viewing} showFinancials={showFinancials} />
           </div>

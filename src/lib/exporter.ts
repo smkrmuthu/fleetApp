@@ -105,7 +105,7 @@ export interface PdfReport {
 }
 
 // The built-in PDF fonts have no ₹ or arrow glyph, so PDFs use "Rs." and ">".
-export const rs = (n: number): string => `${n < 0 ? '-' : ''}Rs. ${Math.abs(Math.round(n)).toLocaleString('en-IN')}`;
+export const rs = (n: number): string => `${n < 0 ? '-' : ''}Rs. ${Math.abs(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 // Turns an on-screen string ("₹-3,91,585", "Avg ₹/km") into PDF-safe text.
 export const pdfText = (s: string): string => s.replace(/^₹-/, '-Rs. ').replace(/₹\//g, 'Rs/').replace(/₹/g, 'Rs. ');
