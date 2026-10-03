@@ -60,7 +60,10 @@ function blankLine(): NewLine {
   return { date: todayIso(), kind: 'diesel', entryMode: 'litres', litres: '', rateOverride: null, amount: '0', details: '' };
 }
 
-const EXPENSE_KINDS: TripExpenseKind[] = ['diesel', 'adblue', 'toll', 'other'];
+// Toll isn't entered per trip any more — Fastag is recorded under Monthly
+// Expenses and shown as Toll in the Monthly Report. (Existing trips that
+// already carry a toll line keep it.)
+const EXPENSE_KINDS: TripExpenseKind[] = ['diesel', 'adblue', 'other'];
 const MAX_STOPS = 20;
 
 // Column sizes shared by every Route row so the odometer boxes line up.

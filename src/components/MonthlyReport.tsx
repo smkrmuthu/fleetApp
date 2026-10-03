@@ -151,9 +151,9 @@ export function MonthlyReport({ trips: allTrips, expenses: allExpenses, vehicles
                 <td style={{ textAlign: 'right' }}>{formatNum(b.km)}</td>
                 <td style={{ textAlign: 'right' }}>{formatNum(b.tons, 1)}</td>
                 <td style={{ textAlign: 'right' }}>{rupees(b.diesel)}</td>
-                <td style={{ textAlign: 'right' }}>{rupees(b.toll)}</td>
+                <td style={{ textAlign: 'right' }}>{rupees(b.ledgerToll)}</td>
                 <td style={{ textAlign: 'right' }}>{rupees(b.other)}</td>
-                <td style={{ textAlign: 'right' }}>{rupees(b.monthly)}</td>
+                <td style={{ textAlign: 'right' }}>{rupees(b.ledgerMonthly)}</td>
                 <td style={{ textAlign: 'right' }}>{rupees(b.cost)}</td>
                 <td style={{ textAlign: 'right' }}>{rupees(b.revenue)}</td>
                 <td style={{ textAlign: 'right' }}>

@@ -48,7 +48,6 @@ function TripDetailBody({ t, showFinancials }: { t: Trip; showFinancials: boolea
             {stat('Odometer', t.odoStart != null && t.odoEnd != null ? `${formatNum(t.odoStart)} → ${formatNum(t.odoEnd)} km` : '—')}
             {stat('Diesel', rupees(c.diesel))}
             {stat('AdBlue', c.adblue ? rupees(c.adblue) : '—')}
-            {stat('Toll', rupees(c.toll))}
             {stat('Other', rupees(c.other))}
             {stat('Trip expense', rupees(c.expense))}
             {showFinancials && stat('Revenue', rupees(t.revenue))}

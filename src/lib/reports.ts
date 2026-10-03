@@ -196,7 +196,7 @@ export async function exportReportExcel(d: ReportData): Promise<void> {
     rows: [
       ['Vehicle', 'Trips', 'KM', 'Tons', 'Diesel', 'Toll', 'Other', 'Monthly', 'Total cost', 'Revenue', 'Profit', 'Margin', 'Cost per km'].map((h, i) => th(h, i >= 1)),
       ...d.byVehicle.map((b) => [
-        b.id, int(b.trips), int(b.km), dec(b.tons), money(b.diesel), money(b.toll), money(b.other), money(b.monthly), money(b.cost),
+        b.id, int(b.trips), int(b.km), dec(b.tons), money(b.diesel), money(b.ledgerToll), money(b.other), money(b.ledgerMonthly), money(b.cost),
         money(b.revenue), money(b.profit), b.revenue ? percent(b.profit / b.revenue) : null, b.km ? money(b.cost / b.km) : null
       ] as SheetCell[])
     ],
@@ -231,7 +231,7 @@ export async function exportReportPdf(d: ReportData): Promise<void> {
         heading: 'Vehicle-wise ledger',
         head: ['Vehicle', 'Trips', 'KM', 'Tons', 'Diesel', 'Toll', 'Other', 'Monthly', 'Total cost', 'Revenue', 'Profit', 'Margin'],
         body: d.byVehicle.map((b) => [
-          b.id, String(b.trips), b.km.toLocaleString('en-IN'), b.tons.toFixed(1), rs(b.diesel), rs(b.toll), rs(b.other), rs(b.monthly),
+          b.id, String(b.trips), b.km.toLocaleString('en-IN'), b.tons.toFixed(1), rs(b.diesel), rs(b.ledgerToll), rs(b.other), rs(b.ledgerMonthly),
           rs(b.cost), rs(b.revenue), rs(b.profit), b.revenue ? `${Math.round((b.profit / b.revenue) * 100)}%` : '-'
         ]),
         right: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
