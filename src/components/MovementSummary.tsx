@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { DriverMaster, MonthlyExpense, Trip, Vehicle } from '../types';
 import type { VehicleAgg } from '../utils/aggregate';
-import { aggregateByVehicle } from '../utils/aggregate';
+import { aggregateByVehicle, isFastag } from '../utils/aggregate';
 import { dateInRange, formatDateRange, formatNum, rupees, tripCost, yearOptions } from '../utils/calc';
 import { MonthYearFilter } from './MonthYearFilter';
 import { exportSummaryExcel, exportSummaryPdf, type Stat, type SummaryData } from '../lib/reports';
@@ -52,6 +52,11 @@ export function MovementSummary({ trips, expenses, vehicles, drivers, vehicleFil
     { km: 0, tons: 0, exp: 0, rev: 0 }
   );
   const monthlyTotal = expenseRows.reduce((a, e) => a + e.amount, 0);
+  // Fastag is a toll: shown with trip expense, not fixed costs. Moved, not added,
+  // so profit (which uses the raw totals) is unaffected.
+  const fastagTotal = expenseRows.filter(isFastag).reduce((a, e) => a + e.amount, 0);
+  const tripExpenseShown = totals.exp + fastagTotal;
+  const fixedShown = monthlyTotal - fastagTotal;
 
   const byVehicle = aggregateByVehicle(rows, expenseRows, vehicles);
 
@@ -66,6 +71,8 @@ export function MovementSummary({ trips, expenses, vehicles, drivers, vehicleFil
     if (key === 'id') return b.id;
     if (key === 'model') return b.model;
     if (key === 'costPerKm') return b.km ? b.cost / b.km : -1;
+    if (key === 'tripExpense') return b.ledgerTripExpense;
+    if (key === 'monthly') return b.ledgerMonthly;
     return b[key];
   }
 
@@ -96,15 +103,15 @@ export function MovementSummary({ trips, expenses, vehicles, drivers, vehicleFil
     );
   }
 
-  const avgPerKm = totals.km ? totals.exp / totals.km : 0;
+  const avgPerKm = totals.km ? tripExpenseShown / totals.km : 0;
   const profit = totals.rev - totals.exp - monthlyTotal;
   const stats: Stat[] = [
     { label: 'Movements', value: formatNum(rows.length), raw: rows.length, fmt: 'int', note: 'gated this month' },
     { label: 'Vehicles', value: formatNum(byVehicle.filter((b) => b.trips).length), raw: byVehicle.filter((b) => b.trips).length, fmt: 'int', note: `active of ${vehicles.length}` },
     { label: 'Total km', value: formatNum(totals.km), raw: totals.km, fmt: 'int', note: 'odometer based' },
     { label: 'Total tons', value: formatNum(totals.tons, 2), raw: totals.tons, fmt: 'dec', note: 'loading weight' },
-    { label: 'Trip expense', value: rupees(totals.exp), raw: totals.exp, fmt: 'money', note: 'diesel, toll, other' },
-    { label: 'Fixed costs', value: rupees(monthlyTotal), raw: monthlyTotal, fmt: 'money', note: 'permits, insurance, EMI' },
+    { label: 'Trip expense', value: rupees(tripExpenseShown), raw: tripExpenseShown, fmt: 'money', note: 'diesel, toll, other' },
+    { label: 'Fixed costs', value: rupees(fixedShown), raw: fixedShown, fmt: 'money', note: 'permits, insurance, EMI' },
     { label: 'Avg ₹/km', value: totals.km ? rupees(avgPerKm) : '₹0', raw: avgPerKm, fmt: 'money', note: 'running cost' },
     { label: 'Revenue', value: rupees(totals.rev), raw: totals.rev, fmt: 'money', note: 'billed to consignee' },
     { label: 'Profit', value: rupees(profit), raw: profit, fmt: 'money', note: 'after monthly expenses' }
@@ -211,8 +218,8 @@ export function MovementSummary({ trips, expenses, vehicles, drivers, vehicleFil
                 <td style={{ textAlign: 'right' }}>{formatNum(b.trips)}</td>
                 <td style={{ textAlign: 'right' }}>{formatNum(b.km)}</td>
                 <td style={{ textAlign: 'right' }}>{formatNum(b.tons, 2)}</td>
-                <td style={{ textAlign: 'right' }}>{rupees(b.tripExpense)}</td>
-                <td style={{ textAlign: 'right' }}>{rupees(b.monthly)}</td>
+                <td style={{ textAlign: 'right' }}>{rupees(b.ledgerTripExpense)}</td>
+                <td style={{ textAlign: 'right' }}>{rupees(b.ledgerMonthly)}</td>
                 <td style={{ textAlign: 'right' }}>{rupees(b.revenue)}</td>
                 <td style={{ textAlign: 'right' }}>
                   <span style={{ color: b.profit >= 0 ? 'var(--color-profit)' : 'var(--color-accent-700)', fontWeight: 700 }}>{rupees(b.profit)}</span>

@@ -135,7 +135,7 @@ export async function exportSummaryExcel(d: SummaryData): Promise<void> {
     name: 'Vehicle-wise',
     rows: [
       ['Vehicle', 'Model', 'Trips', 'KM', 'Tons', 'Trip expense', 'Monthly expense', 'Revenue', 'Profit', 'Rs / km'].map((h, i) => th(h, i >= 2)),
-      ...d.byVehicle.map((b) => [b.id, b.model === '—' ? '' : b.model, int(b.trips), int(b.km), dec(b.tons), money(b.tripExpense), money(b.monthly), money(b.revenue), money(b.profit), b.km ? money(b.cost / b.km) : null] as SheetCell[])
+      ...d.byVehicle.map((b) => [b.id, b.model === '—' ? '' : b.model, int(b.trips), int(b.km), dec(b.tons), money(b.ledgerTripExpense), money(b.ledgerMonthly), money(b.revenue), money(b.profit), b.km ? money(b.cost / b.km) : null] as SheetCell[])
     ],
     widths: [14, 18, 8, 10, 10, 14, 16, 14, 14, 10],
     freezeRows: 1
@@ -163,7 +163,7 @@ export async function exportSummaryPdf(d: SummaryData): Promise<void> {
         head: ['Vehicle', 'Model', 'Trips', 'KM', 'Tons', 'Trip expense', 'Monthly expense', 'Revenue', 'Profit', 'Rs / km'],
         body: d.byVehicle.map((b) => [
           b.id, b.model === '—' ? '' : b.model, String(b.trips), b.km.toLocaleString('en-IN'), b.tons.toFixed(1),
-          rs(b.tripExpense), rs(b.monthly), rs(b.revenue), rs(b.profit), b.km ? rs(b.cost / b.km) : '-'
+          rs(b.ledgerTripExpense), rs(b.ledgerMonthly), rs(b.revenue), rs(b.profit), b.km ? rs(b.cost / b.km) : '-'
         ]),
         right: [2, 3, 4, 5, 6, 7, 8, 9]
       }

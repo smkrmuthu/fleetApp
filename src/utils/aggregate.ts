@@ -18,6 +18,8 @@ export interface VehicleAgg {
   // counts it exactly once.
   ledgerToll: number;
   ledgerMonthly: number;
+  // Trip expense with Fastag counted as toll (Movement Summary view).
+  ledgerTripExpense: number;
   cost: number;
   revenue: number;
   profit: number;
@@ -48,7 +50,7 @@ export function aggregateByVehicle(trips: Trip[], expenses: MonthlyExpense[], ve
     const fastag = expenses.filter((e) => e.vehicle === v.id && isFastag(e)).reduce((a, e) => a + e.amount, 0);
     const cost = agg.tripExpense + monthly;
     return {
-      id: v.id, model: v.model, trips: rows.length, monthly, ledgerToll: agg.toll + fastag, ledgerMonthly: monthly - fastag,
+      id: v.id, model: v.model, trips: rows.length, monthly, ledgerToll: agg.toll + fastag, ledgerMonthly: monthly - fastag, ledgerTripExpense: agg.tripExpense + fastag,
       cost, profit: agg.revenue - cost, ...agg
     };
   });
