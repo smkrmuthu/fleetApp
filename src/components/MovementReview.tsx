@@ -65,8 +65,8 @@ function show(kind: FieldKind, v: string): string {
 const lineDate = (d: string) => (/^\d{4}-\d{2}-\d{2}$/.test(d) ? formatDisplayDate(d) : d);
 
 function lineDetail(l: TripExpenseLine): string {
-  if (l.litres != null && l.ratePerLitre != null) return `${l.litres} L × ₹${l.ratePerLitre}`;
-  if (l.litres != null) return `${l.litres} L`;
+  if (l.litres != null && l.ratePerLitre != null) return `${l.litres.toFixed(2)} L × ₹${l.ratePerLitre.toFixed(2)}`;
+  if (l.litres != null) return `${l.litres.toFixed(2)} L`;
   return l.details ?? '—';
 }
 

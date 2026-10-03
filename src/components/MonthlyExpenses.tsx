@@ -204,9 +204,9 @@ export function MonthlyExpenses({ expenses: allExpenses, trips, vehicles, driver
           <div className="field"><label>Amount (₹)</label><input className="input" type="number" value={exp.amount} onChange={set('amount')} /></div>
           <div className="field"><label>Remarks</label><input className="input" type="text" placeholder="Remarks" value={exp.remarks} onChange={set('remarks')} /></div>
           {editingId ? (
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-              <button type="button" className="btn btn-primary" onClick={saveEdit} disabled={saving}>{saving ? 'Saving…' : 'Save changes'}</button>
-              <button type="button" className="btn btn-secondary" onClick={cancelEdit} disabled={saving}>Cancel</button>
+            <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+              <button type="button" className="btn btn-primary" style={{ width: 150, justifyContent: 'center' }} onClick={saveEdit} disabled={saving}>{saving ? 'Saving…' : 'Save changes'}</button>
+              <button type="button" className="btn btn-secondary" style={{ width: 150, justifyContent: 'center' }} onClick={cancelEdit} disabled={saving}>Cancel</button>
               {saveError && <span style={{ fontSize: 13, color: 'var(--color-accent-800)' }}>{saveError}</span>}
             </div>
           ) : (

@@ -456,6 +456,42 @@ tripRoutes.delete('/:id/expenses/:expenseId', async (c) => {
   return c.json({ ok: true });
 });
 
+// Edits one expense/fuel line in place (date, litres, rate, amount, remarks).
+// Same rule as adding and deleting: a driver only on their own open movement,
+// office on any trip that isn't approved, manager on any trip.
+tripRoutes.patch('/:id/expenses/:expenseId', async (c) => {
+  const auth = c.get('auth');
+  const id = c.req.param('id')!;
+  const expenseId = c.req.param('expenseId')!;
+  const body = await c.req.json().catch(() => null);
+  const parsed = expenseLineSchema.safeParse(body);
+  if (!parsed.success) return c.json({ error: { code: 'validation_error', message: parsed.error.message } }, 422);
+
+  const db = getDb(c.env);
+  const [trip] = await db.select().from(trips).where(and(eq(trips.id, id), eq(trips.orgId, auth.orgId))).limit(1);
+  if (!trip) return c.json({ error: { code: 'not_found', message: 'Trip not found' } }, 404);
+  if (!isDriverAuthorizedForTrip(auth, trip) || (auth.role === 'driver' && trip.status === 'approved')) {
+    return c.json({ error: { code: 'forbidden', message: 'Can only change your own open movement' } }, 403);
+  }
+  if (auth.role === 'office' && trip.status === 'approved') {
+    return c.json({ error: { code: 'forbidden', message: 'Only a manager can change a completed movement' } }, 403);
+  }
+
+  const [line] = await db.select().from(tripExpenses)
+    .where(and(eq(tripExpenses.id, expenseId), eq(tripExpenses.tripId, id), eq(tripExpenses.orgId, auth.orgId))).limit(1);
+  if (!line) return c.json({ error: { code: 'not_found', message: 'Expense line not found' } }, 404);
+
+  const d = parsed.data;
+  const changes = {
+    spentOn: d.spentOn, kind: d.kind, litres: d.litres ?? null, ratePaise: d.ratePaise ?? null,
+    amountPaise: d.amountPaise, details: d.details?.trim() ? d.details.trim() : null
+  };
+  await db.update(tripExpenses).set(changes).where(eq(tripExpenses.id, expenseId));
+  await writeAudit(db, auth.orgId, 'trip_expenses', expenseId, 'update', { tripId: id, ...changes }, auth.userId);
+  const [row] = await db.select().from(tripExpenses).where(eq(tripExpenses.id, expenseId)).limit(1);
+  return c.json(row);
+});
+
 // Same ownership/open-trip rule as expense lines above: a driver can only
 // attach files to their own trip while it's still a draft.
 tripRoutes.post('/:id/documents', async (c) => {

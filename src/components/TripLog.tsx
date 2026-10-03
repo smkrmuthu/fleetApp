@@ -9,6 +9,7 @@ import { TRIP_EXPENSE_LABEL } from '../data/mockData';
 import { fetchDocumentBlobUrl, parseDisplayDate } from '../lib/api';
 import { dateInRange, formatDateRange, formatDuration, formatNum, overlappingUnavailability, rupees, tripCost, tripDurationDays, yearOptions } from '../utils/calc';
 import { MonthYearFilter } from './MonthYearFilter';
+import { SortableTh, type SortDir } from './SortableTh';
 
 const DETAIL_COLUMNS = 9; // Trip No., Loading date, Duration, Vehicle, Driver, Tons, Odo Meter start, KM, Status
 
@@ -75,7 +76,7 @@ function TripDetailBody({ t, showFinancials }: { t: Trip; showFinancials: boolea
                 {t.expenses.map((l) => (
                   <div key={l.id} style={{ color: 'var(--color-neutral-700)' }}>
                     {l.date} — {TRIP_EXPENSE_LABEL[l.kind]}
-                    {l.litres != null ? ` · ${l.litres} L${l.ratePerLitre != null ? ` × ₹${l.ratePerLitre}` : ''}` : ''}
+                    {l.litres != null ? ` · ${l.litres.toFixed(2)} L${l.ratePerLitre != null ? ` × ₹${l.ratePerLitre.toFixed(2)}` : ''}` : ''}
                     {l.details ? ` — ${l.details}` : ''}
                     {' — '}<strong style={{ color: 'var(--color-text)' }}>{rupees(l.amount)}</strong>
                   </div>
@@ -195,15 +196,37 @@ export function TripLog({ trips, vehicles, drivers, leaves, unavailability, vehi
   // Always sorted by loading date (never raw entry order) — entry order
   // grouped trips by whichever vehicle was being logged in one sitting,
   // which read as random once loading dates were the thing being scanned.
-  const [loadDateSort, setLoadDateSort] = useState<'asc' | 'desc'>('desc');
+  type SortKey = 'tripNo' | 'loadDate' | 'duration' | 'vehicle' | 'driver' | 'tons' | 'odoStart' | 'km' | 'status';
+  const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({ key: 'loadDate', dir: 'desc' });
+  function toggleSort(key: SortKey) {
+    // A new column starts ascending; clicking the same column flips it.
+    setSort((prev) => (prev.key === key ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }));
+  }
+  const STATUS_RANK: Record<string, number> = { draft: 0, pending: 1, approved: 2 };
+  function sortValue(t: Trip, key: SortKey): number | string {
+    switch (key) {
+      case 'tripNo': return t.waybillNo;
+      case 'loadDate': return parseDisplayDate(t.loadDate);
+      case 'duration': return tripDurationDays(t.loadDate, t.unloadDate) ?? -1;
+      case 'vehicle': return t.vehicle;
+      case 'driver': return t.driver;
+      case 'tons': return t.tons;
+      case 'odoStart': return t.odoStart ?? -1;
+      case 'km': return t.km;
+      case 'status': return STATUS_RANK[t.status] ?? 0;
+    }
+  }
   const filteredRows = trips.filter(
     (t) => (vehicleFilter === 'all' || t.vehicle === vehicleFilter) &&
       (!driverFilter || t.driver === driverFilter) &&
       dateInRange(t.loadDate, dateFrom, dateTo)
   );
   const rows = [...filteredRows].sort((a, b) => {
-    const cmp = parseDisplayDate(a.loadDate).localeCompare(parseDisplayDate(b.loadDate));
-    return loadDateSort === 'asc' ? cmp : -cmp;
+    const av = sortValue(a, sort.key);
+    const bv = sortValue(b, sort.key);
+    let cmp = typeof av === 'string' ? av.localeCompare(bv as string, undefined, { numeric: true }) : (av as number) - (bv as number);
+    if (cmp === 0 && sort.key !== 'loadDate') cmp = -parseDisplayDate(a.loadDate).localeCompare(parseDisplayDate(b.loadDate));
+    return sort.dir === 'asc' ? cmp : -cmp;
   });
 
   return (
@@ -271,19 +294,15 @@ export function TripLog({ trips, vehicles, drivers, leaves, unavailability, vehi
           <table className="table" style={{ minWidth: 1020 }}>
             <thead>
               <tr>
-                <th className="col-first">Trip No.</th>
-                <th aria-sort={loadDateSort === 'asc' ? 'ascending' : 'descending'}>
-                  <button
-                    type="button" className="btn btn-ghost"
-                    onClick={() => setLoadDateSort((s) => (s === 'asc' ? 'desc' : 'asc'))}
-                    style={{ padding: 0, font: 'inherit', letterSpacing: 'inherit', textTransform: 'inherit', color: 'inherit', display: 'inline-flex', gap: 6, alignItems: 'center' }}
-                    title={loadDateSort === 'asc' ? 'Oldest first — click for newest first' : 'Newest first — click for oldest first'}
-                  >
-                    Loading Date <span aria-hidden="true">{loadDateSort === 'asc' ? '▲' : '▼'}</span>
-                  </button>
-                </th><th>Duration</th><th>Vehicle</th><th>Driver</th>
-                <th style={{ textAlign: 'right' }}>Tons</th><th style={{ textAlign: 'right' }}>Odo Meter start</th><th style={{ textAlign: 'right' }}>KM</th>
-                <th>Status</th>
+                <SortableTh className="col-first" label="Trip No." active={sort.key === 'tripNo'} dir={sort.dir} onSort={() => toggleSort('tripNo')} />
+                <SortableTh label="Loading Date" active={sort.key === 'loadDate'} dir={sort.dir} onSort={() => toggleSort('loadDate')} />
+                <SortableTh label="Duration" active={sort.key === 'duration'} dir={sort.dir} onSort={() => toggleSort('duration')} />
+                <SortableTh label="Vehicle" active={sort.key === 'vehicle'} dir={sort.dir} onSort={() => toggleSort('vehicle')} />
+                <SortableTh label="Driver" active={sort.key === 'driver'} dir={sort.dir} onSort={() => toggleSort('driver')} />
+                <SortableTh label="Tons" align="right" active={sort.key === 'tons'} dir={sort.dir} onSort={() => toggleSort('tons')} />
+                <SortableTh label="Odo Meter start" align="right" active={sort.key === 'odoStart'} dir={sort.dir} onSort={() => toggleSort('odoStart')} />
+                <SortableTh label="KM" align="right" active={sort.key === 'km'} dir={sort.dir} onSort={() => toggleSort('km')} />
+                <SortableTh label="Status" active={sort.key === 'status'} dir={sort.dir} onSort={() => toggleSort('status')} />
               </tr>
             </thead>
             <tbody>

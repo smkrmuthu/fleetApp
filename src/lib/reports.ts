@@ -242,6 +242,54 @@ export async function exportReportPdf(d: ReportData): Promise<void> {
 
 // ── Full backup ─────────────────────────────────────────────────────────────
 
+// ── Fuel Expenses ───────────────────────────────────────────────────────────
+
+export interface FuelRow {
+  date: string; // display date ("02 Oct 2026")
+  vehicle: string;
+  tripNo: string;
+  litres: number | null;
+  rate: number | null;
+  amount: number;
+  remarks: string;
+}
+
+const fuelStem = () => safeName(`fuel-expenses_${new Date().toISOString().slice(0, 10)}`);
+const fuelTotals = (rows: FuelRow[]) => ({ litres: rows.reduce((a, r) => a + (r.litres ?? 0), 0), amount: rows.reduce((a, r) => a + r.amount, 0) });
+
+export async function exportFuelExcel(rows: FuelRow[]): Promise<void> {
+  const t = fuelTotals(rows);
+  const sheet: SheetSpec = {
+    name: 'Fuel expenses',
+    rows: [
+      [th('Date'), th('Vehicle'), th('Trip no.'), th('Litres', true), th('Rate / litre', true), th('Amount', true), th('Remarks')],
+      ...rows.map((r) => [
+        dateCell(parseDisplayDate(r.date) || r.date), r.vehicle, r.tripNo === '—' ? '' : r.tripNo,
+        r.litres != null ? dec(r.litres, 2) : null, r.rate != null ? money(r.rate) : null, money(r.amount), r.remarks
+      ] as SheetCell[]),
+      [label('Total'), '', '', dec(t.litres, 2), null, money(t.amount), '']
+    ],
+    widths: [13, 15, 14, 11, 13, 14, 32],
+    freezeRows: 1
+  };
+  await saveWorkbook(`${fuelStem()}.xlsx`, [sheet]);
+}
+
+export async function exportFuelPdf(rows: FuelRow[]): Promise<void> {
+  const t = fuelTotals(rows);
+  await savePdf(`${fuelStem()}.pdf`, {
+    title: 'Fuel Expenses',
+    company: COMPANY,
+    lines: [`${rows.length} entries`, `Total: ${t.litres.toFixed(2)} L, ${rs(t.amount)}`],
+    tables: [{
+      heading: 'Diesel entries',
+      head: ['Date', 'Vehicle', 'Trip no.', 'Litres', 'Rate / litre', 'Amount', 'Remarks'],
+      body: rows.map((r) => [r.date, r.vehicle, r.tripNo, r.litres != null ? r.litres.toFixed(2) : '-', r.rate != null ? rs(r.rate) : '-', rs(r.amount), r.remarks]),
+      right: [3, 4, 5]
+    }]
+  });
+}
+
 export interface BackupData {
   trips: Trip[];
   expenses: MonthlyExpense[];

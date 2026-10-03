@@ -502,6 +502,17 @@ export async function addTripExpense(tripId: string, line: TripExpenseLine): Pro
   });
 }
 
+export async function updateTripExpense(tripId: string, expenseId: string, line: TripExpenseLine): Promise<void> {
+  await request(`/trips/${encodeURIComponent(tripId)}/expenses/${encodeURIComponent(expenseId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      spentOn: line.date, kind: line.kind, litres: line.litres,
+      ratePaise: line.ratePerLitre != null ? rupeesToPaise(line.ratePerLitre) : undefined,
+      amountPaise: rupeesToPaise(line.amount), details: line.details
+    })
+  });
+}
+
 export async function deleteTripExpense(tripId: string, expenseId: string): Promise<void> {
   await request(`/trips/${encodeURIComponent(tripId)}/expenses/${encodeURIComponent(expenseId)}`, { method: 'DELETE' });
 }

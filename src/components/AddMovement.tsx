@@ -172,6 +172,13 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, l
     setNewLine(blankLine());
   }
 
+  // Edit = put the entry back in the form above and take it off the list; press
+  // Add entry to save it again. Fuel lines are edited on the Fuel Expenses tab.
+  function editLine(l: TripExpenseLine) {
+    setNewLine({ date: parseDisplayDate(l.date) || l.date, amount: String(l.amount), details: l.details ?? '' });
+    setLines((prev) => prev.filter((x) => x.id !== l.id));
+  }
+
   function removeLine(id: string) {
     setLines((prev) => prev.filter((l) => l.id !== id));
   }
@@ -595,9 +602,12 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, l
                         <td style={{ whiteSpace: 'nowrap' }}>{l.date}</td>
                         <td>{TRIP_EXPENSE_LABEL[l.kind]}</td>
                         <td style={{ color: 'var(--color-neutral-700)' }}>{l.details ?? '—'}</td>
-                        <td style={{ textAlign: 'right' }}>{l.litres ?? '—'}</td>
+                        <td style={{ textAlign: 'right' }}>{l.litres != null ? l.litres.toFixed(2) : '—'}</td>
                         <td style={{ textAlign: 'right' }}>{rupees(l.amount)}</td>
                         <td style={{ textAlign: 'right' }}>
+                          {l.kind === 'other' && (
+                            <button type="button" className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => editLine(l)}>Edit</button>
+                          )}
                           <button type="button" className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => removeLine(l.id)}>Remove</button>
                         </td>
                       </tr>

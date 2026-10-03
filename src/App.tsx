@@ -280,6 +280,16 @@ export function App() {
     return { ok: true, message: warning };
   }
 
+  async function updateFuel(trip: Trip, line: TripExpenseLine): Promise<string | null> {
+    try {
+      await api.updateTripExpense(trip.id, line.id, line);
+      setTrips(await api.fetchTrips());
+      return null;
+    } catch (e) {
+      return e instanceof Error ? e.message : 'Could not save the fuel entry';
+    }
+  }
+
   async function deleteFuel(trip: Trip, line: TripExpenseLine): Promise<string | null> {
     try {
       await api.deleteTripExpense(trip.id, line.id);
@@ -576,7 +586,7 @@ export function App() {
           />
         )}
         {shownTab === 'fuel' && (
-          <FuelExpenses trips={trips} vehicles={vehicles} drivers={drivers} master={master} role={role} onPost={postFuel} onDelete={deleteFuel} />
+          <FuelExpenses trips={trips} vehicles={vehicles} drivers={drivers} master={master} role={role} onPost={postFuel} onUpdate={updateFuel} onDelete={deleteFuel} />
         )}
         {shownTab === 'triplog' && (
           <TripLog
