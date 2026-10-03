@@ -131,6 +131,10 @@ export const trips = sqliteTable(
     revenuePaise: integer('revenue_paise').notNull().default(0),
     status: text('status', { enum: ['draft', 'pending', 'approved', 'void'] }).notNull().default('draft'),
     remarks: text('remarks'),
+    // Which transporter ran this movement — a name from the transporters
+    // master list (kept as text, like driver/vehicle, so past trips keep it
+    // even if the name is later removed from the list).
+    transporter: text('transporter'),
     customFields: text('custom_fields', { mode: 'json' }).$type<Record<string, unknown>>(),
     createdBy: text('created_by').references(() => users.id),
     createdAt: text('created_at').notNull().default(sql`(current_timestamp)`),
@@ -305,6 +309,17 @@ export const auditLog = sqliteTable(
 // showing whatever name they were logged under).
 export const expenseCategories = sqliteTable(
   'expense_categories',
+  {
+    id: text('id').primaryKey(),
+    orgId: text('org_id').notNull().references(() => orgs.id, { onDelete: 'cascade' }),
+    active: integer('active', { mode: 'boolean' }).notNull().default(true)
+  }
+);
+
+// Transporters offered in Add Movement — managed from Master like the
+// expense descriptions: the name is the id, removing one only deactivates it.
+export const transporters = sqliteTable(
+  'transporters',
   {
     id: text('id').primaryKey(),
     orgId: text('org_id').notNull().references(() => orgs.id, { onDelete: 'cascade' }),

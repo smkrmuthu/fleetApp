@@ -342,6 +342,20 @@ export async function deleteExpenseCategory(name: string): Promise<void> {
   await request(`/expense-categories/${encodeURIComponent(name)}`, { method: 'DELETE' });
 }
 
+// ── transporters (Master) ────────────────────────────────────────────────
+export async function fetchTransporters(): Promise<string[]> {
+  const res = await request<{ transporters: string[] }>('/transporters');
+  return res.transporters;
+}
+
+export async function createTransporter(name: string): Promise<void> {
+  await request('/transporters', { method: 'POST', body: JSON.stringify({ name }) });
+}
+
+export async function deleteTransporter(name: string): Promise<void> {
+  await request(`/transporters/${encodeURIComponent(name)}`, { method: 'DELETE' });
+}
+
 // ── trips ────────────────────────────────────────────────────────────────
 interface ApiTripExpense {
   id: string; spentOn: string; kind: TripExpenseKind; litres: number | null; ratePaise: number | null; amountPaise: number; details: string | null;
@@ -357,6 +371,7 @@ interface ApiTrip {
   documents?: ApiTripDocument[];
   stops?: { id: string; location: string; date: string | null; odo: number | null; note: string | null }[];
   remarks?: string | null;
+  transporter?: string | null;
 }
 
 function tripFromApi(t: ApiTrip): Trip {
@@ -366,6 +381,7 @@ function tripFromApi(t: ApiTrip): Trip {
     from: t.fromLoc ?? '—', fromNote: t.fromNote ?? undefined, to: t.toLoc ?? '—', toNote: t.toNote ?? undefined, tons: (t.weightKg ?? 0) / 1000, km: Math.max(0, (t.odoEnd ?? 0) - (t.odoStart ?? 0)),
     odoStart: t.odoStart ?? undefined, odoEnd: t.odoEnd ?? undefined,
     revenue: paiseToRupees(t.revenuePaise), status: t.status === 'void' ? 'approved' : t.status, remarks: t.remarks ?? undefined,
+    transporter: t.transporter ?? undefined,
     expenses: t.expenses.map((e) => ({
       id: e.id, date: formatDisplayDate(e.spentOn), kind: e.kind, litres: e.litres ?? undefined,
       ratePerLitre: e.ratePaise != null ? paiseToRupees(e.ratePaise) : undefined, amount: paiseToRupees(e.amountPaise), details: e.details ?? undefined
@@ -409,7 +425,7 @@ export async function fetchNextTripNumberPreview(): Promise<string> {
 
 export interface NewTripInput {
   id: string; vehicle: string; driver: string; waybillNo: string; itemNo: string; loadDate: string; unloadDate: string;
-  from: string; fromNote?: string; to: string; toNote?: string; tons: number; odoStart: number; odoEnd: number; revenue: number; remarks?: string;
+  from: string; fromNote?: string; to: string; toNote?: string; tons: number; odoStart: number; odoEnd: number; revenue: number; remarks?: string; transporter?: string;
   expenses: TripExpenseLine[];
   stops?: TripStop[];
   documents?: TripDocument[];
@@ -424,7 +440,7 @@ export async function createTrip(t: NewTripInput): Promise<Trip> {
       itemNo: orUndefined(t.itemNo), loadDate: t.loadDate, unloadDate: orUndefined(t.unloadDate),
       fromLoc: orUndefined(t.from), fromNote: t.fromNote || undefined, toLoc: orUndefined(t.to), toNote: t.toNote || undefined, weightKg: Math.round(t.tons * 1000) || undefined,
       odoStart: t.odoStart || undefined, odoEnd: t.odoEnd || undefined, revenuePaise: rupeesToPaise(t.revenue),
-      remarks: t.remarks || undefined, draft: t.draft || undefined,
+      remarks: t.remarks || undefined, transporter: t.transporter || undefined, draft: t.draft || undefined,
       stops: (t.stops ?? []).map(stopToApi),
       expenses: t.expenses.map((l) => ({
         spentOn: l.date, kind: l.kind, litres: l.litres, ratePaise: l.ratePerLitre != null ? rupeesToPaise(l.ratePerLitre) : undefined,
@@ -438,7 +454,7 @@ export async function createTrip(t: NewTripInput): Promise<Trip> {
 
 export interface TripPatchInput {
   vehicle?: string; driver?: string; waybillNo?: string; itemNo?: string; loadDate?: string; unloadDate?: string;
-  from?: string; fromNote?: string; to?: string; toNote?: string; tons?: number; odoStart?: number; odoEnd?: number; revenue?: number; remarks?: string;
+  from?: string; fromNote?: string; to?: string; toNote?: string; tons?: number; odoStart?: number; odoEnd?: number; revenue?: number; remarks?: string; transporter?: string;
   stops?: TripStop[]; // when present, replaces the whole ordered list
 }
 
@@ -450,7 +466,7 @@ export async function updateTrip(id: string, patch: TripPatchInput): Promise<Tri
       loadDate: patch.loadDate, unloadDate: orNullOpt(patch.unloadDate), fromLoc: orNullOpt(patch.from), fromNote: orNullOpt(patch.fromNote),
       toLoc: orNullOpt(patch.to), toNote: orNullOpt(patch.toNote), weightKg: patch.tons != null ? Math.round(patch.tons * 1000) : undefined,
       odoStart: patch.odoStart, odoEnd: patch.odoEnd, revenuePaise: patch.revenue != null ? rupeesToPaise(patch.revenue) : undefined,
-      remarks: orNullOpt(patch.remarks),
+      remarks: orNullOpt(patch.remarks), transporter: orNullOpt(patch.transporter),
       stops: patch.stops?.map(stopToApi)
     })
   });
@@ -600,6 +616,13 @@ export async function fetchVehicleUnavailability(): Promise<VehicleUnavailabilit
 export async function createVehicleUnavailability(w: { vehicle: string; startsAt: string; endsAt: string; remarks?: string }): Promise<void> {
   await request('/vehicle-unavailability', {
     method: 'POST',
+    body: JSON.stringify({ vehicleId: w.vehicle, startsAt: w.startsAt, endsAt: w.endsAt, remarks: w.remarks || undefined })
+  });
+}
+
+export async function updateVehicleUnavailability(id: string, w: { vehicle: string; startsAt: string; endsAt: string; remarks?: string }): Promise<void> {
+  await request(`/vehicle-unavailability/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
     body: JSON.stringify({ vehicleId: w.vehicle, startsAt: w.startsAt, endsAt: w.endsAt, remarks: w.remarks || undefined })
   });
 }

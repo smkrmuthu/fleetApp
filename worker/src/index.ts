@@ -13,6 +13,7 @@ import { settingsRoutes } from './routes/settings';
 import { driverLeaveRoutes } from './routes/driverLeaves';
 import { expenseCategoryRoutes } from './routes/expenseCategories';
 import { vehicleUnavailabilityRoutes } from './routes/vehicleUnavailability';
+import { transporterRoutes } from './routes/transporters';
 
 const app = new Hono<{ Bindings: Env; Variables: Vars }>();
 
@@ -35,6 +36,7 @@ app.route('/v1/settings', settingsRoutes);
 app.route('/v1/driver-leaves', driverLeaveRoutes);
 app.route('/v1/expense-categories', expenseCategoryRoutes);
 app.route('/v1/vehicle-unavailability', vehicleUnavailabilityRoutes);
+app.route('/v1/transporters', transporterRoutes);
 
 app.notFound((c) => c.json({ error: { code: 'not_found', message: 'No such route' } }, 404));
 app.onError((err, c) => {

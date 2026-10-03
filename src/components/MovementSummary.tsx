@@ -23,6 +23,15 @@ interface Props {
   onResetFilters: () => void;
 }
 
+// Money figures carry paise now, so a big revenue can be 14+ characters wide —
+// step the size down for longer values so they stay inside their tile.
+function statValueSize(value: string): number {
+  if (value.length > 15) return 19;
+  if (value.length > 12) return 22;
+  if (value.length > 10) return 25;
+  return 28;
+}
+
 export function MovementSummary({ trips, expenses, vehicles, drivers, vehicleFilter, driverFilter, dateFrom, dateTo, onVehicleFilter, onDriverFilter, onDateFrom, onDateTo, onResetFilters }: Props) {
   const rows = trips.filter(
     (t) => (vehicleFilter === 'all' || t.vehicle === vehicleFilter) &&
@@ -158,9 +167,17 @@ export function MovementSummary({ trips, expenses, vehicles, drivers, vehicleFil
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 2, background: 'var(--color-divider)', border: '2px solid var(--color-divider)', marginBottom: 28 }}>
         {stats.map((s) => (
-          <div key={s.label} style={{ background: 'var(--color-bg)', padding: '16px 18px 18px' }}>
+          <div key={s.label} style={{ background: 'var(--color-bg)', padding: '16px 18px 18px', minWidth: 0 }}>
             <div className="stat-label">{s.label}</div>
-            <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 28, letterSpacing: '-0.02em', lineHeight: 1 }}>{s.value}</div>
+            <div
+              style={{
+                fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: statValueSize(s.value), letterSpacing: '-0.02em', lineHeight: 1.1, overflowWrap: 'anywhere',
+                // A loss shows in red, a profit in green — same colours as the Vehicle-wise table below.
+                ...(s.label === 'Profit' ? { color: s.raw < 0 ? 'var(--color-accent-700)' : 'var(--color-profit)' } : {})
+              }}
+            >
+              {s.value}
+            </div>
             <div style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 8 }}>{s.note}</div>
           </div>
         ))}

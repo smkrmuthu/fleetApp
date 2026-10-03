@@ -35,7 +35,7 @@ function blankForm(driver = '', from = ''): TripFormState {
   return {
     loadDate: todayIso(), unloadDate: '', vehicle: '', driver,
     waybillNo: '', itemNo: '', from, fromNote: '', to: '', toNote: '', tons: '', odoStart: '', odoEnd: '',
-    revenue: '0', remarks: ''
+    revenue: '0', remarks: '', transporter: ''
   };
 }
 
@@ -45,7 +45,7 @@ export function formFromTrip(trip: Trip): TripFormState {
     loadDate: parseDisplayDate(trip.loadDate) || todayIso(), unloadDate: parseDisplayDate(clear(trip.unloadDate)), vehicle: trip.vehicle, driver: trip.driver,
     waybillNo: clear(trip.waybillNo), itemNo: clear(trip.itemNo), from: clear(trip.from), fromNote: trip.fromNote ?? '', to: clear(trip.to), toNote: trip.toNote ?? '',
     tons: trip.tons ? String(trip.tons) : '', odoStart: trip.odoStart != null ? String(trip.odoStart) : '',
-    odoEnd: trip.odoEnd != null ? String(trip.odoEnd) : '', revenue: String(trip.revenue ?? 0), remarks: trip.remarks ?? ''
+    odoEnd: trip.odoEnd != null ? String(trip.odoEnd) : '', revenue: String(trip.revenue ?? 0), remarks: trip.remarks ?? '', transporter: trip.transporter ?? ''
   };
 }
 
@@ -92,12 +92,13 @@ interface Props {
   master: MasterSettings;
   leaves: DriverLeave[];
   unavailability: VehicleUnavailability[];
+  transporters: string[];
   defaultDriverName?: string;
   editingTrip?: Trip | null;
   onCancelEdit?: () => void;
 }
 
-export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, leaves, unavailability, defaultDriverName, editingTrip, onCancelEdit }: Props) {
+export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, leaves, unavailability, transporters, defaultDriverName, editingTrip, onCancelEdit }: Props) {
   const showFinancials = !driverOnly;
   const isEditing = !!editingTrip;
   const isCompleted = editingTrip?.status === 'approved';
@@ -373,6 +374,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, l
       revenue: toNumber(form.revenue),
       fromNote: form.fromNote.trim(), toNote: form.toNote.trim(),
       remarks: form.remarks.trim(),
+      transporter: form.transporter,
       status: editingTrip?.status ?? 'pending',
       expenses: lines,
       stops: cleanStops,
@@ -527,6 +529,15 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, l
               <div className="field"><label>Revenue (₹)</label><input className="input" type="number" step="any" inputMode="decimal" value={form.revenue} onChange={set('revenue')} /></div>
             )}
             <div className="field field-span-2"><label>Remarks</label><input className="input" type="text" placeholder="Remarks" value={form.remarks} onChange={set('remarks')} /></div>
+            <div className="field">
+              <label htmlFor="movement-transporter">Transporter</label>
+              <select id="movement-transporter" className="input" value={form.transporter} onChange={set('transporter')}>
+                <option value="">Select transporter</option>
+                {/* A transporter since removed from Master still shows on the movement it was saved with. */}
+                {form.transporter && !transporters.includes(form.transporter) && <option value={form.transporter}>{form.transporter} (removed)</option>}
+                {transporters.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
           </div>
 
           {vehicleConflicts.length > 0 && !confirmAction && (

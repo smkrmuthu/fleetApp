@@ -157,6 +157,8 @@ export function Dashboard({ trips, expenses, vehicles, drivers, leaves, unavaila
 
       <div style={{ border: '2px solid var(--color-divider)', padding: 16, marginBottom: 24 }}>
         <div className="filters-grid">
+          <div className="field"><label htmlFor="dash-from">From</label><input id="dash-from" className="input" type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} /></div>
+          <div className="field"><label htmlFor="dash-to">To</label><input id="dash-to" className="input" type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} /></div>
           <MonthYearFilter
             dateFrom={dateFrom} dateTo={dateTo} onDateFrom={setDateFrom} onDateTo={setDateTo}
             years={yearOptions([...trips.map((t) => t.loadDate), ...expenses.map((e) => e.date)])}

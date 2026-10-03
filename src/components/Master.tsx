@@ -14,10 +14,14 @@ interface Props {
   onRemoveLeave: (id: string) => void;
   unavailability: VehicleUnavailability[];
   onAddUnavailability: (w: { vehicle: string; startsAt: string; endsAt: string; remarks?: string }) => Promise<string | null>;
+  onUpdateUnavailability: (id: string, w: { vehicle: string; startsAt: string; endsAt: string; remarks?: string }) => Promise<string | null>;
   onRemoveUnavailability: (id: string) => void;
   categories: string[];
   onAddCategory: (name: string) => Promise<string | null>;
   onRemoveCategory: (name: string) => void;
+  transporters: string[];
+  onAddTransporter: (name: string) => Promise<string | null>;
+  onRemoveTransporter: (name: string) => void;
 }
 
 function blankUnavailabilityForm(defaultVehicle: string) {
@@ -32,7 +36,8 @@ const fmt = (n: number | null) => (n === null ? '' : String(n));
 
 export function Master({
   vehicles, drivers, settings, onSave, onSetDefaultDriver, leaves, onAddLeave, onRemoveLeave,
-  unavailability, onAddUnavailability, onRemoveUnavailability, categories, onAddCategory, onRemoveCategory
+  unavailability, onAddUnavailability, onUpdateUnavailability, onRemoveUnavailability, categories, onAddCategory, onRemoveCategory,
+  transporters, onAddTransporter, onRemoveTransporter
 }: Props) {
   const rates = settings;
   const [diesel, setDiesel] = useState(fmt(rates.dieselRate));
@@ -131,18 +136,52 @@ export function Master({
   const [savingUnavail, setSavingUnavail] = useState(false);
   const sortedUnavailability = [...unavailability].sort((a, b) => a.startsAt.localeCompare(b.startsAt));
 
+  // The id of the window being edited, or null when the form is adding a new one.
+  const [editingUnavailId, setEditingUnavailId] = useState<string | null>(null);
+
+  function startEditUnavailability(w: VehicleUnavailability) {
+    setEditingUnavailId(w.id);
+    setUnavailError('');
+    setUnavailForm({ vehicle: w.vehicle, startsAt: w.startsAt, endsAt: w.endsAt, remarks: w.remarks ?? '' });
+    document.getElementById('unavail-vehicle')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  function cancelEditUnavailability() {
+    setEditingUnavailId(null);
+    setUnavailError('');
+    setUnavailForm((f) => blankUnavailabilityForm(f.vehicle));
+  }
+
   async function addUnavailability() {
     if (!unavailForm.vehicle) return setUnavailError('Select a truck.');
     if (!unavailForm.startsAt || !unavailForm.endsAt) return setUnavailError('Enter both the start and end date and time.');
     if (unavailForm.endsAt <= unavailForm.startsAt) return setUnavailError('End must be after start.');
     setUnavailError('');
     setSavingUnavail(true);
-    const err = await onAddUnavailability({
+    const payload = {
       vehicle: unavailForm.vehicle, startsAt: unavailForm.startsAt, endsAt: unavailForm.endsAt, remarks: unavailForm.remarks.trim() || undefined
-    });
+    };
+    const err = editingUnavailId ? await onUpdateUnavailability(editingUnavailId, payload) : await onAddUnavailability(payload);
     setSavingUnavail(false);
-    if (err) setUnavailError(err);
-    else setUnavailForm((f) => blankUnavailabilityForm(f.vehicle));
+    if (err) return setUnavailError(err);
+    setEditingUnavailId(null);
+    setUnavailForm((f) => blankUnavailabilityForm(f.vehicle));
+  }
+
+  const [newTransporter, setNewTransporter] = useState('');
+  const [transporterError, setTransporterError] = useState('');
+  const [savingTransporter, setSavingTransporter] = useState(false);
+
+  async function addTransporter() {
+    const name = newTransporter.trim();
+    if (!name) return setTransporterError('Enter a transporter name.');
+    if (transporters.some((t) => t.toLowerCase() === name.toLowerCase())) return setTransporterError('That transporter already exists.');
+    setTransporterError('');
+    setSavingTransporter(true);
+    const err = await onAddTransporter(name);
+    setSavingTransporter(false);
+    if (err) setTransporterError(err);
+    else setNewTransporter('');
   }
 
   const [newCategory, setNewCategory] = useState('');
@@ -378,9 +417,14 @@ export function Master({
               value={unavailForm.remarks} onChange={(e) => setUnavailForm((f) => ({ ...f, remarks: e.target.value }))}
             />
           </div>
-          <button type="submit" className="btn btn-primary" style={{ justifySelf: 'start' }} disabled={savingUnavail}>
-            {savingUnavail ? 'Saving…' : 'Add unavailability'}
-          </button>
+          <div style={{ display: 'flex', gap: 10, justifySelf: 'start' }}>
+            <button type="submit" className="btn btn-primary" disabled={savingUnavail}>
+              {savingUnavail ? 'Saving…' : editingUnavailId ? 'Save changes' : 'Add unavailability'}
+            </button>
+            {editingUnavailId && (
+              <button type="button" className="btn btn-ghost" disabled={savingUnavail} onClick={cancelEditUnavailability}>Cancel</button>
+            )}
+          </div>
           {unavailError && <div role="alert" style={{ color: 'var(--color-accent-700)', fontSize: 13 }}>{unavailError}</div>}
         </form>
       </div>
@@ -391,19 +435,63 @@ export function Master({
           </thead>
           <tbody>
             {sortedUnavailability.map((w) => (
-              <tr key={w.id}>
+              <tr key={w.id} style={editingUnavailId === w.id ? { background: 'var(--color-accent-100)' } : undefined}>
                 <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{w.vehicle}</td>
                 <td style={{ whiteSpace: 'nowrap' }}>{formatDisplayDateTime(w.startsAt)}</td>
                 <td style={{ whiteSpace: 'nowrap' }}>{formatDisplayDateTime(w.endsAt)}</td>
                 <td style={{ whiteSpace: 'nowrap' }}>{formatLeaveDuration(leaveDurationMinutes(w.startsAt, w.endsAt))}</td>
                 <td style={{ color: 'var(--color-neutral-700)' }}>{w.remarks ?? '—'}</td>
                 <td className="col-actions">
-                  <button type="button" className="btn btn-ghost" style={{ color: 'var(--color-accent-700)' }} onClick={() => onRemoveUnavailability(w.id)}>Delete</button>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 4, whiteSpace: 'nowrap' }}>
+                    <button type="button" className="btn btn-ghost" style={{ color: 'var(--color-text)' }} onClick={() => startEditUnavailability(w)}>Edit</button>
+                    <button type="button" className="btn btn-ghost" style={{ color: 'var(--color-accent-700)' }} onClick={() => { if (editingUnavailId === w.id) cancelEditUnavailability(); onRemoveUnavailability(w.id); }}>Delete</button>
+                  </div>
                 </td>
               </tr>
             ))}
             {sortedUnavailability.length === 0 && (
               <tr><td colSpan={6} style={{ color: 'var(--color-neutral-700)' }}>No unavailability recorded yet.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <h2 style={{ fontSize: 20, marginBottom: 12 }}>Transporters</h2>
+      <p style={{ color: 'var(--color-neutral-700)', fontSize: 13, marginTop: -4, marginBottom: 12, maxWidth: '74ch', lineHeight: 1.6 }}>
+        The list offered under "Transporter" in Add Movement. Removing one only stops it being offered for new movements —
+        anything already logged under it keeps its name.
+      </p>
+      <div style={{ border: '2px solid var(--color-divider)', padding: 16, marginBottom: 20 }}>
+        <form className="filters-grid" onSubmit={(e) => { e.preventDefault(); addTransporter(); }}>
+          <div className="field field-span-2">
+            <label htmlFor="new-transporter">Transporter name</label>
+            <input
+              id="new-transporter" className="input" type="text" placeholder="e.g. Sri Murugan Transports" maxLength={120}
+              value={newTransporter} onChange={(e) => { setNewTransporter(e.target.value); setTransporterError(''); }}
+            />
+          </div>
+          <button type="submit" className="btn btn-primary" style={{ justifySelf: 'start' }} disabled={savingTransporter}>
+            {savingTransporter ? 'Adding…' : 'Add transporter'}
+          </button>
+          {transporterError && <div role="alert" style={{ color: 'var(--color-accent-700)', fontSize: 13 }}>{transporterError}</div>}
+        </form>
+      </div>
+      <div className="scroll-x" style={{ border: '2px solid var(--color-divider)', marginBottom: 30 }}>
+        <table className="table" style={{ minWidth: 360 }}>
+          <thead>
+            <tr><th>Transporter</th><th className="col-actions"></th></tr>
+          </thead>
+          <tbody>
+            {transporters.map((name) => (
+              <tr key={name}>
+                <td style={{ fontWeight: 600 }}>{name}</td>
+                <td className="col-actions">
+                  <button type="button" className="btn btn-ghost" style={{ color: 'var(--color-accent-700)' }} onClick={() => onRemoveTransporter(name)}>Delete</button>
+                </td>
+              </tr>
+            ))}
+            {transporters.length === 0 && (
+              <tr><td colSpan={2} style={{ color: 'var(--color-neutral-700)' }}>No transporters yet — add one above.</td></tr>
             )}
           </tbody>
         </table>

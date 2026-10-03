@@ -45,6 +45,7 @@ export function App() {
   const [driverLeaves, setDriverLeaves] = useState<DriverLeave[]>([]);
   const [vehicleUnavailability, setVehicleUnavailability] = useState<VehicleUnavailability[]>([]);
   const [expenseCategories, setExpenseCategories] = useState<string[]>([]);
+  const [transporters, setTransporters] = useState<string[]>([]);
   const [vehicleFilter, setVehicleFilter] = useState('all');
   const [driverFilter, setDriverFilter] = useState('');
   const [dateFrom, setDateFrom] = useState(() => currentMonthRange().from);
@@ -58,9 +59,12 @@ export function App() {
       // Leaves are fetched for every role, not just Office/Manager — a driver
       // login can enter movements for other drivers too, and needs the same
       // on-leave warning in Add Movement.
-      const [v, d, t, e, r, l, u2] = await Promise.all([
-        api.fetchVehicles(), api.fetchDrivers(), api.fetchTrips(), api.fetchMonthlyExpenses(), api.fetchMasterSettings(), api.fetchDriverLeaves(), api.fetchVehicleUnavailability()
+      // Transporters are fetched for every role too — Add Movement's dropdown
+      // is available to drivers.
+      const [v, d, t, e, r, l, u2, tr] = await Promise.all([
+        api.fetchVehicles(), api.fetchDrivers(), api.fetchTrips(), api.fetchMonthlyExpenses(), api.fetchMasterSettings(), api.fetchDriverLeaves(), api.fetchVehicleUnavailability(), api.fetchTransporters()
       ]);
+      setTransporters(tr);
       setVehicles(v);
       setDrivers(d);
       setTrips(t);
@@ -127,7 +131,7 @@ export function App() {
         await api.createTrip({
           id: trip.id, vehicle: trip.vehicle, driver: trip.driver, waybillNo: trip.waybillNo, itemNo: trip.itemNo,
           loadDate: trip.loadDate, unloadDate: trip.unloadDate, from: trip.from, fromNote: trip.fromNote, to: trip.to, toNote: trip.toNote, tons: trip.tons,
-          odoStart: trip.odoStart ?? 0, odoEnd: trip.odoEnd ?? 0, revenue: trip.revenue, remarks: trip.remarks,
+          odoStart: trip.odoStart ?? 0, odoEnd: trip.odoEnd ?? 0, revenue: trip.revenue, remarks: trip.remarks, transporter: trip.transporter,
           expenses: trip.expenses, stops: trip.stops, documents: trip.documents, draft: action === 'start'
         });
       } else {
@@ -142,7 +146,7 @@ export function App() {
         await api.updateTrip(trip.id, {
           vehicle: trip.vehicle, driver: trip.driver, waybillNo: trip.waybillNo, itemNo: trip.itemNo, loadDate: trip.loadDate,
           unloadDate: trip.unloadDate, from: trip.from, fromNote: trip.fromNote, to: trip.to, toNote: trip.toNote, tons: trip.tons, odoStart: trip.odoStart,
-          odoEnd: trip.odoEnd, revenue: trip.revenue, remarks: trip.remarks,
+          odoEnd: trip.odoEnd, revenue: trip.revenue, remarks: trip.remarks, transporter: trip.transporter ?? '',
           stops: stopsChanged ? trip.stops : undefined
         });
         for (const line of removedLines) {
@@ -307,6 +311,35 @@ export function App() {
       return null;
     } catch (e) {
       return e instanceof Error ? e.message : 'Could not save unavailability';
+    }
+  }
+
+  async function editVehicleUnavailability(id: string, w: { vehicle: string; startsAt: string; endsAt: string; remarks?: string }): Promise<string | null> {
+    try {
+      await api.updateVehicleUnavailability(id, w);
+      setVehicleUnavailability(await api.fetchVehicleUnavailability());
+      return null;
+    } catch (e) {
+      return e instanceof Error ? e.message : 'Could not save unavailability';
+    }
+  }
+
+  async function addTransporter(name: string): Promise<string | null> {
+    try {
+      await api.createTransporter(name);
+      setTransporters(await api.fetchTransporters());
+      return null;
+    } catch (e) {
+      return e instanceof Error ? e.message : 'Could not add transporter';
+    }
+  }
+
+  async function removeTransporter(name: string) {
+    try {
+      await api.deleteTransporter(name);
+      setTransporters((prev) => prev.filter((t) => t !== name));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not delete transporter');
     }
   }
 
@@ -486,6 +519,7 @@ export function App() {
             master={master}
             leaves={driverLeaves}
             unavailability={vehicleUnavailability}
+            transporters={transporters}
             defaultDriverName={role === 'Driver' ? currentUserName : undefined}
             editingTrip={editingTrip}
             onCancelEdit={cancelEditingTrip}
@@ -579,7 +613,11 @@ export function App() {
             onRemoveLeave={removeDriverLeave}
             unavailability={vehicleUnavailability}
             onAddUnavailability={addVehicleUnavailability}
+            onUpdateUnavailability={editVehicleUnavailability}
             onRemoveUnavailability={removeVehicleUnavailability}
+            transporters={transporters}
+            onAddTransporter={addTransporter}
+            onRemoveTransporter={removeTransporter}
             categories={expenseCategories}
             onAddCategory={addExpenseCategory}
             onRemoveCategory={removeExpenseCategory}

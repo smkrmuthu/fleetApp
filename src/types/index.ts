@@ -133,6 +133,7 @@ export interface Trip {
   revenue: number;
   status: TripStatus;
   remarks?: string;
+  transporter?: string;
   expenses: TripExpenseLine[];
   stops: TripStop[];
   documents: TripDocument[];
@@ -169,6 +170,7 @@ export interface TripFormState {
   odoEnd: string;
   revenue: string;
   remarks: string;
+  transporter: string;
 }
 
 export interface ExpenseFormState {

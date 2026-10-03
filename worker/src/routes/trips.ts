@@ -138,6 +138,8 @@ const createTripSchema = z.object({
   odoEnd: z.number().int().nonnegative().optional(),
   revenuePaise: z.number().int().nonnegative().default(0),
   remarks: z.string().optional(),
+  // Name of the transporter, picked from the org's Master list.
+  transporter: z.string().trim().max(120).optional(),
   // Driver only: create as an open trip (no approval requested yet) rather
   // than submitting straight away — see POST /:id/complete.
   draft: z.boolean().optional(),
@@ -261,6 +263,7 @@ tripRoutes.post('/', async (c) => {
     revenuePaise: isDriver ? 0 : data.revenuePaise,
     status: status as 'draft' | 'pending' | 'approved',
     remarks: data.remarks,
+    transporter: data.transporter || null,
     createdBy: auth.userId,
     createdAt: now,
     updatedAt: now
@@ -572,7 +575,7 @@ tripRoutes.patch('/:id', async (c) => {
   // Optional text fields can be cleared on edit by sending null.
   const clearable = z.string().nullable().optional();
   // stops, when present, replace the whole ordered list (checked together with the odometers below).
-  const schema = baseSchema.extend({ itemNo: clearable, unloadDate: clearable, fromLoc: clearable, fromNote: clearable, toLoc: clearable, toNote: clearable, remarks: clearable, stops: z.array(stopSchema).max(MAX_STOPS).optional() });
+  const schema = baseSchema.extend({ itemNo: clearable, unloadDate: clearable, fromLoc: clearable, fromNote: clearable, toLoc: clearable, toNote: clearable, remarks: clearable, transporter: clearable, stops: z.array(stopSchema).max(MAX_STOPS).optional() });
   const parsed = schema.safeParse(body);
   if (!parsed.success) return c.json({ error: { code: 'validation_error', message: parsed.error.message } }, 422);
   if (parsed.data.driverId && parsed.data.driverId !== existing.driverId) {

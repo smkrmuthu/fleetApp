@@ -25,7 +25,7 @@ const fileStem = (base: string, p: Period) => safeName(`${base}_${p.from || 'sta
 export function tripsSheet(trips: Trip[], financials: boolean, name = 'Trips'): SheetSpec {
   const head = [
     'Trip no.', 'Loading date', 'Unloading date', 'Item no.', 'Vehicle', 'Driver', 'Loading point', 'Loading point note',
-    'Stops (place, odometer)', 'Final unloading point', 'Final unloading note', 'Tons', 'Odometer start', 'Odometer end', 'KM',
+    'Stops (place, odometer)', 'Final unloading point', 'Final unloading note', 'Transporter', 'Tons', 'Odometer start', 'Odometer end', 'KM',
     'Diesel', 'AdBlue', 'Toll', 'Other', 'Trip expense',
     ...(financials ? ['Revenue', 'Profit'] : []),
     'Status', 'Remarks'
@@ -39,14 +39,14 @@ export function tripsSheet(trips: Trip[], financials: boolean, name = 'Trips'): 
       dash(t.waybillNo), dateCell(parseDisplayDate(t.loadDate)), dateCell(parseDisplayDate(t.unloadDate)), dash(t.itemNo), t.vehicle, dash(t.driver),
       dash(t.from), t.fromNote ?? '',
       t.stops.map((s) => `${s.location}${s.odo ? ` (${s.odo} km)` : ''}`).join('; '),
-      dash(t.to), t.toNote ?? '',
+      dash(t.to), t.toNote ?? '', t.transporter ?? '',
       dec(t.tons), t.odoStart ?? null, t.odoEnd ?? null, int(t.km),
       money(c.diesel), money(c.adblue), money(c.toll), money(c.other), money(c.expense),
       ...(financials ? [money(t.revenue), money(c.profit)] : []),
       STATUS_LABEL[t.status] ?? t.status, t.remarks ?? ''
     ]);
   }
-  const widths = [26, 13, 13, 12, 13, 16, 22, 22, 36, 24, 22, 8, 12, 12, 8, 12, 10, 10, 10, 13, ...(financials ? [13, 13] : []), 11, 28];
+  const widths = [26, 13, 13, 12, 13, 16, 22, 22, 36, 24, 22, 20, 8, 12, 12, 8, 12, 10, 10, 10, 13, ...(financials ? [13, 13] : []), 11, 28];
   return { name, rows, widths, freezeRows: 1 };
 }
 
