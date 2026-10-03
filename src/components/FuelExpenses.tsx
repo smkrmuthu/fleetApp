@@ -217,6 +217,8 @@ export function FuelExpenses({ trips, vehicles, drivers, master, role, onPost, o
       const cmp = typeof av === 'string' ? av.localeCompare(bv as string, undefined, { numeric: true }) : (av as number) - (bv as number);
       return sort.dir === 'asc' ? cmp : -cmp;
     });
+  const totalLitres = entries.reduce((a, e) => a + (e.line.litres ?? 0), 0);
+  const totalAmount = entries.reduce((a, e) => a + e.line.amount, 0);
   const fuelRows = (): FuelRow[] => entries.map(({ trip, line }) => ({
     date: line.date, vehicle: trip.vehicle, tripNo: trip.waybillNo, litres: line.litres ?? null, rate: line.ratePerLitre ?? null,
     amount: line.amount, remarks: line.details ?? ''
@@ -360,6 +362,15 @@ export function FuelExpenses({ trips, vehicles, drivers, master, role, onPost, o
                 </tr>
               ))}
             </tbody>
+            <tfoot>
+              <tr style={{ fontWeight: 700, background: 'var(--color-surface)' }}>
+                <td colSpan={3}>Total ({entries.length} {entries.length === 1 ? 'entry' : 'entries'})</td>
+                <td style={{ textAlign: 'right' }}>{totalLitres.toFixed(2)}</td>
+                <td></td>
+                <td style={{ textAlign: 'right' }}>{rupees(totalAmount)}</td>
+                <td colSpan={2}></td>
+              </tr>
+            </tfoot>
           </table>
         </div>
       )}
