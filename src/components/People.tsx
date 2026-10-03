@@ -142,6 +142,7 @@ function AddUserDialog({ onSave, onClose }: { onSave: (u: { name: string; phone:
               <option value="driver">Driver</option>
               <option value="office">Documentation (Office)</option>
               <option value="manager">Manager</option>
+              <option value="viewer">Viewer (read-only)</option>
             </select>
           </div>
           <div className="field">
@@ -308,7 +309,7 @@ export function People({
       { key: 'userId', label: 'User ID', display: u.userId || '—', value: u.userId ?? '', hint: "An alternate sign-in name, if you'd rather they not use the mobile number." },
       {
         key: 'role', label: 'Role', type: 'select', display: u.role, value: u.roleKey ?? 'driver',
-        options: [{ value: 'driver', label: 'Driver' }, { value: 'office', label: 'Documentation (Office)' }, { value: 'manager', label: 'Manager' }],
+        options: [{ value: 'driver', label: 'Driver' }, { value: 'office', label: 'Documentation (Office)' }, { value: 'manager', label: 'Manager' }, { value: 'viewer', label: 'Viewer (read-only)' }],
         hint: 'Changes what they can see the next time they sign in.'
       },
       { key: 'branchId', label: 'Branch', type: 'select', display: u.branch, value: u.branchId ?? '', options: [{ value: '', label: 'None' }, ...BRANCH_OPTIONS.map((b) => ({ value: b.id, label: b.name }))] },

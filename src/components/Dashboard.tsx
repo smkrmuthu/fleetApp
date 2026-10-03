@@ -13,6 +13,8 @@ interface Props {
   unavailability: VehicleUnavailability[];
   onTabChange: (t: TabId) => void;
   onEditTrip: (t: Trip) => void;
+  // A read-only viewer: no shortcuts to other screens, nothing to open or edit.
+  readOnly?: boolean;
 }
 
 function currentMonthRange(): { from: string; to: string } {
@@ -81,7 +83,7 @@ function VehicleGroupChart({ title, data, series }: { title: string; data: Recor
   );
 }
 
-export function Dashboard({ trips, expenses, vehicles, drivers, leaves, unavailability, onTabChange, onEditTrip }: Props) {
+export function Dashboard({ trips, expenses, vehicles, drivers, leaves, unavailability, onTabChange, onEditTrip, readOnly = false }: Props) {
   const [dateFrom, setDateFrom] = useState(() => currentMonthRange().from);
   const [dateTo, setDateTo] = useState(() => currentMonthRange().to);
   const label = formatDateRange(dateFrom, dateTo);
@@ -141,18 +143,20 @@ export function Dashboard({ trips, expenses, vehicles, drivers, leaves, unavaila
     <section>
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap', marginBottom: 24 }}>
         <div>
-          <div className="kicker">Manager · {label}</div>
+          <div className="kicker">{readOnly ? 'Overview' : 'Manager'} · {label}</div>
           <h1 style={{ fontSize: 34, letterSpacing: '-0.02em' }}>Dashboard</h1>
           <p style={{ color: 'var(--color-neutral-700)', marginTop: 6, fontSize: 13 }}>
             Where things stand right now — the numbers for the period below, and what needs your attention today.
           </p>
         </div>
+        {!readOnly && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
           <button type="button" className="btn btn-primary" style={{ padding: '4px 12px', fontSize: 13 }} onClick={() => onTabChange('addtrip')}>Add movement</button>
           <button type="button" className="btn btn-secondary" style={{ padding: '4px 12px', fontSize: 13 }} onClick={() => onTabChange('triplog')}>Trip Log</button>
           <button type="button" className="btn btn-secondary" style={{ padding: '4px 12px', fontSize: 13 }} onClick={() => onTabChange('people')}>People</button>
           <button type="button" className="btn btn-secondary" style={{ padding: '4px 12px', fontSize: 13 }} onClick={() => onTabChange('master')}>Master</button>
         </div>
+        )}
       </div>
 
       <div style={{ border: '2px solid var(--color-divider)', padding: 16, marginBottom: 24 }}>
@@ -246,13 +250,17 @@ export function Dashboard({ trips, expenses, vehicles, drivers, leaves, unavaila
             <>
               {openTrips.slice(0, 5).map((t) => (
                 <div key={t.id} style={rowStyle}>
-                  <button type="button" className="btn btn-ghost" style={{ padding: 0, textAlign: 'left' }} onClick={() => onEditTrip(t)}>
-                    {t.waybillNo} · {t.vehicle}
-                  </button>
+                  {readOnly ? (
+                    <span>{t.waybillNo} · {t.vehicle}</span>
+                  ) : (
+                    <button type="button" className="btn btn-ghost" style={{ padding: 0, textAlign: 'left' }} onClick={() => onEditTrip(t)}>
+                      {t.waybillNo} · {t.vehicle}
+                    </button>
+                  )}
                   <span className={t.status === 'pending' ? 'tag tag-accent' : 'tag tag-outline'}>{t.status === 'pending' ? 'Pending' : 'Draft'}</span>
                 </div>
               ))}
-              {openTrips.length > 5 && (
+              {openTrips.length > 5 && !readOnly && (
                 <button type="button" className="btn btn-ghost" style={{ marginTop: 8, padding: 0 }} onClick={() => onTabChange('triplog')}>
                   +{openTrips.length - 5} more in Trip Log
                 </button>
@@ -276,7 +284,7 @@ export function Dashboard({ trips, expenses, vehicles, drivers, leaves, unavaila
                   <span style={{ color: c.status.expired ? 'var(--color-accent-700)' : 'var(--color-neutral-700)', whiteSpace: 'nowrap' }}>{c.status.label}</span>
                 </div>
               ))}
-              {compliance.length > 5 && (
+              {compliance.length > 5 && !readOnly && (
                 <button type="button" className="btn btn-ghost" style={{ marginTop: 8, padding: 0 }} onClick={() => onTabChange('people')}>
                   +{compliance.length - 5} more under People
                 </button>
@@ -324,7 +332,7 @@ export function Dashboard({ trips, expenses, vehicles, drivers, leaves, unavaila
 
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, marginBottom: 12 }}>
         <h2 style={{ fontSize: 20 }}>Recent movements</h2>
-        <button type="button" className="btn btn-ghost" style={{ padding: 0 }} onClick={() => onTabChange('triplog')}>View all in Trip Log</button>
+        {!readOnly && <button type="button" className="btn btn-ghost" style={{ padding: 0 }} onClick={() => onTabChange('triplog')}>View all in Trip Log</button>}
       </div>
       <div className="scroll-x" style={{ border: '2px solid var(--color-divider)' }}>
         <table className="table" style={{ minWidth: 640 }}>

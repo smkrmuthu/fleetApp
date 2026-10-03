@@ -6,7 +6,9 @@ export interface Env {
   GEMINI_API_KEY: string;
 }
 
-export type Role = 'driver' | 'office' | 'manager';
+// 'viewer' is read-only: it can see Dashboard / Movement Summary / Monthly
+// Report data but can never change anything (enforced in requireAuth).
+export type Role = 'driver' | 'office' | 'manager' | 'viewer';
 
 // What every authenticated request carries, set once by the auth middleware
 // from the verified JWT and never trusted from the request body.

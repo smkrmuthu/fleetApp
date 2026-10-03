@@ -72,7 +72,12 @@ export function App() {
       setMaster(r);
       setDriverLeaves(l);
       setVehicleUnavailability(u2);
-      if (currentRole !== 'Driver') {
+      if (currentRole === 'Viewer') {
+        // Read-only: no user list or notification feed (the server refuses both).
+        setUsers([]);
+        setNotifications([]);
+        setExpenseCategories(await api.fetchExpenseCategories());
+      } else if (currentRole !== 'Driver') {
         const [u, n, ec] = await Promise.all([api.fetchUsers(), api.fetchNotifications(), api.fetchExpenseCategories()]);
         setUsers(u);
         setNotifications(n);
@@ -461,12 +466,15 @@ export function App() {
     );
   }
 
+  // A viewer can only ever be on their own three screens, whatever sets the tab.
+  const shownTab: TabId = role === 'Viewer' && !ROLE_TABS.Viewer.includes(tab) ? ROLE_TABS.Viewer[0] : tab;
+
   return (
     <>
       <AppShell
         role={role}
         userName={currentUserName}
-        tab={tab}
+        tab={shownTab}
         onTabChange={setTab}
         onSignOut={signOut}
         notifications={notifications}
@@ -480,7 +488,7 @@ export function App() {
         )}
         {loading && <div style={{ color: 'var(--color-neutral-700)', marginBottom: 16 }}>Loading…</div>}
 
-        {tab === 'dashboard' && (
+        {shownTab === 'dashboard' && (
           <Dashboard
             trips={trips}
             expenses={expenses}
@@ -490,9 +498,10 @@ export function App() {
             unavailability={vehicleUnavailability}
             onTabChange={setTab}
             onEditTrip={startEditingTrip}
+            readOnly={role === 'Viewer'}
           />
         )}
-        {tab === 'summary' && (
+        {shownTab === 'summary' && (
           <MovementSummary
             trips={trips}
             expenses={expenses}
@@ -509,7 +518,7 @@ export function App() {
             onResetFilters={resetFilters}
           />
         )}
-        {tab === 'addtrip' && (
+        {shownTab === 'addtrip' && (
           <AddMovement
             key={role + (editingTrip?.id ?? 'new')}
             onSubmit={submitTrip}
@@ -525,7 +534,7 @@ export function App() {
             onCancelEdit={cancelEditingTrip}
           />
         )}
-        {tab === 'triplog' && (
+        {shownTab === 'triplog' && (
           <TripLog
             trips={trips}
             vehicles={vehicles}
@@ -549,7 +558,7 @@ export function App() {
             role={role}
           />
         )}
-        {tab === 'expenses' && (
+        {shownTab === 'expenses' && (
           <MonthlyExpenses
             expenses={expenses}
             trips={trips}
@@ -565,7 +574,7 @@ export function App() {
             onDelete={deleteMonthlyExpense}
           />
         )}
-        {tab === 'report' && (
+        {shownTab === 'report' && (
           <MonthlyReport
             trips={trips}
             expenses={expenses}
@@ -582,7 +591,7 @@ export function App() {
             onResetFilters={resetFilters}
           />
         )}
-        {tab === 'people' && (
+        {shownTab === 'people' && (
           <People
             vehicles={vehicles}
             drivers={drivers}
@@ -601,7 +610,7 @@ export function App() {
             canEditAccounts={role === 'Manager'}
           />
         )}
-        {tab === 'master' && (
+        {shownTab === 'master' && (
           <Master
             vehicles={vehicles}
             drivers={drivers}
@@ -623,7 +632,7 @@ export function App() {
             onRemoveCategory={removeExpenseCategory}
           />
         )}
-        {tab === 'schema' && <DataModel />}
+        {shownTab === 'schema' && <DataModel />}
       </AppShell>
       <PwaInstall />
     </>

@@ -38,7 +38,7 @@ export function AppShell({
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            {role !== 'Driver' && (
+            {role !== 'Driver' && role !== 'Viewer' && (
               <NotificationBell notifications={notifications} onOpen={onOpenNotification} onMarkAllRead={onMarkAllNotificationsRead} />
             )}
             <div style={{ textAlign: 'right', lineHeight: 1.25 }}>

@@ -1,4 +1,4 @@
-export type Role = 'Driver' | 'Office' | 'Manager';
+export type Role = 'Driver' | 'Office' | 'Manager' | 'Viewer';
 
 export type TabId = 'dashboard' | 'summary' | 'addtrip' | 'triplog' | 'expenses' | 'report' | 'people' | 'master' | 'schema';
 
@@ -76,7 +76,7 @@ export interface UserAccount {
   access: string;
   seen: string;
   isManager: boolean;
-  roleKey?: 'driver' | 'office' | 'manager';
+  roleKey?: 'driver' | 'office' | 'manager' | 'viewer';
   branchId?: string;
   userId?: string;
 }

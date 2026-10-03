@@ -19,6 +19,20 @@ export async function requireAuth(c: Context<{ Bindings: Env; Variables: Vars }>
   } catch {
     return c.json({ error: { code: 'unauthorized', message: 'Invalid or expired token' } }, 401);
   }
+
+  // A viewer is strictly read-only. Enforcing it here — rather than adding
+  // the role to each route's requireRole list — means a route added later
+  // can't accidentally let a viewer write. Uploaded bills/receipts and the
+  // notification feed are also kept out of a viewer's reach: they aren't part
+  // of Dashboard / Movement Summary / Monthly Report.
+  if (c.get('auth').role === 'viewer') {
+    const path = c.req.path;
+    const readOnly = c.req.method === 'GET' || c.req.method === 'HEAD';
+    const privateData = /\/documents\/[^/]+\/file$/.test(path) || path.startsWith('/v1/notifications');
+    if (!readOnly || privateData) {
+      return c.json({ error: { code: 'forbidden', message: 'This account is read-only' } }, 403);
+    }
+  }
   await next();
 }
 

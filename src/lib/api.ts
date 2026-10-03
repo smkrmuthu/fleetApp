@@ -86,12 +86,13 @@ function formatSeen(iso: string | null | undefined): string {
 }
 
 // ── role & category mapping ─────────────────────────────────────────────
-type ApiRole = 'driver' | 'office' | 'manager';
-const ROLE_FROM_API: Record<ApiRole, Role> = { driver: 'Driver', office: 'Office', manager: 'Manager' };
+type ApiRole = 'driver' | 'office' | 'manager' | 'viewer';
+const ROLE_FROM_API: Record<ApiRole, Role> = { driver: 'Driver', office: 'Office', manager: 'Manager', viewer: 'Viewer' };
 const ROLE_ACCESS: Record<ApiRole, string> = {
   manager: 'All screens, month close',
   office: 'Movements, expenses, summary',
-  driver: 'Own movements only'
+  driver: 'Own movements only',
+  viewer: 'Dashboard, summary & report (read-only)'
 };
 
 // Forms fall back to the '—' placeholder for an empty optional field (it's
@@ -233,7 +234,7 @@ interface ApiUser {
 }
 
 function userFromApi(u: ApiUser): UserAccount & { id: string } {
-  const roleLabel = u.role === 'office' ? 'Documentation' : u.role === 'manager' ? 'Manager' : 'Driver';
+  const roleLabel = u.role === 'office' ? 'Documentation' : u.role === 'manager' ? 'Manager' : u.role === 'viewer' ? 'Viewer (read-only)' : 'Driver';
   return {
     id: u.id, name: u.fullName, role: roleLabel, phone: u.phone,
     branch: (u.branchId && BRANCH_NAME[u.branchId]) ?? '—',

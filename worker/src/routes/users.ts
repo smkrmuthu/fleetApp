@@ -21,7 +21,7 @@ userRoutes.get('/', requireRole('office', 'manager'), async (c) => {
 const inviteSchema = z.object({
   fullName: z.string().min(1),
   phone: z.string().min(6),
-  role: z.enum(['driver', 'office', 'manager']),
+  role: z.enum(['driver', 'office', 'manager', 'viewer']),
   password: z.string().min(6),
   branchId: z.string().optional(),
   driverId: z.string().optional(),
@@ -57,7 +57,7 @@ userRoutes.post('/invite', requireRole('manager'), async (c) => {
 const patchSchema = z.object({
   fullName: z.string().trim().min(1).optional(),
   phone: z.string().trim().min(6).optional(),
-  role: z.enum(['driver', 'office', 'manager']).optional(),
+  role: z.enum(['driver', 'office', 'manager', 'viewer']).optional(),
   branchId: z.string().nullable().optional(),
   userId: z.string().nullable().optional()
 });

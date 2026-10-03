@@ -38,7 +38,7 @@ export const users = sqliteTable(
     id: text('id').primaryKey(),
     orgId: text('org_id').notNull().references(() => orgs.id, { onDelete: 'cascade' }),
     branchId: text('branch_id').references(() => branches.id),
-    role: text('role', { enum: ['driver', 'office', 'manager'] }).notNull(),
+    role: text('role', { enum: ['driver', 'office', 'manager', 'viewer'] }).notNull(),
     fullName: text('full_name').notNull(),
     phone: text('phone').notNull(),
     // Optional alternate sign-in name, Manager-set — lets a user log in with
