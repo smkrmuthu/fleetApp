@@ -103,7 +103,7 @@ export function Dashboard({ trips, expenses, vehicles, drivers, leaves, unavaila
   const compliance = vehicles
     .flatMap((v) =>
       ([
-        ['Tax', v.taxDate], ['Inspection', v.inspectionDate], ['NP', v.npDate], ['FC', v.fcDate], ['Pollution', v.pollutionDate]
+        ['Tax', v.taxDate], ['Insurance', v.inspectionDate], ['NP', v.npDate], ['FC', v.fcDate], ['Pollution', v.pollutionDate]
       ] as const).map(([name, date]) => ({ vehicle: v.id, name, status: dueStatus(date) }))
     )
     .filter(isFlagged)

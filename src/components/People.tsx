@@ -8,7 +8,7 @@ import { RecordDialog, type DialogField } from './RecordDialog';
 // Every date on a truck that expires or falls due, most urgent first.
 function dueItems(v: Vehicle) {
   return [
-    { name: 'Tax', date: v.taxDate }, { name: 'Inspection', date: v.inspectionDate }, { name: 'NP', date: v.npDate },
+    { name: 'Tax', date: v.taxDate }, { name: 'Insurance', date: v.inspectionDate }, { name: 'NP', date: v.npDate },
     { name: 'FC', date: v.fcDate }, { name: 'Pollution', date: v.pollutionDate }
   ]
     .map((i) => ({ name: i.name, status: dueStatus(i.date) }))
@@ -261,7 +261,7 @@ export function People({
         { key: 'regDate', label: 'Reg Date', type: 'date', display: v.regDate, value: parseDisplayDate(v.regDate) },
         { key: 'batchNo', label: 'Batch #', display: v.batchNo, value: blank(v.batchNo) },
         { key: 'taxDate', label: 'Tax Date', type: 'date', display: v.taxDate, value: parseDisplayDate(v.taxDate), flag: dueStatus(v.taxDate) },
-        { key: 'inspectionDate', label: 'Inspection Date', type: 'date', display: v.inspectionDate, value: parseDisplayDate(v.inspectionDate), flag: dueStatus(v.inspectionDate) },
+        { key: 'inspectionDate', label: 'Insurance', type: 'date', display: v.inspectionDate, value: parseDisplayDate(v.inspectionDate), flag: dueStatus(v.inspectionDate) },
         { key: 'npDate', label: 'NP Date', type: 'date', display: v.npDate, value: parseDisplayDate(v.npDate), flag: dueStatus(v.npDate) },
         { key: 'fcDate', label: 'FC Date', type: 'date', display: v.fcDate, value: parseDisplayDate(v.fcDate), flag: dueStatus(v.fcDate) },
         { key: 'pollutionDate', label: 'Pollution Cert Date', type: 'date', display: v.pollutionDate, value: parseDisplayDate(v.pollutionDate), flag: dueStatus(v.pollutionDate) },
@@ -386,7 +386,7 @@ export function People({
           <div className="field"><label>Reg Date</label><input className="input" type="date" value={newVehicle.regDate} onChange={(e) => setNewVehicle((v) => ({ ...v, regDate: e.target.value }))} /></div>
           <div className="field"><label>Batch #</label><input className="input" type="text" placeholder="Batch no" value={newVehicle.batchNo} onChange={(e) => setNewVehicle((v) => ({ ...v, batchNo: e.target.value }))} /></div>
           <div className="field"><label>Tax Date</label><input className="input" type="date" value={newVehicle.taxDate} onChange={(e) => setNewVehicle((v) => ({ ...v, taxDate: e.target.value }))} /></div>
-          <div className="field"><label>Inspection Date</label><input className="input" type="date" value={newVehicle.inspectionDate} onChange={(e) => setNewVehicle((v) => ({ ...v, inspectionDate: e.target.value }))} /></div>
+          <div className="field"><label>Insurance</label><input className="input" type="date" value={newVehicle.inspectionDate} onChange={(e) => setNewVehicle((v) => ({ ...v, inspectionDate: e.target.value }))} /></div>
           <div className="field"><label>NP Date</label><input className="input" type="date" value={newVehicle.npDate} onChange={(e) => setNewVehicle((v) => ({ ...v, npDate: e.target.value }))} /></div>
           <div className="field"><label>FC Date</label><input className="input" type="date" value={newVehicle.fcDate} onChange={(e) => setNewVehicle((v) => ({ ...v, fcDate: e.target.value }))} /></div>
           <div className="field"><label>Pollution Cert Date</label><input className="input" type="date" value={newVehicle.pollutionDate} onChange={(e) => setNewVehicle((v) => ({ ...v, pollutionDate: e.target.value }))} /></div>
@@ -401,7 +401,7 @@ export function People({
         <table className="table" style={{ minWidth: 1500 }}>
           <thead>
             <tr>
-              <th>Reg No</th><th>Reg Date</th><th>Age</th><th>Batch #</th><th>Tax Date</th><th>Inspection Date</th><th>NP Date</th>
+              <th>Reg No</th><th>Reg Date</th><th>Age</th><th>Batch #</th><th>Tax Date</th><th>Insurance</th><th>NP Date</th>
               <th>FC Date</th><th>Pollution Cert Date</th><th>Owner</th><th>Model</th><th>Due</th><th className="col-actions"></th>
             </tr>
           </thead>

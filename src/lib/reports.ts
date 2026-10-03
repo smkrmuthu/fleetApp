@@ -294,7 +294,7 @@ export async function exportBackup(d: BackupData): Promise<void> {
     name: 'Vehicles',
     rows: [
       [
-        th('Reg No'), th('Reg Date'), th('Age of Vehicle'), th('Batch #'), th('Tax Date'), th('Inspection Date'), th('NP Date'), th('FC Date'),
+        th('Reg No'), th('Reg Date'), th('Age of Vehicle'), th('Batch #'), th('Tax Date'), th('Insurance'), th('NP Date'), th('FC Date'),
         th('Pollution Cert Date'), th('Owner'), th('Model'), th('Default driver')
       ],
       ...d.vehicles.map((v) => [
