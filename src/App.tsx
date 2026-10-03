@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { AppNotification, DriverLeave, DriverMaster, MasterSettings, MonthlyExpense, Role, TabId, Trip, UserAccount, Vehicle, VehicleUnavailability } from './types';
+import type { AppNotification, DriverLeave, DriverMaster, MasterSettings, MonthlyExpense, Role, TabId, Trip, TripDocument, UserAccount, Vehicle, VehicleUnavailability } from './types';
 import { ROLE_TABS } from './data/mockData';
 import { rupees, toIsoDate } from './utils/calc';
 import { exportBackup } from './lib/reports';
@@ -246,6 +246,20 @@ export function App() {
       setExpenses(await api.fetchMonthlyExpenses());
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not delete expense');
+    }
+  }
+
+  // `newDocs` are bills picked while editing; `removedDocIds` are existing
+  // bills the user took off. Returns an error message for the form, or null.
+  async function updateExpense(expense: MonthlyExpense, newDocs: TripDocument[], removedDocIds: string[]): Promise<string | null> {
+    try {
+      await api.updateMonthlyExpense(expense.id, expense);
+      for (const d of removedDocIds) await api.deleteMonthlyExpenseDocument(expense.id, d);
+      for (const d of newDocs) if (d.base64) await api.uploadMonthlyExpenseDocument(expense.id, d);
+      setExpenses(await api.fetchMonthlyExpenses());
+      return null;
+    } catch (e) {
+      return e instanceof Error ? e.message : 'Could not save expense';
     }
   }
 
@@ -571,6 +585,7 @@ export function App() {
             onDateTo={setDateTo}
             onResetFilters={resetFilters}
             onAdd={addExpense}
+            onUpdate={updateExpense}
             onDelete={deleteMonthlyExpense}
           />
         )}

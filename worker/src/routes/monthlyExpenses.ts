@@ -3,7 +3,7 @@ import { and, eq, isNull } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Env, Vars } from '../types';
 import { getDb, newId, nowIso } from '../db';
-import { expenseCategories, monthlyExpenses, monthlyExpenseDocuments, receipts } from '../../drizzle/schema';
+import { drivers, expenseCategories, monthlyExpenses, monthlyExpenseDocuments, receipts, vehicles } from '../../drizzle/schema';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { buildFilters, combine } from '../lib/filters';
 import { writeAudit } from '../lib/audit';
@@ -103,6 +103,59 @@ monthlyExpenseRoutes.post('/', requireRole('office', 'manager'), async (c) => {
 
   const [row] = await db.select().from(monthlyExpenses).where(eq(monthlyExpenses.id, id)).limit(1);
   return c.json({ ...row, documents: documentRows }, 201);
+});
+
+const patchSchema = z.object({
+  vehicleId: z.string().min(1),
+  driverId: z.string().nullable().optional(),
+  spentOn: z.string().min(1),
+  category: z.string().trim().min(1).max(60),
+  amountPaise: z.number().int().nonnegative(),
+  remarks: z.string().nullable().optional()
+});
+
+// Edits the cost line itself; bills are added/removed through the document
+// routes below. A description that has since been removed from Master is still
+// accepted if the expense already carries it — only a *change* of description
+// has to be a current one.
+monthlyExpenseRoutes.patch('/:id', requireRole('office', 'manager'), async (c) => {
+  const auth = c.get('auth');
+  const id = c.req.param('id')!;
+  const body = await c.req.json().catch(() => null);
+  const parsed = patchSchema.safeParse(body);
+  if (!parsed.success) return c.json({ error: { code: 'validation_error', message: parsed.error.message } }, 422);
+
+  const db = getDb(c.env);
+  const [existing] = await db.select().from(monthlyExpenses)
+    .where(and(eq(monthlyExpenses.id, id), eq(monthlyExpenses.orgId, auth.orgId), isNull(monthlyExpenses.voidedAt))).limit(1);
+  if (!existing) return c.json({ error: { code: 'not_found', message: 'Expense not found' } }, 404);
+
+  const d = parsed.data;
+  const [vehicle] = await db.select({ id: vehicles.id }).from(vehicles).where(and(eq(vehicles.id, d.vehicleId), eq(vehicles.orgId, auth.orgId))).limit(1);
+  if (!vehicle) return c.json({ error: { code: 'validation_error', message: `Truck "${d.vehicleId}" not found`, field: 'vehicleId' } }, 422);
+
+  const driverId = d.driverId && d.driverId.trim() ? d.driverId : null;
+  if (driverId) {
+    const [driver] = await db.select({ id: drivers.id }).from(drivers).where(and(eq(drivers.id, driverId), eq(drivers.orgId, auth.orgId))).limit(1);
+    if (!driver) return c.json({ error: { code: 'validation_error', message: `Driver "${driverId}" not found`, field: 'driverId' } }, 422);
+  }
+
+  if (d.category !== existing.category) {
+    const [cat] = await db.select({ id: expenseCategories.id }).from(expenseCategories)
+      .where(and(eq(expenseCategories.id, d.category), eq(expenseCategories.orgId, auth.orgId), eq(expenseCategories.active, true))).limit(1);
+    if (!cat) return c.json({ error: { code: 'validation_error', message: `"${d.category}" isn't a current description — add it under Master first`, field: 'category' } }, 422);
+  }
+
+  const changes = {
+    vehicleId: d.vehicleId, driverId, spentOn: d.spentOn, category: d.category,
+    amountPaise: d.amountPaise, remarks: d.remarks && d.remarks.trim() ? d.remarks.trim() : null
+  };
+  await db.update(monthlyExpenses).set(changes).where(and(eq(monthlyExpenses.id, id), eq(monthlyExpenses.orgId, auth.orgId)));
+  await writeAudit(db, auth.orgId, 'monthly_expenses', id, 'update', changes, auth.userId);
+
+  const [row] = await db.select().from(monthlyExpenses).where(eq(monthlyExpenses.id, id)).limit(1);
+  const docs = await fetchDocumentsByExpense(db, auth.orgId, [id]);
+  return c.json({ ...row, documents: docs.get(id) ?? [] });
 });
 
 // Same ownership scope as the rest of this route file (office/manager) — a

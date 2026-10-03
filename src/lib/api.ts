@@ -307,6 +307,16 @@ export async function createMonthlyExpense(e: { vehicle: string; driver: string;
   });
 }
 
+export async function updateMonthlyExpense(id: string, e: { vehicle: string; driver: string; date: string; category: ExpenseCategory; amount: number; remarks: string }): Promise<void> {
+  await request(`/monthly-expenses/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      vehicleId: e.vehicle, driverId: orUndefined(e.driver) ?? null, spentOn: e.date,
+      category: e.category, amountPaise: rupeesToPaise(e.amount), remarks: orUndefined(e.remarks) ?? null
+    })
+  });
+}
+
 export async function uploadMonthlyExpenseDocument(expenseId: string, doc: TripDocument): Promise<TripDocument> {
   const res = await request<{ id: string; filename: string; mimeType: string | null }>(`/monthly-expenses/${encodeURIComponent(expenseId)}/documents`, {
     method: 'POST',

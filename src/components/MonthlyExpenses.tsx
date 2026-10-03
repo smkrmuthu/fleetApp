@@ -37,16 +37,25 @@ interface Props {
   onDateTo: (v: string) => void;
   onResetFilters: () => void;
   onAdd: (e: MonthlyExpense) => void;
+  onUpdate: (e: MonthlyExpense, newDocs: TripDocument[], removedDocIds: string[]) => Promise<string | null>;
   onDelete: (e: MonthlyExpense) => void;
   categories: string[];
 }
 
-export function MonthlyExpenses({ expenses: allExpenses, trips, vehicles, drivers, categories, dateFrom, dateTo, onDateFrom, onDateTo, onResetFilters, onAdd, onDelete }: Props) {
+export function MonthlyExpenses({ expenses: allExpenses, trips, vehicles, drivers, categories, dateFrom, dateTo, onDateFrom, onDateTo, onResetFilters, onAdd, onUpdate, onDelete }: Props) {
   const [exp, setExp] = useState<ExpenseFormState>(() => blankExpense(vehicles[0]?.id ?? '', categories[0] ?? ''));
   const [documents, setDocuments] = useState<TripDocument[]>([]);
   const [docErrorMsg, setDocErrorMsg] = useState('');
   const [viewingDoc, setViewingDoc] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Editing reuses the add form: `editingId` is the expense being changed,
+  // `existingDocs` the bills it still has, `removedDocIds` the ones taken off
+  // (deleted only when Save is pressed).
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [existingDocs, setExistingDocs] = useState<TripDocument[]>([]);
+  const [removedDocIds, setRemovedDocIds] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
   const [truckFilter, setTruckFilter] = useState('all');
   const [dateSort, setDateSort] = useState<'asc' | 'desc'>('asc');
   const expenses = allExpenses
@@ -105,6 +114,44 @@ export function MonthlyExpenses({ expenses: allExpenses, trips, vehicles, driver
     }
   }
 
+  function startEdit(e: MonthlyExpense) {
+    setEditingId(e.id);
+    setExp({
+      date: parseDisplayDate(e.date), vehicle: e.vehicle, driver: e.driver === '—' ? '' : e.driver,
+      category: e.category, amount: String(e.amount), remarks: e.remarks === '—' ? '' : e.remarks
+    });
+    setExistingDocs(e.documents);
+    setRemovedDocIds([]);
+    setDocuments([]);
+    setDocErrorMsg('');
+    setSaveError('');
+    document.getElementById('expense-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setExistingDocs([]);
+    setRemovedDocIds([]);
+    setDocuments([]);
+    setDocErrorMsg('');
+    setSaveError('');
+    setExp(blankExpense(vehicles[0]?.id ?? '', categories[0] ?? ''));
+  }
+
+  async function saveEdit() {
+    if (!editingId) return;
+    if (!toNumber(exp.amount)) { setSaveError('Enter an amount.'); return; }
+    setSaving(true);
+    setSaveError('');
+    const err = await onUpdate(
+      { id: editingId, date: exp.date, vehicle: exp.vehicle, driver: exp.driver || '—', category: exp.category, amount: toNumber(exp.amount), remarks: exp.remarks || '—', documents: existingDocs },
+      documents, removedDocIds
+    );
+    setSaving(false);
+    if (err) setSaveError(err);
+    else cancelEdit();
+  }
+
   function addExpense() {
     if (!toNumber(exp.amount)) return;
     onAdd({
@@ -127,7 +174,10 @@ export function MonthlyExpenses({ expenses: allExpenses, trips, vehicles, driver
         <p style={{ color: 'var(--color-neutral-700)', marginTop: 6, fontSize: 13 }}>Record fixed costs — permits, insurance, EMIs — that aren't tied to a single trip.</p>
       </div>
 
-      <div style={{ border: '2px solid var(--color-divider)', padding: 20, marginBottom: 24 }}>
+      <div id="expense-form" style={{ border: '2px solid var(--color-divider)', padding: 20, marginBottom: 24 }}>
+        {editingId && (
+          <div style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--color-accent-700)', marginBottom: 12 }}>Editing expense</div>
+        )}
         <div className="filters-grid">
           <div className="field"><label>Date</label><input className="input" type="date" value={exp.date} onChange={set('date')} /></div>
           <div className="field">
@@ -147,12 +197,21 @@ export function MonthlyExpenses({ expenses: allExpenses, trips, vehicles, driver
             <label>Description</label>
             <select className="input" value={exp.category} onChange={set('category')}>
               {categories.length === 0 && <option value="">Add one under Master first</option>}
+              {exp.category && !categories.includes(exp.category) && <option value={exp.category}>{exp.category} (removed)</option>}
               {categories.map((k) => <option key={k} value={k}>{k}</option>)}
             </select>
           </div>
           <div className="field"><label>Amount (₹)</label><input className="input" type="number" value={exp.amount} onChange={set('amount')} /></div>
           <div className="field"><label>Remarks</label><input className="input" type="text" placeholder="Remarks" value={exp.remarks} onChange={set('remarks')} /></div>
-          <button type="button" className="btn btn-primary" style={{ justifySelf: 'start' }} onClick={addExpense} disabled={categories.length === 0}>Add expense</button>
+          {editingId ? (
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <button type="button" className="btn btn-primary" onClick={saveEdit} disabled={saving}>{saving ? 'Saving…' : 'Save changes'}</button>
+              <button type="button" className="btn btn-secondary" onClick={cancelEdit} disabled={saving}>Cancel</button>
+              {saveError && <span style={{ fontSize: 13, color: 'var(--color-accent-800)' }}>{saveError}</span>}
+            </div>
+          ) : (
+            <button type="button" className="btn btn-primary" style={{ justifySelf: 'start' }} onClick={addExpense} disabled={categories.length === 0}>Add expense</button>
+          )}
         </div>
 
         <div style={{ marginTop: 16, borderTop: '2px solid var(--color-divider)', paddingTop: 16 }}>
@@ -160,6 +219,19 @@ export function MonthlyExpenses({ expenses: allExpenses, trips, vehicles, driver
           <input ref={fileInputRef} type="file" multiple accept="image/*,.pdf" onChange={onFilesChosen} style={{ marginBottom: docErrorMsg || documents.length ? 10 : 0 }} />
           {docErrorMsg && (
             <div style={{ fontSize: 12, color: 'var(--color-accent-800)', marginBottom: 10 }}>{docErrorMsg}</div>
+          )}
+          {editingId && existingDocs.filter((d) => !removedDocIds.includes(d.id)).length > 0 && (
+            <ul style={{ margin: '0 0 6px', padding: 0, listStyle: 'none', display: 'grid', gap: 6 }}>
+              {existingDocs.filter((d) => !removedDocIds.includes(d.id)).map((d) => (
+                <li key={d.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, fontSize: 13, background: 'var(--color-surface)', padding: '6px 10px' }}>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.filename}</span>
+                  <span style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                    <button type="button" className="btn btn-ghost" style={{ padding: '0 4px', fontSize: 12 }} disabled={viewingDoc === d.id} onClick={() => viewDocument(editingId, d)}>View</button>
+                    <button type="button" className="btn btn-ghost" style={{ padding: '0 4px', fontSize: 12 }} onClick={() => setRemovedDocIds((prev) => [...prev, d.id])}>Remove</button>
+                  </span>
+                </li>
+              ))}
+            </ul>
           )}
           {documents.length > 0 && (
             <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 6 }}>
@@ -230,7 +302,7 @@ export function MonthlyExpenses({ expenses: allExpenses, trips, vehicles, driver
           </thead>
           <tbody>
             {expenses.map((e) => (
-              <tr key={e.id}>
+              <tr key={e.id} style={e.id === editingId ? { background: 'var(--color-accent-100)' } : undefined}>
                 <td style={{ whiteSpace: 'nowrap' }}>{e.date}</td>
                 <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{e.vehicle}</td>
                 <td style={{ whiteSpace: 'nowrap', color: 'var(--color-neutral-700)' }}>{matchingLoadingDate(trips, e.vehicle, e.date)}</td>
@@ -259,8 +331,11 @@ export function MonthlyExpenses({ expenses: allExpenses, trips, vehicles, driver
                     </span>
                   )}
                 </td>
-                <td style={{ textAlign: 'right' }}>
-                  <button type="button" className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 12, color: 'var(--color-accent-700)' }} onClick={() => onDelete(e)}>
+                <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                  <button type="button" className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => startEdit(e)}>
+                    Edit
+                  </button>
+                  <button type="button" className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 12, color: 'var(--color-accent-700)' }} onClick={() => { if (editingId === e.id) cancelEdit(); onDelete(e); }}>
                     Delete
                   </button>
                 </td>
