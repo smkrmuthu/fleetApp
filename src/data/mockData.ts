@@ -49,9 +49,9 @@ export const TRIP_EXPENSE_LABEL: Record<string, string> = {
 };
 
 export const ROLE_TABS: Record<Role, TabId[]> = {
-  Driver: ['addtrip', 'triplog'],
-  Office: ['addtrip', 'triplog', 'summary', 'expenses'],
-  Manager: ['dashboard', 'summary', 'addtrip', 'triplog', 'expenses', 'report', 'people', 'master', 'schema'],
+  Driver: ['addtrip', 'fuel', 'triplog'],
+  Office: ['addtrip', 'fuel', 'triplog', 'summary', 'expenses'],
+  Manager: ['dashboard', 'summary', 'addtrip', 'fuel', 'triplog', 'expenses', 'report', 'people', 'master', 'schema'],
   // Read-only: looks at the numbers, changes nothing.
   Viewer: ['dashboard', 'summary', 'report']
 };
@@ -60,6 +60,7 @@ export const TAB_LABELS: Record<TabId, string> = {
   dashboard: 'Dashboard',
   summary: 'Movement Summary',
   addtrip: 'Add Movement',
+  fuel: 'Fuel Expenses',
   triplog: 'Trip Log',
   expenses: 'Monthly Expenses',
   report: 'Monthly Report',

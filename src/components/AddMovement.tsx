@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import type { DriverLeave, DriverMaster, MasterSettings, Trip, TripDocument, TripExpenseKind, TripExpenseLine, TripFormState, TripStop, Vehicle, VehicleUnavailability } from '../types';
+import type { DriverLeave, DriverMaster, MasterSettings, Trip, TripDocument, TripExpenseLine, TripFormState, TripStop, Vehicle, VehicleUnavailability } from '../types';
 import { TRIP_EXPENSE_LABEL } from '../data/mockData';
 import { dieselLitres, overlappingLeaves, overlappingUnavailability, rupees, todayIso, toNumber } from '../utils/calc';
 import { MovementReview } from './MovementReview';
-import { fetchDocumentBlobUrl, fetchNextTripNumberPreview, formatDisplayDateTime, parseDisplayDate, scanReceipt, type ScannedReceipt } from '../lib/api';
+import { fetchDocumentBlobUrl, fetchNextTripNumberPreview, formatDisplayDateTime, parseDisplayDate } from '../lib/api';
 
 // Mirrors the server's allowlist (worker/src/lib/fileValidation.ts) so a
 // driver gets an immediate, specific message instead of a generic save
@@ -21,14 +21,6 @@ function fileToBase64(file: File): Promise<{ base64: string; mimeType: string }>
     reader.onerror = () => reject(reader.error);
     reader.readAsDataURL(file);
   });
-}
-
-function normalizeReg(v: string): string {
-  return v.replace(/\s+/g, '').toUpperCase();
-}
-
-function mapFuelType(fuelType?: string): TripExpenseKind {
-  return (fuelType ?? '').toLowerCase().includes('adblue') ? 'adblue' : 'diesel';
 }
 
 function blankForm(driver = '', from = ''): TripFormState {
@@ -49,21 +41,17 @@ export function formFromTrip(trip: Trip): TripFormState {
   };
 }
 
-type FuelEntryMode = 'litres' | 'amount';
-
-// rateOverride is null until someone types a rate of their own — until then
-// the field shows the Master rate for the chosen kind, so a rate that loads
-// late (or changes kind) is picked up instead of frozen at first render.
-interface NewLine { date: string; kind: TripExpenseKind; entryMode: FuelEntryMode; litres: string; rateOverride: string | null; amount: string; details: string }
+// Trip Movement only takes "other" expenses now — fuel is posted from the Fuel
+// Expenses tab (and toll is Fastag under Monthly Expenses).
+interface NewLine { date: string; amount: string; details: string }
 
 function blankLine(): NewLine {
-  return { date: todayIso(), kind: 'diesel', entryMode: 'litres', litres: '', rateOverride: null, amount: '0', details: '' };
+  return { date: todayIso(), amount: '0', details: '' };
 }
 
 // Toll isn't entered per trip any more — Fastag is recorded under Monthly
 // Expenses and shown as Toll in the Monthly Report. (Existing trips that
 // already carry a toll line keep it.)
-const EXPENSE_KINDS: TripExpenseKind[] = ['diesel', 'adblue', 'other'];
 const MAX_STOPS = 20;
 
 // Column sizes shared by every Route row so the odometer boxes line up.
@@ -126,17 +114,12 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, l
     if (!isEditing) loadTripNoPreview();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const [scanning, setScanning] = useState(false);
-  const [scanResult, setScanResult] = useState<ScannedReceipt | null>(null);
-  const [scanFile, setScanFile] = useState<{ base64: string; mimeType: string; filename: string } | null>(null);
-  const [scanErrorMsg, setScanErrorMsg] = useState('');
   const [viewingDoc, setViewingDoc] = useState<string | null>(null);
   const [docErrorMsg, setDocErrorMsg] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [confirmAction, setConfirmAction] = useState<SubmitAction | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const scanFileInputRef = useRef<HTMLInputElement>(null);
   const errorBoxRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -181,25 +164,10 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, l
     setErrors({});
   };
 
-  const needsFuelFields = newLine.kind === 'diesel' || newLine.kind === 'adblue';
-  const needsDetails = newLine.kind === 'other';
-  const byLitres = needsFuelFields && newLine.entryMode === 'litres';
-  const masterRate = newLine.kind === 'adblue' ? master.adblueRate : master.dieselRate;
-  const rateText = newLine.rateOverride ?? (masterRate === null ? '' : String(masterRate));
-  const computedAmount = byLitres ? toNumber(newLine.litres) * toNumber(rateText) : toNumber(newLine.amount);
-
   function addLine() {
-    const amount = byLitres ? computedAmount : toNumber(newLine.amount);
-    if (!amount) return;
-    if (needsDetails && !newLine.details.trim()) return;
-    const line: TripExpenseLine = {
-      id: 'x' + Date.now(),
-      date: newLine.date,
-      kind: newLine.kind,
-      amount,
-      ...(byLitres ? { litres: toNumber(newLine.litres), ratePerLitre: toNumber(rateText) } : {}),
-      ...(needsDetails ? { details: newLine.details.trim() } : {})
-    };
+    const amount = toNumber(newLine.amount);
+    if (!amount || !newLine.details.trim()) return;
+    const line: TripExpenseLine = { id: 'x' + Date.now(), date: newLine.date, kind: 'other', amount, details: newLine.details.trim() };
     setLines((prev) => [...prev, line]);
     setNewLine(blankLine());
   }
@@ -275,7 +243,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, l
       const url = await fetchDocumentBlobUrl(editingTrip.id, doc.id);
       window.open(url, '_blank');
     } catch {
-      setScanErrorMsg('Could not open that file — try again.');
+      setDocErrorMsg('Could not open that file — try again.');
     } finally {
       setViewingDoc(null);
     }
@@ -419,53 +387,6 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, l
     setConfirmAction(null);
   }
 
-  async function onScanFileChosen(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (scanFileInputRef.current) scanFileInputRef.current.value = '';
-    if (!file) return;
-    setScanning(true);
-    setScanErrorMsg('');
-    setScanResult(null);
-    setScanFile(null);
-    try {
-      const { base64, mimeType } = await fileToBase64(file);
-      const result = await scanReceipt(base64, mimeType);
-      setScanResult(result);
-      setScanFile({ base64, mimeType, filename: file.name });
-      if (!form.vehicle && result.vehicleNo) {
-        const match = vehicles.find((v) => normalizeReg(v.id) === normalizeReg(result.vehicleNo!));
-        if (match) setForm((f) => ({ ...f, vehicle: match.id, driver: f.driver || defaultDriverFor(match.id) }));
-      }
-    } catch (err) {
-      setScanErrorMsg(err instanceof Error ? err.message : 'Could not read the receipt — try again or enter it manually');
-    } finally {
-      setScanning(false);
-    }
-  }
-
-  function discardScan() {
-    setScanResult(null);
-    setScanFile(null);
-  }
-
-  function addScannedEntry() {
-    if (!scanResult) return;
-    const line: TripExpenseLine = {
-      id: 'x' + Date.now(),
-      date: scanResult.date && /^\d{4}-\d{2}-\d{2}$/.test(scanResult.date) ? scanResult.date : todayIso(),
-      kind: mapFuelType(scanResult.fuelType),
-      litres: scanResult.litres,
-      ratePerLitre: scanResult.ratePerLitre,
-      amount: scanResult.amount
-    };
-    setLines((prev) => [...prev, line]);
-    if (scanFile) {
-      setDocuments((prev) => [...prev, { id: 'x' + Date.now() + Math.random().toString(36).slice(2), filename: scanFile.filename, mimeType: scanFile.mimeType, base64: scanFile.base64 }]);
-    }
-    setScanResult(null);
-    setScanFile(null);
-  }
-
   const errorClass = (key: string) => (errors[key] ? 'input input-error' : 'input');
 
   return (
@@ -488,7 +409,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, l
         <p style={{ color: 'var(--color-neutral-700)', marginTop: 6, fontSize: 13 }}>
           {isCompleted
             ? 'This movement is complete. Changes you save replace what is recorded and are kept in the audit log.'
-            : isEditing ? 'Update an open movement, add entries to it, or mark it complete.' : 'Start a new movement, or scan/enter its fuel and expense entries as you go.'}
+            : isEditing ? 'Update an open movement, add entries to it, or mark it complete.' : 'Start a new movement and add its expense entries as you go. Fuel is posted from the Fuel Expenses tab.'}
         </p>
       </div>
       <div className="movement-grid">
@@ -642,143 +563,25 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, l
 
           <div style={{ marginTop: 20, borderTop: '2px solid var(--color-divider)', paddingTop: 16 }}>
             <div style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--color-neutral-700)', marginBottom: 12 }}>
-              Fuel &amp; expense entries
+              Expense entries
             </div>
-            <div className="field" style={{ marginBottom: 14 }}>
-              <div role="group" aria-label="Kind" style={{ display: 'flex', border: '2px solid var(--color-text)', width: 'fit-content' }}>
-                {EXPENSE_KINDS.map((k, i) => (
-                  <button
-                    key={k}
-                    type="button"
-                    onClick={() => setNewLine((l) => ({ ...l, kind: k, rateOverride: null }))}
-                    style={{
-                      appearance: 'none', border: 0, borderLeft: i > 0 ? '2px solid var(--color-text)' : 'none',
-                      background: newLine.kind === k ? 'var(--color-accent)' : 'transparent',
-                      color: newLine.kind === k ? '#fff' : 'var(--color-text)',
-                      fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: 12, letterSpacing: '0.06em', textTransform: 'uppercase',
-                      padding: '7px 14px', cursor: 'pointer'
-                    }}
-                  >
-                    {TRIP_EXPENSE_LABEL[k]}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {needsFuelFields && (
-              <div className="field" style={{ marginBottom: 14 }}>
-                <label>Enter by</label>
-                <div style={{ display: 'flex', border: '2px solid var(--color-divider)', width: 'fit-content' }}>
-                  {(['litres', 'amount'] as FuelEntryMode[]).map((mode, i) => (
-                    <button
-                      key={mode}
-                      type="button"
-                      onClick={() => setNewLine((l) => ({ ...l, entryMode: mode }))}
-                      style={{
-                        appearance: 'none', border: 0, borderLeft: i > 0 ? '2px solid var(--color-divider)' : 'none',
-                        background: newLine.entryMode === mode ? 'var(--color-text)' : 'transparent',
-                        color: newLine.entryMode === mode ? 'var(--color-bg)' : 'var(--color-text)',
-                        fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: 12, letterSpacing: '0.04em', textTransform: 'uppercase',
-                        padding: '6px 12px', cursor: 'pointer'
-                      }}
-                    >
-                      {mode === 'litres' ? 'Litres × rate' : 'Fixed amount'}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
             <div className="filters-grid" style={{ alignItems: 'end', marginBottom: 12 }}>
               <div className="field">
                 <label>Date</label>
                 <input className="input" type="date" value={newLine.date} onChange={(e) => setNewLine((l) => ({ ...l, date: e.target.value }))} />
               </div>
-              {needsFuelFields ? (
-                <>
-                  <div className="field" style={{ opacity: byLitres ? 1 : 0.45 }}>
-                    <label>Litres</label>
-                    <input className="input" type="number" step="any" inputMode="decimal" disabled={!byLitres} value={newLine.litres} onChange={(e) => setNewLine((l) => ({ ...l, litres: e.target.value }))} />
-                  </div>
-                  <div className="field" style={{ opacity: byLitres ? 1 : 0.45 }}>
-                    <label>Rate / litre (₹)</label>
-                    <input className="input" type="number" step="any" inputMode="decimal" disabled={!byLitres} placeholder="Rate" value={rateText} onChange={(e) => setNewLine((l) => ({ ...l, rateOverride: e.target.value }))} />
-                  </div>
-                  {byLitres ? (
-                    <div>
-                      <div className="stat-label" style={{ marginBottom: 4 }}>Amount</div>
-                      <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 18 }}>{rupees(computedAmount)}</div>
-                    </div>
-                  ) : (
-                    <div className="field">
-                      <label>Amount (₹)</label>
-                      <input className="input" type="number" step="any" inputMode="decimal" placeholder="3000" value={newLine.amount} onChange={(e) => setNewLine((l) => ({ ...l, amount: e.target.value }))} />
-                    </div>
-                  )}
-                </>
-              ) : (
-                <>
-                  <div className="field">
-                    <label>Amount (₹)</label>
-                    <input className="input" type="number" step="any" inputMode="decimal" value={newLine.amount} onChange={(e) => setNewLine((l) => ({ ...l, amount: e.target.value }))} />
-                  </div>
-                  {needsDetails && (
-                    <div className="field">
-                      <label>Details *</label>
-                      <input className="input" type="text" placeholder="What was this for?" value={newLine.details} onChange={(e) => setNewLine((l) => ({ ...l, details: e.target.value }))} />
-                    </div>
-                  )}
-                </>
-              )}
-              <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              <div className="field">
+                <label>Amount (₹)</label>
+                <input className="input" type="number" step="any" inputMode="decimal" value={newLine.amount} onChange={(e) => setNewLine((l) => ({ ...l, amount: e.target.value }))} />
+              </div>
+              <div className="field">
+                <label>Details *</label>
+                <input className="input" type="text" placeholder="What was this for?" value={newLine.details} onChange={(e) => setNewLine((l) => ({ ...l, details: e.target.value }))} />
+              </div>
+              <div>
                 <button type="button" className="btn btn-secondary" onClick={addLine}>Add entry</button>
-                <span style={{ color: 'var(--color-neutral-500)', fontSize: 12 }}>or</span>
-                <input
-                  ref={scanFileInputRef}
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  onChange={onScanFileChosen}
-                  style={{ display: 'none' }}
-                />
-                <button type="button" className="btn btn-secondary" disabled={scanning} onClick={() => scanFileInputRef.current?.click()}>
-                  {scanning && <span className="spinner" style={{ marginRight: 8 }} />}
-                  {scanning ? 'Reading receipt…' : 'Scan a receipt'}
-                </button>
               </div>
             </div>
-
-            {scanErrorMsg && (
-              <div style={{ border: '2px solid var(--color-accent)', color: 'var(--color-accent-700)', padding: '10px 14px', marginBottom: 12, fontSize: 13 }}>
-                {scanErrorMsg}
-              </div>
-            )}
-
-            {scanResult && (
-              <div style={{ marginBottom: 16, border: '2px solid var(--color-text)' }}>
-                <div style={{ background: 'var(--color-text)', color: 'var(--color-bg)', padding: '8px 12px', fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-                  Parsed — confirm
-                </div>
-                {[
-                  { label: 'Vendor', value: scanResult.vendor || '—' },
-                  { label: 'Date', value: scanResult.date || '—' },
-                  { label: 'Vehicle on bill', value: scanResult.vehicleNo || '—' },
-                  { label: 'Fuel', value: scanResult.fuelType || '—' },
-                  { label: 'Litres', value: scanResult.litres.toString() },
-                  { label: 'Price / litre', value: rupees(scanResult.ratePerLitre) },
-                  { label: 'Amount', value: rupees(scanResult.amount) }
-                ].map((f) => (
-                  <div key={f.label} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '10px 12px', borderBottom: '1px solid var(--color-neutral-300)' }}>
-                    <span style={{ color: 'var(--color-neutral-700)' }}>{f.label}</span>
-                    <span style={{ fontWeight: 600 }}>{f.value}</span>
-                  </div>
-                ))}
-                <div style={{ padding: 12, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                  <button type="button" className="btn btn-primary btn-block" style={{ flex: '1 1 auto' }} onClick={addScannedEntry}>Add as an entry</button>
-                  <button type="button" className="btn btn-ghost" onClick={discardScan}>Discard</button>
-                </div>
-              </div>
-            )}
 
             {lines.length > 0 && (
               <div className="scroll-x" style={{ border: '1px solid var(--color-neutral-300)' }}>

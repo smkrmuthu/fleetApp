@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { AppNotification, DriverLeave, DriverMaster, MasterSettings, MonthlyExpense, Role, TabId, Trip, TripDocument, UserAccount, Vehicle, VehicleUnavailability } from './types';
+import type { AppNotification, DriverLeave, DriverMaster, MasterSettings, MonthlyExpense, Role, TabId, Trip, TripDocument, TripExpenseLine, UserAccount, Vehicle, VehicleUnavailability } from './types';
 import { ROLE_TABS } from './data/mockData';
 import { rupees, toIsoDate } from './utils/calc';
 import { exportBackup } from './lib/reports';
@@ -11,6 +11,7 @@ import { Dashboard } from './components/Dashboard';
 import { MovementSummary } from './components/MovementSummary';
 import { AddMovement } from './components/AddMovement';
 import { TripLog } from './components/TripLog';
+import { FuelExpenses } from './components/FuelExpenses';
 import { MonthlyExpenses } from './components/MonthlyExpenses';
 import { MonthlyReport } from './components/MonthlyReport';
 import { People } from './components/People';
@@ -260,6 +261,32 @@ export function App() {
       return null;
     } catch (e) {
       return e instanceof Error ? e.message : 'Could not save expense';
+    }
+  }
+
+  // Fuel posted from the Fuel Expenses tab becomes a diesel line on the chosen
+  // trip (and the scanned bill, if any, one of that trip's documents).
+  async function postFuel(trip: Trip, line: TripExpenseLine, bill: TripDocument | null): Promise<{ ok: boolean; message: string | null }> {
+    try {
+      await api.addTripExpense(trip.id, line);
+    } catch (e) {
+      return { ok: false, message: e instanceof Error ? e.message : 'Could not post the fuel entry' };
+    }
+    let warning: string | null = null;
+    if (bill) {
+      try { await api.uploadTripDocument(trip.id, bill); } catch { warning = 'The bill photo could not be attached — add it on the trip.'; }
+    }
+    try { setTrips(await api.fetchTrips()); } catch { /* the entry is saved; the list refreshes on next load */ }
+    return { ok: true, message: warning };
+  }
+
+  async function deleteFuel(trip: Trip, line: TripExpenseLine): Promise<string | null> {
+    try {
+      await api.deleteTripExpense(trip.id, line.id);
+      setTrips(await api.fetchTrips());
+      return null;
+    } catch (e) {
+      return e instanceof Error ? e.message : 'Could not delete the fuel entry';
     }
   }
 
@@ -547,6 +574,9 @@ export function App() {
             editingTrip={editingTrip}
             onCancelEdit={cancelEditingTrip}
           />
+        )}
+        {shownTab === 'fuel' && (
+          <FuelExpenses trips={trips} vehicles={vehicles} drivers={drivers} master={master} role={role} onPost={postFuel} onDelete={deleteFuel} />
         )}
         {shownTab === 'triplog' && (
           <TripLog

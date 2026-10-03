@@ -1,6 +1,6 @@
 export type Role = 'Driver' | 'Office' | 'Manager' | 'Viewer';
 
-export type TabId = 'dashboard' | 'summary' | 'addtrip' | 'triplog' | 'expenses' | 'report' | 'people' | 'master' | 'schema';
+export type TabId = 'dashboard' | 'summary' | 'addtrip' | 'fuel' | 'triplog' | 'expenses' | 'report' | 'people' | 'master' | 'schema';
 
 // 'draft' is a trip a driver has started but not yet completed — a
 // multi-day trip logs fuel stops against it before Complete flips it to
