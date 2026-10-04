@@ -275,12 +275,12 @@ export async function exportFuelExcel(rows: FuelRow[]): Promise<void> {
   await saveWorkbook(`${fuelStem()}.xlsx`, [sheet]);
 }
 
-export async function exportFuelPdf(rows: FuelRow[]): Promise<void> {
+export async function exportFuelPdf(rows: FuelRow[], filterNote = ''): Promise<void> {
   const t = fuelTotals(rows);
   await savePdf(`${fuelStem()}.pdf`, {
     title: 'Fuel Expenses',
     company: COMPANY,
-    lines: [`${rows.length} entries`, `Total: ${t.litres.toFixed(2)} L, ${rs(t.amount)}`],
+    lines: [...(filterNote ? [filterNote] : []), `${rows.length} entries`, `Total: ${t.litres.toFixed(2)} L, ${rs(t.amount)}`],
     tables: [{
       heading: 'Diesel entries',
       head: ['Date', 'Vehicle', 'Trip no.', 'Litres', 'Rate / litre', 'Amount', 'Remarks'],

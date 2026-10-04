@@ -598,7 +598,7 @@ export function App() {
           />
         )}
         {shownTab === 'fuel' && (
-          <FuelExpenses trips={trips} vehicles={vehicles} drivers={drivers} master={master} role={role} onPost={postFuel} onUpdate={updateFuel} onDelete={deleteFuel} />
+          <FuelExpenses trips={trips} vehicles={vehicles} drivers={drivers} master={master} role={role} dateFrom={dateFrom} dateTo={dateTo} onDateFrom={setDateFrom} onDateTo={setDateTo} onResetFilters={resetFilters} onPost={postFuel} onUpdate={updateFuel} onDelete={deleteFuel} />
         )}
         {shownTab === 'triplog' && (
           <TripLog

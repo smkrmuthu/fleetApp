@@ -1,7 +1,8 @@
 import { useMemo, useRef, useState } from 'react';
 import type { DriverMaster, MasterSettings, Role, Trip, TripDocument, TripExpenseLine, Vehicle } from '../types';
 import { parseDisplayDate, scanReceipt, type ScannedReceipt } from '../lib/api';
-import { rupees, todayIso, toNumber } from '../utils/calc';
+import { dateInRange, formatDateRange, rupees, todayIso, toNumber, yearOptions } from '../utils/calc';
+import { MonthYearFilter } from './MonthYearFilter';
 import { exportFuelExcel, exportFuelPdf, type FuelRow } from '../lib/reports';
 import { useExport } from '../lib/useExport';
 import { SortableTh, type SortDir } from './SortableTh';
@@ -30,6 +31,12 @@ interface Props {
   drivers: DriverMaster[];
   master: MasterSettings;
   role: Role;
+  // Shared with the other screens (the same From / To dates follow you between tabs).
+  dateFrom: string;
+  dateTo: string;
+  onDateFrom: (v: string) => void;
+  onDateTo: (v: string) => void;
+  onResetFilters: () => void;
   // Posts one diesel line to a trip (and the scanned bill, if any, to that
   // trip's documents). `ok: false` means nothing was saved; `ok: true` with a
   // message means it was saved but something minor (the bill photo) wasn't.
@@ -41,7 +48,7 @@ interface Props {
 
 type SortKey = 'date' | 'vehicle' | 'trip' | 'litres' | 'rate' | 'amount' | 'remarks';
 
-export function FuelExpenses({ trips, vehicles, drivers, master, role, onPost, onUpdate, onDelete }: Props) {
+export function FuelExpenses({ trips, vehicles, drivers, master, role, dateFrom, dateTo, onDateFrom, onDateTo, onResetFilters, onPost, onUpdate, onDelete }: Props) {
   // Only trips that are still open can take fuel from here.
   const openTrips = useMemo(() => trips.filter((t) => t.status === 'draft'), [trips]);
   // This tab is for Office and Manager only (drivers don't get it).
@@ -60,6 +67,7 @@ export function FuelExpenses({ trips, vehicles, drivers, master, role, onPost, o
   // The entry being edited, if any — its truck and trip stay fixed.
   const [editing, setEditing] = useState<{ trip: Trip; line: TripExpenseLine } | null>(null);
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({ key: 'date', dir: 'desc' });
+  const [truckFilter, setTruckFilter] = useState('all');
   const { busy, error: exportError, run } = useExport();
   const formRef = useRef<HTMLDivElement>(null);
 
@@ -208,8 +216,9 @@ export function FuelExpenses({ trips, vehicles, drivers, master, role, onPost, o
       case 'remarks': return (e.line.details ?? '').toLowerCase();
     }
   }
-  const entries = trips
-    .flatMap((t) => t.expenses.filter((l) => l.kind === 'diesel').map((l) => ({ trip: t, line: l })))
+  const allEntries = trips.flatMap((t) => t.expenses.filter((l) => l.kind === 'diesel').map((l) => ({ trip: t, line: l })));
+  const entries = allEntries
+    .filter((e) => dateInRange(e.line.date, dateFrom, dateTo) && (truckFilter === 'all' || e.trip.vehicle === truckFilter))
     .sort((a, b) => {
       const av = sortValue(a, sort.key);
       const bv = sortValue(b, sort.key);
@@ -222,6 +231,7 @@ export function FuelExpenses({ trips, vehicles, drivers, master, role, onPost, o
     date: line.date, vehicle: trip.vehicle, tripNo: trip.waybillNo, litres: line.litres ?? null, rate: line.ratePerLitre ?? null,
     amount: line.amount, remarks: line.details ?? ''
   }));
+  const filterNote = `${formatDateRange(dateFrom, dateTo) || 'All dates'} · ${truckFilter === 'all' ? 'All trucks' : truckFilter}`;
   const th = (key: SortKey, label: string, align: 'left' | 'right' = 'left') => (
     <SortableTh label={label} align={align} active={sort.key === key} dir={sort.dir} onSort={() => toggleSort(key)} />
   );
@@ -241,7 +251,7 @@ export function FuelExpenses({ trips, vehicles, drivers, master, role, onPost, o
             <button type="button" className="btn btn-secondary" disabled={!!busy || entries.length === 0} onClick={() => run('xlsx', () => exportFuelExcel(fuelRows()))}>
               {busy === 'xlsx' ? 'Preparing…' : 'Export Excel'}
             </button>
-            <button type="button" className="btn btn-primary" disabled={!!busy || entries.length === 0} onClick={() => run('pdf', () => exportFuelPdf(fuelRows()))}>
+            <button type="button" className="btn btn-primary" disabled={!!busy || entries.length === 0} onClick={() => run('pdf', () => exportFuelPdf(fuelRows(), filterNote))}>
               {busy === 'pdf' ? 'Preparing…' : 'Print / Save PDF'}
             </button>
           </div>
@@ -324,9 +334,29 @@ export function FuelExpenses({ trips, vehicles, drivers, master, role, onPost, o
         {notice && !error && <div role="status" style={{ marginTop: 12, fontSize: 13, color: 'var(--color-profit)', fontWeight: 600 }}>{notice}</div>}
       </div>
 
-      <h2 style={{ fontSize: 20, marginBottom: 12 }}>Fuel entries <span style={{ fontSize: 13, fontWeight: 400, color: 'var(--color-neutral-700)' }}>{entries.length}</span></h2>
+      <div style={{ border: '2px solid var(--color-divider)', padding: 16, marginBottom: 20 }}>
+        <div className="filters-grid">
+          <div className="field"><label htmlFor="fuel-from">Date from</label><input id="fuel-from" className="input" type="date" value={dateFrom} onChange={(e) => onDateFrom(e.target.value)} /></div>
+          <div className="field"><label htmlFor="fuel-to">Date to</label><input id="fuel-to" className="input" type="date" value={dateTo} onChange={(e) => onDateTo(e.target.value)} /></div>
+          <MonthYearFilter dateFrom={dateFrom} dateTo={dateTo} onDateFrom={onDateFrom} onDateTo={onDateTo} years={yearOptions(allEntries.map((e) => e.line.date))} />
+          <div className="field">
+            <label htmlFor="fuel-truck-filter">Truck no</label>
+            <select id="fuel-truck-filter" className="input" value={truckFilter} onChange={(e) => setTruckFilter(e.target.value)}>
+              <option value="all">All trucks</option>
+              {vehicles.map((v) => <option key={v.id} value={v.id}>{v.id}</option>)}
+            </select>
+          </div>
+          <button type="button" className="btn btn-ghost" style={{ justifySelf: 'start' }} onClick={() => { setTruckFilter('all'); onResetFilters(); }}>Reset filters</button>
+        </div>
+      </div>
+
+      <h2 style={{ fontSize: 20, marginBottom: 12 }}>
+        Fuel entries <span style={{ fontSize: 13, fontWeight: 400, color: 'var(--color-neutral-700)' }}>{entries.length}{entries.length !== allEntries.length ? ` of ${allEntries.length}` : ''}</span>
+      </h2>
       {entries.length === 0 ? (
-        <div style={{ border: '2px solid var(--color-divider)', padding: 16, color: 'var(--color-neutral-700)' }}>No fuel entries yet.</div>
+        <div style={{ border: '2px solid var(--color-divider)', padding: 16, color: 'var(--color-neutral-700)' }}>
+          {allEntries.length === 0 ? 'No fuel entries yet.' : 'No fuel entries match the selected filters.'}
+        </div>
       ) : (
         <div className="scroll-x" style={{ border: '2px solid var(--color-divider)' }}>
           <table className="table" style={{ minWidth: 760 }}>
