@@ -71,9 +71,9 @@
 <text x="42" y="550" font-size="14" font-weight="700" fill="#201e1d" text-anchor="start">Who can do what (summary — detail is in the Technical Document)</text>
 <rect x="46" y="568" width="356" height="140" rx="6" fill="#ffffff" stroke="#9a9896" stroke-width="1.6"/>
 <text x="58" y="590" font-size="14" font-weight="700" fill="#201e1d" text-anchor="start">Driver</text>
-<text x="58" y="615" font-size="12" fill="#605d5d" text-anchor="start">Add/own movements while open</text>
-<text x="58" y="632" font-size="12" fill="#605d5d" text-anchor="start">Post and edit fuel on own open trip</text>
-<text x="58" y="649" font-size="12" fill="#605d5d" text-anchor="start">Cannot see revenue or profit</text>
+<text x="58" y="615" font-size="12" fill="#605d5d" text-anchor="start">Add and edit own open movements</text>
+<text x="58" y="632" font-size="12" fill="#605d5d" text-anchor="start">May add "other" expenses to them</text>
+<text x="58" y="649" font-size="12" fill="#605d5d" text-anchor="start">No fuel, no fixed costs, no revenue / profit</text>
 <rect x="418" y="568" width="356" height="140" rx="6" fill="#ffffff" stroke="#9a9896" stroke-width="1.6"/>
 <text x="430" y="590" font-size="14" font-weight="700" fill="#201e1d" text-anchor="start">Office</text>
 <text x="430" y="615" font-size="12" fill="#605d5d" text-anchor="start">Movements, fuel, monthly expenses</text>

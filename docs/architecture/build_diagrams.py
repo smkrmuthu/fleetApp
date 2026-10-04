@@ -130,7 +130,7 @@ s.box(800, 330, 730, 168, '#ffffff', S_SEC, 'Uploaded files — checked before t
  '• Downloads are served with a safe content type and “nosniff”; a Viewer cannot download bills.'], 14, 12, 8)
 
 s.box(30, 528, 1500, 200, F_GR, S_GR, 'Who can do what (summary — detail is in the Technical Document)', [], 14)
-cols = [('Driver', ['Add/own movements while open', 'Post and edit fuel on own open trip', 'Cannot see revenue or profit']),
+cols = [('Driver', ['Add and edit own open movements', 'May add "other" expenses to them', 'No fuel, no fixed costs, no revenue / profit']),
         ('Office', ['Movements, fuel, monthly expenses', 'Trucks, drivers, leave, availability', 'Cannot change approved movements']),
         ('Manager', ['Everything above, plus:', 'Users, passwords, Master, backups', 'Corrects completed movements']),
         ('Viewer', ['Dashboard, Movement Summary,', 'Monthly Report (view, export)', 'Never changes anything'])]
