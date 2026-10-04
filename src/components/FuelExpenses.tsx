@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import type { DriverMaster, MasterSettings, Role, Trip, TripDocument, TripExpenseLine, Vehicle } from '../types';
+import type { DriverMaster, FuelEntry, MasterSettings, Role, Trip, TripDocument, TripExpenseLine, Vehicle } from '../types';
 import { parseDisplayDate, scanReceipt, type ScannedReceipt } from '../lib/api';
 import { dateInRange, formatDateRange, rupees, todayIso, toNumber, yearOptions } from '../utils/calc';
 import { MonthYearFilter } from './MonthYearFilter';
@@ -44,11 +44,24 @@ interface Props {
   // Saves changes to an existing entry. Resolves to an error message, or null.
   onUpdate: (trip: Trip, line: TripExpenseLine) => Promise<string | null>;
   onDelete: (trip: Trip, line: TripExpenseLine) => Promise<string | null>;
+  // Fuel saved without a trip. Office picks the trip later with Edit, which moves
+  // the entry onto that trip. Each resolves to an error message, or null.
+  unassigned: FuelEntry[];
+  onPostUnassigned: (vehicle: string, line: TripExpenseLine) => Promise<string | null>;
+  onUpdateUnassigned: (id: string, line: TripExpenseLine, tripId?: string) => Promise<string | null>;
+  onDeleteUnassigned: (id: string) => Promise<string | null>;
+}
+
+// One row of the list: a diesel line on a trip, or an entry with no trip yet.
+interface Row {
+  trip: Trip | null;
+  vehicle: string;
+  line: TripExpenseLine;
 }
 
 type SortKey = 'date' | 'vehicle' | 'trip' | 'litres' | 'rate' | 'amount' | 'remarks';
 
-export function FuelExpenses({ trips, vehicles, drivers, master, role, dateFrom, dateTo, onDateFrom, onDateTo, onResetFilters, onPost, onUpdate, onDelete }: Props) {
+export function FuelExpenses({ trips, vehicles, drivers, master, role, dateFrom, dateTo, onDateFrom, onDateTo, onResetFilters, onPost, onUpdate, onDelete, unassigned, onPostUnassigned, onUpdateUnassigned, onDeleteUnassigned }: Props) {
   // Only trips that are still open can take fuel from here.
   const openTrips = useMemo(() => trips.filter((t) => t.status === 'draft'), [trips]);
   // This tab is for Office and Manager only (drivers don't get it).
@@ -64,8 +77,9 @@ export function FuelExpenses({ trips, vehicles, drivers, master, role, dateFrom,
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [saving, setSaving] = useState(false);
-  // The entry being edited, if any — its truck and trip stay fixed.
-  const [editing, setEditing] = useState<{ trip: Trip; line: TripExpenseLine } | null>(null);
+  // The entry being edited, if any. Its truck stays fixed; the trip is fixed too
+  // unless the entry has none yet (then Office can pick it).
+  const [editing, setEditing] = useState<Row | null>(null);
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({ key: 'date', dir: 'desc' });
   const [truckFilter, setTruckFilter] = useState('all');
   const { busy, error: exportError, run } = useExport();
@@ -82,7 +96,7 @@ export function FuelExpenses({ trips, vehicles, drivers, master, role, dateFrom,
 
   const tripsForVehicle = openTrips.filter((t) => t.vehicle === vehicle);
   // An entry on a trip that is no longer open (a manager correcting it) still needs its trip in the list.
-  if (editing && editing.trip.vehicle === vehicle && !tripsForVehicle.some((t) => t.id === editing.trip.id)) tripsForVehicle.push(editing.trip);
+  if (editing?.trip && editing.vehicle === vehicle && !tripsForVehicle.some((t) => t.id === editing.trip!.id)) tripsForVehicle.push(editing.trip);
   const selectedTrip = tripsForVehicle.find((t) => t.id === tripId) ?? null;
 
   function chooseVehicle(id: string) {
@@ -94,12 +108,13 @@ export function FuelExpenses({ trips, vehicles, drivers, master, role, dateFrom,
     setNotice('');
   }
 
-  function startEdit(trip: Trip, line: TripExpenseLine) {
-    setEditing({ trip, line });
+  function startEdit(row: Row) {
+    const { trip, line } = row;
+    setEditing(row);
     setDate(parseDisplayDate(line.date) || line.date);
-    setVehicle(trip.vehicle);
-    setDriver(vehicles.find((v) => v.id === trip.vehicle)?.defaultDriver ?? '');
-    setTripId(trip.id);
+    setVehicle(row.vehicle);
+    setDriver(vehicles.find((v) => v.id === row.vehicle)?.defaultDriver ?? '');
+    setTripId(trip ? trip.id : '');
     setLitres(line.litres != null ? line.litres.toFixed(2) : '');
     setRateOverride(line.ratePerLitre != null ? line.ratePerLitre.toFixed(2) : '');
     setRemarks(line.details ?? '');
@@ -128,14 +143,18 @@ export function FuelExpenses({ trips, vehicles, drivers, master, role, dateFrom,
     if (!litresN) { setError('Enter the litres.'); return; }
     if (!rateN) { setError('Enter the rate per litre.'); return; }
     setSaving(true);
-    const err = await onUpdate(editing.trip, {
+    const updated: TripExpenseLine = {
       ...editing.line, date, litres: litresN, ratePerLitre: rateN, amount,
       details: remarks.trim() ? remarks.trim() : undefined
-    });
+    };
+    const err = editing.trip
+      ? await onUpdate(editing.trip, updated)
+      : await onUpdateUnassigned(editing.line.id, updated, selectedTrip?.id);
     setSaving(false);
     if (err) { setError(err); return; }
+    const assigned = !editing.trip && selectedTrip;
     cancelEdit();
-    setNotice('Fuel entry updated.');
+    setNotice(assigned ? `Fuel entry saved and assigned to trip ${selectedTrip.waybillNo}.` : 'Fuel entry updated.');
   }
 
   async function onScanChosen(e: React.ChangeEvent<HTMLInputElement>) {
@@ -160,7 +179,7 @@ export function FuelExpenses({ trips, vehicles, drivers, master, role, dateFrom,
         const match = vehicleOptions.find((v) => normalizeReg(v.id) === normalizeReg(r.vehicleNo!));
         if (match) chooseVehicle(match.id);
       }
-      setNotice('Bill read — check the figures, pick the trip, then post.');
+      setNotice('Bill read — check the figures, pick the trip (or leave it for later), then save.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not read the bill — enter it manually.');
     } finally {
@@ -172,7 +191,6 @@ export function FuelExpenses({ trips, vehicles, drivers, master, role, dateFrom,
     setError('');
     setNotice('');
     if (!vehicle) { setError('Choose a vehicle.'); return; }
-    if (!selectedTrip) { setError(tripsForVehicle.length === 0 ? 'This vehicle has no open trip to post fuel to.' : 'Choose the trip.'); return; }
     if (!date) { setError('Enter the date.'); return; }
     if (!litresN) { setError('Enter the litres.'); return; }
     if (!rateN) { setError('Enter the rate per litre.'); return; }
@@ -181,20 +199,28 @@ export function FuelExpenses({ trips, vehicles, drivers, master, role, dateFrom,
       id: 'x' + Date.now(), date, kind: 'diesel', litres: litresN, ratePerLitre: rateN, amount,
       ...(remarks.trim() ? { details: remarks.trim() } : {})
     };
-    const bill: TripDocument | null = scanFile ? { id: 'x' + Date.now(), filename: scanFile.filename, mimeType: scanFile.mimeType, base64: scanFile.base64 } : null;
-    const res = await onPost(selectedTrip, line, bill);
-    setSaving(false);
-    if (!res.ok) { setError(res.message ?? 'Could not post the fuel entry'); return; }
-    setNotice(`Posted ${litresN.toFixed(2)} L (${rupees(amount)}) to trip ${selectedTrip.waybillNo}.${res.message ? ' ' + res.message : ''}`);
+    if (!selectedTrip) {
+      // No trip yet: keep the fill on its own; Office picks the trip later with Edit.
+      const err = await onPostUnassigned(vehicle, line);
+      setSaving(false);
+      if (err) { setError(err); return; }
+      setNotice(`Saved ${litresN.toFixed(2)} L (${rupees(amount)}) for ${vehicle} without a trip — choose the trip later with Edit.${scanFile ? ' The bill photo was not kept: attach it on the trip once it is assigned.' : ''}`);
+    } else {
+      const bill: TripDocument | null = scanFile ? { id: 'x' + Date.now(), filename: scanFile.filename, mimeType: scanFile.mimeType, base64: scanFile.base64 } : null;
+      const res = await onPost(selectedTrip, line, bill);
+      setSaving(false);
+      if (!res.ok) { setError(res.message ?? 'Could not post the fuel entry'); return; }
+      setNotice(`Posted ${litresN.toFixed(2)} L (${rupees(amount)}) to trip ${selectedTrip.waybillNo}.${res.message ? ' ' + res.message : ''}`);
+    }
     setLitres('');
     setRateOverride(null);
     setRemarks('');
     setScanFile(null);
   }
 
-  async function remove(trip: Trip, line: TripExpenseLine) {
-    if (!window.confirm(`Delete this fuel entry — ${line.litres?.toFixed(2) ?? ''} L, ${rupees(line.amount)} on trip ${trip.waybillNo}? This cannot be undone.`)) return;
-    const err = await onDelete(trip, line);
+  async function remove({ trip, line, vehicle: truck }: Row) {
+    if (!window.confirm(`Delete this fuel entry — ${line.litres?.toFixed(2) ?? ''} L, ${rupees(line.amount)} ${trip ? `on trip ${trip.waybillNo}` : `for ${truck} (no trip yet)`}? This cannot be undone.`)) return;
+    const err = trip ? await onDelete(trip, line) : await onDeleteUnassigned(line.id);
     if (err) { setError(err); return; }
     if (editing?.line.id === line.id) cancelEdit();
   }
@@ -205,20 +231,26 @@ export function FuelExpenses({ trips, vehicles, drivers, master, role, dateFrom,
     // A new column starts ascending; clicking the same column flips it.
     setSort((prev) => (prev.key === key ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }));
   }
-  function sortValue(e: { trip: Trip; line: TripExpenseLine }, key: SortKey): number | string {
+  function sortValue(e: Row, key: SortKey): number | string {
     switch (key) {
       case 'date': return parseDisplayDate(e.line.date);
-      case 'vehicle': return e.trip.vehicle;
-      case 'trip': return e.trip.waybillNo;
+      case 'vehicle': return e.vehicle;
+      case 'trip': return e.trip?.waybillNo ?? '';
       case 'litres': return e.line.litres ?? -1;
       case 'rate': return e.line.ratePerLitre ?? -1;
       case 'amount': return e.line.amount;
       case 'remarks': return (e.line.details ?? '').toLowerCase();
     }
   }
-  const allEntries = trips.flatMap((t) => t.expenses.filter((l) => l.kind === 'diesel').map((l) => ({ trip: t, line: l })));
+  const allEntries: Row[] = [
+    ...trips.flatMap((t) => t.expenses.filter((l) => l.kind === 'diesel').map((l): Row => ({ trip: t, vehicle: t.vehicle, line: l }))),
+    ...unassigned.map((u): Row => ({
+      trip: null, vehicle: u.vehicle,
+      line: { id: u.id, date: u.date, kind: 'diesel', litres: u.litres, ratePerLitre: u.ratePerLitre, amount: u.amount, details: u.details }
+    }))
+  ];
   const entries = allEntries
-    .filter((e) => dateInRange(e.line.date, dateFrom, dateTo) && (truckFilter === 'all' || e.trip.vehicle === truckFilter))
+    .filter((e) => dateInRange(e.line.date, dateFrom, dateTo) && (truckFilter === 'all' || e.vehicle === truckFilter))
     .sort((a, b) => {
       const av = sortValue(a, sort.key);
       const bv = sortValue(b, sort.key);
@@ -227,8 +259,9 @@ export function FuelExpenses({ trips, vehicles, drivers, master, role, dateFrom,
     });
   const totalLitres = entries.reduce((a, e) => a + (e.line.litres ?? 0), 0);
   const totalAmount = entries.reduce((a, e) => a + e.line.amount, 0);
-  const fuelRows = (): FuelRow[] => entries.map(({ trip, line }) => ({
-    date: line.date, vehicle: trip.vehicle, tripNo: trip.waybillNo, litres: line.litres ?? null, rate: line.ratePerLitre ?? null,
+  const notAssigned = entries.filter((e) => !e.trip).length;
+  const fuelRows = (): FuelRow[] => entries.map(({ trip, line, vehicle: truck }) => ({
+    date: line.date, vehicle: truck, tripNo: trip ? trip.waybillNo : 'Not assigned', litres: line.litres ?? null, rate: line.ratePerLitre ?? null,
     amount: line.amount, remarks: line.details ?? ''
   }));
   const filterNote = `${formatDateRange(dateFrom, dateTo) || 'All dates'} · ${truckFilter === 'all' ? 'All trucks' : truckFilter}`;
@@ -243,7 +276,7 @@ export function FuelExpenses({ trips, vehicles, drivers, master, role, dateFrom,
           <div className="kicker">Diesel</div>
           <h1 style={{ fontSize: 34, letterSpacing: '-0.02em' }}>Fuel Expenses</h1>
           <p style={{ color: 'var(--color-neutral-700)', marginTop: 6, fontSize: 13 }}>
-            Enter a diesel fill. It is posted to the expenses of the trip you choose, which must still be open.
+            Enter a diesel fill. Choose the trip now, or leave it empty and let Office assign it later with Edit. The trip must still be open.
           </p>
         </div>
         <div style={{ display: 'grid', gap: 6, justifyItems: 'end' }}>
@@ -262,7 +295,9 @@ export function FuelExpenses({ trips, vehicles, drivers, master, role, dateFrom,
       <div ref={formRef} style={{ border: '2px solid var(--color-divider)', padding: 20, marginBottom: 24 }}>
         {editing && (
           <div style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--color-accent-700)', marginBottom: 12 }}>
-            Editing fuel entry · truck and trip can't be changed — delete and re-enter to move it
+            {editing.trip
+              ? "Editing fuel entry · truck and trip can't be changed — delete and re-enter to move it"
+              : 'Editing fuel entry with no trip yet · choose the trip to assign it'}
           </div>
         )}
         <div className="filters-grid" style={{ alignItems: 'start' }}>
@@ -299,12 +334,13 @@ export function FuelExpenses({ trips, vehicles, drivers, master, role, dateFrom,
           </div>
           <div className="field">
             <label htmlFor="fuel-trip">Trip #</label>
-            <select id="fuel-trip" className="input" value={tripId} onChange={(e) => setTripId(e.target.value)} disabled={!vehicle || !!editing}>
-              <option value="">{!vehicle ? 'Select a vehicle first' : tripsForVehicle.length === 0 ? 'No open trips' : 'Select trip'}</option>
+            <select id="fuel-trip" className="input" value={tripId} onChange={(e) => setTripId(e.target.value)} disabled={!vehicle || !!editing?.trip}>
+              <option value="">{!vehicle ? 'Select a vehicle first' : tripsForVehicle.length === 0 ? 'No open trips — save without a trip' : 'No trip yet (assign later)'}</option>
               {tripsForVehicle.map((t) => (
                 <option key={t.id} value={t.id}>{t.waybillNo} · {t.loadDate} · {t.from} → {t.to}</option>
               ))}
             </select>
+            <div style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 4 }}>Optional — can be assigned later with Edit.</div>
           </div>
           <div className="field">
             <label htmlFor="fuel-remarks">Remarks</label>
@@ -319,7 +355,7 @@ export function FuelExpenses({ trips, vehicles, drivers, master, role, dateFrom,
           </div>
         ) : (
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 4 }}>
-            <button type="button" className="btn btn-primary" onClick={post} disabled={saving}>{saving ? 'Posting…' : 'Post to trip'}</button>
+            <button type="button" className="btn btn-primary" onClick={post} disabled={saving}>{saving ? 'Saving…' : 'Save entry'}</button>
             <span style={{ color: 'var(--color-neutral-500)', fontSize: 12 }}>or</span>
             <input ref={scanInputRef} type="file" accept="image/*" capture="environment" onChange={onScanChosen} style={{ display: 'none' }} />
             <button type="button" className="btn btn-secondary" disabled={scanning} onClick={() => scanInputRef.current?.click()}>
@@ -352,6 +388,7 @@ export function FuelExpenses({ trips, vehicles, drivers, master, role, dateFrom,
 
       <h2 style={{ fontSize: 20, marginBottom: 12 }}>
         Fuel entries <span style={{ fontSize: 13, fontWeight: 400, color: 'var(--color-neutral-700)' }}>{entries.length}{entries.length !== allEntries.length ? ` of ${allEntries.length}` : ''}</span>
+        {notAssigned > 0 && <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-accent-700)', marginLeft: 12 }}>{notAssigned} not assigned to a trip yet</span>}
       </h2>
       {entries.length === 0 ? (
         <div style={{ border: '2px solid var(--color-divider)', padding: 16, color: 'var(--color-neutral-700)' }}>
@@ -367,29 +404,32 @@ export function FuelExpenses({ trips, vehicles, drivers, master, role, dateFrom,
               </tr>
             </thead>
             <tbody>
-              {entries.map(({ trip, line }) => (
+              {entries.map((row) => {
+                const { trip, line } = row;
+                return (
                 <tr key={line.id} style={editing?.line.id === line.id ? { background: 'var(--color-accent-100)' } : undefined}>
                   <td style={{ whiteSpace: 'nowrap' }}>{line.date}</td>
-                  <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{trip.vehicle}</td>
-                  <td style={{ whiteSpace: 'nowrap' }}>{trip.waybillNo}</td>
+                  <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{row.vehicle}</td>
+                  <td style={{ whiteSpace: 'nowrap' }}>{trip ? trip.waybillNo : <span className="tag tag-accent">Not assigned</span>}</td>
                   <td style={{ textAlign: 'right' }}>{line.litres != null ? line.litres.toFixed(2) : '—'}</td>
                   <td style={{ textAlign: 'right' }}>{line.ratePerLitre != null ? rupees(line.ratePerLitre) : '—'}</td>
                   <td style={{ textAlign: 'right', fontWeight: 700 }}>{rupees(line.amount)}</td>
                   <td style={{ color: 'var(--color-neutral-700)' }}>{line.details ?? '—'}</td>
                   <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                    {(trip.status === 'draft' || role === 'Manager') && (
+                    {(!trip || trip.status === 'draft' || role === 'Manager') && (
                       <>
-                        <button type="button" className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => startEdit(trip, line)}>
+                        <button type="button" className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => startEdit(row)}>
                           Edit
                         </button>
-                        <button type="button" className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 12, color: 'var(--color-accent-700)' }} onClick={() => remove(trip, line)}>
+                        <button type="button" className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 12, color: 'var(--color-accent-700)' }} onClick={() => remove(row)}>
                           Delete
                         </button>
                       </>
                     )}
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
             <tfoot>
               <tr style={{ fontWeight: 700, background: 'var(--color-surface)' }}>

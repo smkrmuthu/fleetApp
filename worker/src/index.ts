@@ -15,6 +15,7 @@ import { expenseCategoryRoutes } from './routes/expenseCategories';
 import { vehicleUnavailabilityRoutes } from './routes/vehicleUnavailability';
 import { transporterRoutes } from './routes/transporters';
 import { adminRoutes } from './routes/admin';
+import { fuelEntryRoutes } from './routes/fuelEntries';
 import { runBackup } from './lib/backup';
 import { purgeExpiredRateLimits } from './lib/rateLimit';
 
@@ -41,6 +42,7 @@ app.route('/v1/expense-categories', expenseCategoryRoutes);
 app.route('/v1/vehicle-unavailability', vehicleUnavailabilityRoutes);
 app.route('/v1/transporters', transporterRoutes);
 app.route('/v1/admin', adminRoutes);
+app.route('/v1/fuel-entries', fuelEntryRoutes);
 
 app.notFound((c) => c.json({ error: { code: 'not_found', message: 'No such route' } }, 404));
 app.onError((err, c) => {

@@ -330,6 +330,29 @@ export const transporters = sqliteTable(
 // A driver's time off, with both the date and time it starts/ends. Naive
 // local strings ("2026-09-25T09:00"), the same "no timezone math" approach
 // used for trip dates elsewhere in this schema.
+// Diesel fills that have been saved but not yet put on a trip (Office picks the
+// trip later with Edit). When a trip is chosen the row is moved into
+// trip_expenses as a diesel line and deleted from here, in one step. Until then
+// it is not part of any trip's cost.
+export const fuelEntries = sqliteTable(
+  'fuel_entries',
+  {
+    id: text('id').primaryKey(),
+    orgId: text('org_id').notNull().references(() => orgs.id, { onDelete: 'cascade' }),
+    vehicleId: text('vehicle_id').notNull().references(() => vehicles.id),
+    spentOn: text('spent_on').notNull(),
+    litres: real('litres').notNull(),
+    ratePaise: integer('rate_paise').notNull(),
+    amountPaise: integer('amount_paise').notNull(),
+    details: text('details'),
+    createdBy: text('created_by').references(() => users.id),
+    createdAt: text('created_at').notNull().default(sql`(current_timestamp)`)
+  },
+  (t) => ({
+    vehicleIdx: index('fuel_entries_vehicle').on(t.orgId, t.vehicleId, t.spentOn)
+  })
+);
+
 // Request counters for the rate limiter (sign-in attempts, bill scans), one row
 // per key per window. Disposable — it is not part of any restore.
 export const rateLimits = sqliteTable('rate_limits', {

@@ -139,6 +139,17 @@ export interface Trip {
   documents: TripDocument[];
 }
 
+// A diesel fill saved without a trip (Office assigns the trip later).
+export interface FuelEntry {
+  id: string;
+  vehicle: string;
+  date: string; // display date
+  litres: number;
+  ratePerLitre: number;
+  amount: number;
+  details?: string;
+}
+
 // A free-text description name, managed under Master > Expense descriptions
 // (add/remove), not a fixed set baked into the app.
 export type ExpenseCategory = string;

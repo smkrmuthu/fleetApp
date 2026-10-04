@@ -1,5 +1,5 @@
 import type {
-  AppNotification, DriverLeave, DriverMaster, ExpenseCategory, MasterSettings, MonthlyExpense, NotificationKind, VehicleUnavailability,
+  AppNotification, DriverLeave, DriverMaster, ExpenseCategory, FuelEntry, MasterSettings, MonthlyExpense, NotificationKind, VehicleUnavailability,
   Role, TabId, Trip, TripDocument, TripExpenseKind, TripExpenseLine, TripStop, UserAccount, Vehicle
 } from '../types';
 
@@ -282,6 +282,36 @@ export async function deleteUser(id: string): Promise<void> {
 
 export async function changeUserPassword(id: string, password: string): Promise<void> {
   await request(`/users/${encodeURIComponent(id)}/password`, { method: 'POST', body: JSON.stringify({ password }) });
+}
+
+// ── fuel entries not yet on a trip (Office, Manager) ─────────────────────
+interface ApiFuelEntry { id: string; vehicleId: string; spentOn: string; litres: number; ratePaise: number; amountPaise: number; details: string | null }
+
+export async function fetchFuelEntries(): Promise<FuelEntry[]> {
+  const res = await request<{ fuelEntries: ApiFuelEntry[] }>('/fuel-entries');
+  return res.fuelEntries.map((e) => ({
+    id: e.id, vehicle: e.vehicleId, date: formatDisplayDate(e.spentOn), litres: e.litres,
+    ratePerLitre: paiseToRupees(e.ratePaise), amount: paiseToRupees(e.amountPaise), details: e.details ?? undefined
+  }));
+}
+
+export async function createFuelEntry(vehicle: string, line: TripExpenseLine): Promise<void> {
+  await request('/fuel-entries', {
+    method: 'POST',
+    body: JSON.stringify({ vehicleId: vehicle, spentOn: line.date, litres: line.litres, ratePaise: rupeesToPaise(line.ratePerLitre ?? 0), amountPaise: rupeesToPaise(line.amount), details: line.details })
+  });
+}
+
+// With `tripId` the entry is moved onto that trip (it leaves this list).
+export async function updateFuelEntry(id: string, line: TripExpenseLine, tripId?: string): Promise<void> {
+  await request(`/fuel-entries/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ spentOn: line.date, litres: line.litres, ratePaise: rupeesToPaise(line.ratePerLitre ?? 0), amountPaise: rupeesToPaise(line.amount), details: line.details ?? null, tripId })
+  });
+}
+
+export async function deleteFuelEntry(id: string): Promise<void> {
+  await request(`/fuel-entries/${encodeURIComponent(id)}`, { method: 'DELETE' });
 }
 
 // ── data backup (Manager) ────────────────────────────────────────────────

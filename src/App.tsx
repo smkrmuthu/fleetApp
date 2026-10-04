@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { AppNotification, DriverLeave, DriverMaster, MasterSettings, MonthlyExpense, Role, TabId, Trip, TripDocument, TripExpenseLine, UserAccount, Vehicle, VehicleUnavailability } from './types';
+import type { AppNotification, DriverLeave, DriverMaster, FuelEntry, MasterSettings, MonthlyExpense, Role, TabId, Trip, TripDocument, TripExpenseLine, UserAccount, Vehicle, VehicleUnavailability } from './types';
 import { ROLE_TABS } from './data/mockData';
 import { rupees, toIsoDate } from './utils/calc';
 import { exportBackup } from './lib/reports';
@@ -47,6 +47,7 @@ export function App() {
   const [vehicleUnavailability, setVehicleUnavailability] = useState<VehicleUnavailability[]>([]);
   const [expenseCategories, setExpenseCategories] = useState<string[]>([]);
   const [transporters, setTransporters] = useState<string[]>([]);
+  const [fuelEntries, setFuelEntries] = useState<FuelEntry[]>([]);
   const [vehicleFilter, setVehicleFilter] = useState('all');
   const [driverFilter, setDriverFilter] = useState('');
   const [dateFrom, setDateFrom] = useState(() => currentMonthRange().from);
@@ -80,13 +81,16 @@ export function App() {
         // Read-only: no user list or notification feed (the server refuses both).
         setUsers([]);
         setNotifications([]);
+        setFuelEntries([]);
         setExpenseCategories(await api.fetchExpenseCategories());
       } else if (currentRole !== 'Driver') {
-        const [u, n, ec] = await Promise.all([api.fetchUsers(), api.fetchNotifications(), api.fetchExpenseCategories()]);
+        const [u, n, ec, fe] = await Promise.all([api.fetchUsers(), api.fetchNotifications(), api.fetchExpenseCategories(), api.fetchFuelEntries()]);
         setUsers(u);
         setNotifications(n);
         setExpenseCategories(ec);
+        setFuelEntries(fe);
       } else {
+        setFuelEntries([]);
         setUsers([]);
         setNotifications([]);
         setExpenseCategories([]);
@@ -290,6 +294,38 @@ export function App() {
     }
     try { setTrips(await api.fetchTrips()); } catch { /* the entry is saved; the list refreshes on next load */ }
     return { ok: true, message: warning };
+  }
+
+  // Fuel saved without a trip (Office assigns the trip later with Edit).
+  async function postFuelEntry(vehicle: string, line: TripExpenseLine): Promise<string | null> {
+    try {
+      await api.createFuelEntry(vehicle, line);
+      setFuelEntries(await api.fetchFuelEntries());
+      return null;
+    } catch (e) {
+      return e instanceof Error ? e.message : 'Could not save the fuel entry';
+    }
+  }
+
+  async function updateFuelEntry(id: string, line: TripExpenseLine, tripId?: string): Promise<string | null> {
+    try {
+      await api.updateFuelEntry(id, line, tripId);
+      // Assigning moves it onto the trip, so both lists change.
+      await Promise.all([api.fetchFuelEntries().then(setFuelEntries), tripId ? api.fetchTrips().then(setTrips) : Promise.resolve()]);
+      return null;
+    } catch (e) {
+      return e instanceof Error ? e.message : 'Could not save the fuel entry';
+    }
+  }
+
+  async function deleteFuelEntry(id: string): Promise<string | null> {
+    try {
+      await api.deleteFuelEntry(id);
+      setFuelEntries(await api.fetchFuelEntries());
+      return null;
+    } catch (e) {
+      return e instanceof Error ? e.message : 'Could not delete the fuel entry';
+    }
   }
 
   async function updateFuel(trip: Trip, line: TripExpenseLine): Promise<string | null> {
@@ -598,7 +634,8 @@ export function App() {
           />
         )}
         {shownTab === 'fuel' && (
-          <FuelExpenses trips={trips} vehicles={vehicles} drivers={drivers} master={master} role={role} dateFrom={dateFrom} dateTo={dateTo} onDateFrom={setDateFrom} onDateTo={setDateTo} onResetFilters={resetFilters} onPost={postFuel} onUpdate={updateFuel} onDelete={deleteFuel} />
+          <FuelExpenses trips={trips} vehicles={vehicles} drivers={drivers} master={master} role={role} dateFrom={dateFrom} dateTo={dateTo} onDateFrom={setDateFrom} onDateTo={setDateTo} onResetFilters={resetFilters} onPost={postFuel} onUpdate={updateFuel} onDelete={deleteFuel}
+            unassigned={fuelEntries} onPostUnassigned={postFuelEntry} onUpdateUnassigned={updateFuelEntry} onDeleteUnassigned={deleteFuelEntry} />
         )}
         {shownTab === 'triplog' && (
           <TripLog
