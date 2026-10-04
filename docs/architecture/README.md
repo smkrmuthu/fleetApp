@@ -17,4 +17,4 @@ CH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 "$CH" --headless=new --disable-gpu --hide-scrollbars --window-size=1560,980 \
   --screenshot="$PWD/01-system-architecture.png" "file://$PWD/01-system-architecture.svg"
 ```
-(window sizes: 01 = 1560x980, 02 = 1560x760, 03 = 1560x1060, 04 = 1560x920)
+(window sizes: 01 = 1560x980, 02 = 1560x760, 03 = 1560x1080, 04 = 1560x920)

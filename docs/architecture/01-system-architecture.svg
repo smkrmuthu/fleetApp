@@ -66,7 +66,7 @@
 <text x="1020" y="527" font-size="12" fill="#605d5d" text-anchor="start">Cleans expired rate limits</text>
 <rect x="756" y="604" width="236" height="176" rx="6" fill="#fff6d6" stroke="#c9a227" stroke-width="1.6"/>
 <text x="768" y="626" font-size="13" font-weight="700" fill="#201e1d" text-anchor="start">D1 database (SQLite)</text>
-<text x="768" y="651" font-size="12" fill="#201e1d" text-anchor="start">fleet-ledger-db · 21 tables</text>
+<text x="768" y="651" font-size="12" fill="#201e1d" text-anchor="start">fleet-ledger-db · 22 tables</text>
 <text x="768" y="668" font-size="12" fill="#605d5d" text-anchor="start">Trips, expenses, vehicles,</text>
 <text x="768" y="685" font-size="12" fill="#605d5d" text-anchor="start">drivers, users, settings,</text>
 <text x="768" y="702" font-size="12" fill="#605d5d" text-anchor="start">audit log, rate limits …</text>

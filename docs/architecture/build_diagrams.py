@@ -73,7 +73,7 @@ s.box(772, 176, 456, 96, F_SEC, S_SEC, 'Middleware (every request)', ['CORS allo
 s.box(772, 284, 456, 150, F_GR, S_GR, 'Routes  /v1/…', ['!auth · trips · monthly-expenses · vehicles · drivers', '!users · settings · transporters · expense-categories', '!driver-leaves · vehicle-unavailability', '!notifications · receipts (bill scan) · admin (backups)', 'org_id always taken from the token, never the request'], 13, 12, 6)
 s.box(772, 446, 220, 112, F_GR, S_GR, 'Libraries', ['!password (PBKDF2) · jwt', '!rate limiter (D1)', '!file checks (magic bytes)', '!audit log · backup job'], 13, 12, 6)
 s.box(1008, 446, 220, 112, F_SEC, S_SEC, 'Scheduled job (cron)', ['!21:00 UTC = 02:30 IST', 'Nightly backup, 30 nights', 'Cleans expired rate limits'], 13, 12, 6)
-s.box(756, 604, 236, 176, F_DB, S_DB, 'D1 database (SQLite)', ['!fleet-ledger-db · 21 tables', 'Trips, expenses, vehicles,', 'drivers, users, settings,', 'audit log, rate limits …', 'Time Travel: 7 / 30 days', 'Versioned migrations'], 13, 12, 6)
+s.box(756, 604, 236, 176, F_DB, S_DB, 'D1 database (SQLite)', ['!fleet-ledger-db · 22 tables', 'Trips, expenses, vehicles,', 'drivers, users, settings,', 'audit log, rate limits …', 'Time Travel: 7 / 30 days', 'Versioned migrations'], 13, 12, 6)
 s.box(1008, 604, 236, 176, F_DB, S_DB, 'R2 bucket', ['!fleet-ledger-docs', 'Uploaded bills & photos', '(<org>/<trip>/<file>)', 'backups/<date>/ …', 'backups/files/ (copies)'], 13, 12, 6)
 s.box(756, 800, 488, 130, '#ffffff', S_CF, 'Worker configuration', ['!Bindings: DB (D1) · DOCS (R2)', '!Secrets: JWT_SECRET · GEMINI_API_KEY (never in code or backups)', '!Variable: ALLOWED_ORIGIN (the sites allowed to call the API)', 'Static site: the web app is also served by a Cloudflare Worker', '(fleetapp) behind the domain fleet.oneuptech.co'], 13, 12, 6)
 
@@ -139,7 +139,7 @@ for i, (r, ls) in enumerate(cols):
 s.save('02-request-pipeline-security.svg')
 
 # ───────────────────────── 3. Data model ─────────────────────────
-s = Svg(1560, 1060, 'Fleet Ledger — Data model (21 tables in D1)')
+s = Svg(1560, 1080, 'Fleet Ledger — Data model (22 tables in D1)')
 s.label(30, 72, 'Every table carries org_id (the company), so one deployment can hold several companies. Money is stored as whole paise (integers); dates as ISO text. Arrows point from the child table to the table it refers to.', 12)
 
 def tbl(x, y, w, name, cols, fill=F_GR, stroke=S_GR):
@@ -171,29 +171,30 @@ tbl(1300, 130, 214, 'transporters', ['id (= name) · org_id · active'], '#fff',
 tbl(1086, 220, 428, 'notifications', ['id · org_id · kind · message · tab', 'related_trip_id · target_user_id · read'], '#fff', S_GR)
 
 # operations
-s.box(30, 400, 1010, 390, F_CF, S_CF, 'Operations', [], 14)
+s.box(30, 400, 1010, 412, F_CF, S_CF, 'Operations', [], 14)
 tbl(46, 434, 330, 'trips', ['id · org_id · vehicle_id · driver_id', 'waybill_no (SMT-#####) · item_no', 'load_date · unload_date · from/to + notes', 'weight_kg · odo_start · odo_end', 'revenue_paise · status (draft/pending/approved)', 'transporter · remarks · created/updated'], '#fff', S_CF)
 tbl(396, 434, 300, 'trip_expenses', ['id · trip_id · spent_on · kind', '   (diesel, adblue, toll, other)', 'litres · rate_paise · amount_paise', 'details (remarks) · receipt_id'], '#fff', S_CF)
 tbl(396, 568, 300, 'trip_stops', ['trip_id · seq · location · date', 'odo · note'], '#fff', S_CF)
 tbl(716, 434, 308, 'monthly_expenses', ['id · vehicle_id · driver_id · spent_on', 'category (e.g. Fastag) · amount_paise', 'remarks · voided_at (soft delete)'], '#fff', S_CF)
 tbl(46, 620, 330, 'trip_documents', ['trip_id · receipt_id · doc_type'], '#fff', S_CF)
+tbl(46, 694, 330, 'fuel_entries', ['id · vehicle_id · spent_on · litres', 'rate_paise · amount_paise · details', '→ a fill with no trip yet; moved onto a trip', '   (as a trip_expenses line) when assigned'], '#fff', S_CF)
 tbl(716, 560, 308, 'monthly_expense_documents', ['monthly_expense_id · receipt_id'], '#fff', S_CF)
 tbl(396, 664, 300, 'receipts', ['id · storage_key (R2 object) · mime_type', 'ocr_json · confidence · uploaded_by'], F_DB, S_DB)
 
 # system
-s.box(1070, 400, 460, 390, F_SEC, S_SEC, 'System tables', [], 14)
+s.box(1070, 400, 460, 412, F_SEC, S_SEC, 'System tables', [], 14)
 tbl(1086, 434, 428, 'audit_log', ['id · org_id · entity · entity_id · action (insert,', '   update, delete, void) · diff · actor_id · at', '→ who changed what, and when'], '#fff', S_SEC)
 tbl(1086, 540, 428, 'rate_limits', ['key · count · reset_at', '→ sign-in and bill-scan attempt counters (disposable)'], '#fff', S_SEC)
-tbl(1086, 620, 428, 'd1_migrations', ['name · applied_at', '→ which migration files have run (0000 … 0014)'], '#fff', S_SEC)
+tbl(1086, 620, 428, 'd1_migrations', ['name · applied_at', '→ which migration files have run (0000 … 0015)'], '#fff', S_SEC)
 
 # relations (simplified): child -> parent
 s.arrow(396, 490, 376, 490, None)
 s.arrow(236, 620, 236, 574, None)
 s.arrow(870, 560, 870, 526, None)
-s.label(30, 812, 'Main relationships: trips → vehicles, drivers · trip_expenses, trip_stops, trip_documents → trips · monthly_expenses → vehicles, drivers · documents → receipts (file pointer) · users, vehicles, drivers, trips … → orgs (company).', 12)
-s.label(30, 832, 'A circular link exists on purpose: vehicles.default_driver ↔ drivers.default_vehicle. Backups record this so a restore can load it correctly.', 12)
-s.label(30, 852, 'Soft deletes: monthly expenses are voided (voided_at), pick-list items are made inactive; trips and fuel lines can be deleted while open, and every change is written to audit_log.', 12)
-s.box(30, 880, 1500, 140, '#ffffff', S_GR, 'Design notes', [
+s.label(30, 834, 'Main relationships: trips → vehicles, drivers · trip_expenses, trip_stops, trip_documents → trips · monthly_expenses → vehicles, drivers · documents → receipts (file pointer) · fuel_entries → vehicles · users, vehicles, drivers, trips … → orgs (company).', 12)
+s.label(30, 854, 'A circular link exists on purpose: vehicles.default_driver ↔ drivers.default_vehicle. Backups record this so a restore can load it correctly.', 12)
+s.label(30, 874, 'Soft deletes: monthly expenses are voided (voided_at), pick-list items are made inactive; trips and fuel lines can be deleted while open, and every change is written to audit_log.', 12)
+s.box(30, 900, 1500, 140, '#ffffff', S_GR, 'Design notes', [
  '• Money in paise (integer) avoids rounding errors; litres are decimal, shown to 2 places; amounts are rounded to 2 places when posted (litres × rate).',
  '• Trip numbers come from an atomic counter row (insert … on conflict update … returning), so two people saving at once never get the same number.',
  '• Indexes cover the common screens: trips by company+vehicle+date, by company+driver+date, and pending trips; monthly expenses by month+category; expiry dates for reminders.',
