@@ -102,7 +102,7 @@ The older `order-dump.py` route is kept only for `wrangler d1 export` files.
 
 ## 7. People and access
 
-- Roles: **Driver** (own trips and fuel), **Office** (movements, fuel, expenses, summary), **Manager** (everything),
+- Roles: **Driver** (starts and logs their own open trips; no fuel entry and no fixed costs), **Office** (movements, fuel, monthly expenses, summary), **Manager** (everything),
   **Viewer** (read-only: Dashboard, Movement Summary, Monthly Report).
 - Managers add and edit users under **People**. Passwords must be at least 8 characters; a Manager sets and resets them
   (there is no "forgot password" email yet).
