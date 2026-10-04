@@ -41,8 +41,8 @@ receiptRoutes.post('/scan', async (c) => {
   const clientIp = getClientIp(c.req.raw);
 
   // Rate limit: max 10 OCR scans per minute per user account, and max 20 per minute per IP
-  const userLimit = checkRateLimit(auth.userId, { windowSeconds: 60, maxRequests: 10, keyPrefix: 'ocr_user' });
-  const ipLimit = checkRateLimit(clientIp, { windowSeconds: 60, maxRequests: 20, keyPrefix: 'ocr_ip' });
+  const userLimit = await checkRateLimit(c.env.DB, auth.userId, { windowSeconds: 60, maxRequests: 10, keyPrefix: 'ocr_user' });
+  const ipLimit = await checkRateLimit(c.env.DB, clientIp, { windowSeconds: 60, maxRequests: 20, keyPrefix: 'ocr_ip' });
 
   if (!userLimit.allowed || !ipLimit.allowed) {
     const resetIn = Math.max(userLimit.resetInSeconds, ipLimit.resetInSeconds);

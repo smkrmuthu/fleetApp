@@ -1,6 +1,6 @@
 # Fleet Ledger: Database storage, backup and restore
 
-Last verified: 2026-09-25 (restore drill described in section 6).
+Last verified: 2026-10-04. The nightly backup and its restore (section 9) were tested on 2026-10-04 against a local copy; the older drill in section 6 dates from 2026-09-25. See also [RUNBOOK.md](RUNBOOK.md).
 
 ## 1. Where the data lives
 
@@ -25,9 +25,10 @@ Schema: 18 tables, defined in `worker/drizzle/schema.ts` and built by migrations
 | 1 | D1 **Time Travel** | Yes, always on | Database only | 30 days on Workers Paid, 7 days on Free (confirm your plan in the Cloudflare dashboard) | "Undo" a bad change from the last few weeks |
 | 2 | **SQL export** (`wrangler d1 export`) | No, manual today | Database only | Forever, wherever you store the file | Off-Cloudflare copy, moving to a new database or account |
 | 3 | In-app **Backup data** (Manager) | No, manual | Trips, vehicles, drivers, users, Master settings as a readable file | Wherever you keep it | Reading or analysing data in Excel. **Not** for restoring the database |
-| 4 | **R2 files** | No | Uploaded documents | R2 has no built-in backup or versioning | Copy the files yourself (section 5) |
+| 4 | **R2 files** | Partly: new uploads are copied nightly to `backups/files/` (same bucket) | Uploaded documents | Kept; not pruned | Recovering a file deleted by mistake. Does not protect against losing the bucket or account (section 5) |
+| 5 | **Nightly backup** (section 9) | Yes, 02:30 IST | Database + uploaded-file copies | 30 nights | Rebuilding the database from a known night; checking what changed |
 
-Current state: layer 1 is the only automatic protection. Copies from layer 2 exist only on the developer's Mac (`~/FleetLedger-backups/`). There is no scheduled backup and no off-machine copy yet (see section 8).
+Current state: layers 1 and 5 are automatic. Both sit inside the same Cloudflare account, so keep an occasional off-site copy (layer 2, or `scripts/download-backup.sh`, section 9). Copies from layer 2 made so far exist only on the developer's Mac (`~/FleetLedger-backups/`).
 
 ## 3. Taking a backup
 
@@ -73,7 +74,10 @@ The restore prints the bookmark of the state you just replaced; restoring to tha
 
 Time Travel does not touch R2 files.
 
-### B. Rebuild from a SQL backup into a new database (tested)
+### B. Rebuild from a SQL backup into a new database
+
+> **Known weakness (found 2026-10-04):** this route relies on a hand-kept table order in `scripts/order-dump.py`. A truck's *default driver* and a driver's *default truck* point at each other, so no table order can load them without a foreign-key error once both are filled in. The 2026-09-25 drill predates default drivers. Prefer the nightly backup route in section 9, which handles this; use this section only for `wrangler d1 export` files, and expect that step 4 may need the circular links cleared first.
+
 
 Use this for a lost or corrupted database, moving accounts, or a practice restore.
 
@@ -157,8 +161,41 @@ A restore drill was run against a temporary, separate D1 database (created and d
 
 ## 8. Recommended next steps
 
-1. **Schedule a backup** (weekly at least, daily is cheap at this size) that runs the data-only export and stores it off the Mac, encrypted. This is the largest gap today.
-2. **Back up R2** with `rclone` on the same schedule; nothing protects the files right now.
-3. **Confirm the Cloudflare plan** to know whether Time Travel keeps 7 or 30 days.
-4. **Repeat the restore drill** (section 4B into a scratch database) every quarter and after any schema change.
+1. ~~Schedule a backup~~ **Done 2026-10-04**: nightly, see section 9. Still keep a monthly copy outside Cloudflare.
+2. **Back up R2 outside Cloudflare** with `rclone` on the same schedule. The nightly job only copies files within the same bucket.
+3. **Confirm the Cloudflare plan** to know whether Time Travel keeps 7 or 30 days, and that the nightly job fits the plan's time limit for scheduled jobs. The Master > Data backup panel shows it if a run fails.
+4. **Repeat the restore drill** (section 9) every quarter and after any schema change.
 5. Keep at least one backup that is **older than the Time Travel window**.
+
+## 9. Nightly backup (automatic)
+
+**What it does.** At 21:00 UTC (02:30 IST) the API reads every table and writes it to the R2 bucket `fleet-ledger-docs`:
+
+```
+backups/<YYYY-MM-DD>/<table>.ndjson.gz    one JSON row per line, compressed
+backups/<YYYY-MM-DD>/schema.sql           the CREATE statements, for reference
+backups/<YYYY-MM-DD>/manifest.json        written last: row counts, the correct load order, circular links
+backups/files/<document key>              copy of each uploaded file (up to 150 new files per night)
+backups/last-error.json                   only exists while the latest run has failed
+```
+
+Dated folders older than 30 days are deleted. A folder without `manifest.json` is an unfinished run and should be ignored.
+Managers see the result in **Master > Data backup** and can press **Back up now**.
+
+**Restore from it** (into a database whose tables were built by the migrations):
+
+```bash
+cd worker
+scripts/download-backup.sh 2026-10-04 /tmp/restore-folder
+node scripts/restore-from-backup.mjs /tmp/restore-folder > /tmp/restore.sql
+npx wrangler d1 execute <database> --remote --file /tmp/restore.sql
+```
+
+The script loads tables parents-first in the order recorded in the manifest, loads the circular links empty and fills them in
+at the end, skips `d1_migrations` and `rate_limits`, and refuses to run if a file is missing or a row count differs from the manifest.
+
+**Tested 2026-10-04** (local copy of the database): a backup was taken, downloaded from R2, turned into SQL with the
+`defer_foreign_keys` line removed, and loaded into a fresh database. Counts and values matched the source, including
+quotes, a line break, the rupee sign and Tamil text, a circular default-driver link was restored, and `PRAGMA foreign_key_check`
+returned no rows. The first attempt failed on a foreign-key error and led to the cycle handling above.
+**Not yet exercised against production:** the first scheduled run and the table-order lookup on the real D1; check the panel the morning after deploy.

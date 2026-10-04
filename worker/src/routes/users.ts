@@ -22,7 +22,7 @@ const inviteSchema = z.object({
   fullName: z.string().min(1),
   phone: z.string().min(6),
   role: z.enum(['driver', 'office', 'manager', 'viewer']),
-  password: z.string().min(6),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
   branchId: z.string().optional(),
   driverId: z.string().optional(),
   userId: z.string().optional()
@@ -105,7 +105,7 @@ userRoutes.patch('/:id', requireRole('manager'), async (c) => {
   return c.json(safe);
 });
 
-const passwordSchema = z.object({ password: z.string().min(6, 'Password must be at least 6 characters') });
+const passwordSchema = z.object({ password: z.string().min(8, 'Password must be at least 8 characters') });
 
 // Manager sets a user's password directly — there's no "forgot password"
 // self-service flow yet (see the /invite comment above), so this is also

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { DriverLeave, DriverMaster, MasterSettings, Vehicle, VehicleUnavailability } from '../types';
 import { formatDisplayDateTime } from '../lib/api';
+import { BackupPanel } from './BackupPanel';
 import { formatLeaveDuration, leaveDurationMinutes } from '../utils/calc';
 
 interface Props {
@@ -22,6 +23,7 @@ interface Props {
   transporters: string[];
   onAddTransporter: (name: string) => Promise<string | null>;
   onRemoveTransporter: (name: string) => void;
+  isManager: boolean;
 }
 
 function blankUnavailabilityForm(defaultVehicle: string) {
@@ -37,7 +39,7 @@ const fmt = (n: number | null) => (n === null ? '' : String(n));
 export function Master({
   vehicles, drivers, settings, onSave, onSetDefaultDriver, leaves, onAddLeave, onRemoveLeave,
   unavailability, onAddUnavailability, onUpdateUnavailability, onRemoveUnavailability, categories, onAddCategory, onRemoveCategory,
-  transporters, onAddTransporter, onRemoveTransporter
+  transporters, onAddTransporter, onRemoveTransporter, isManager
 }: Props) {
   const rates = settings;
   const [diesel, setDiesel] = useState(fmt(rates.dieselRate));
@@ -537,6 +539,12 @@ export function Master({
           </tbody>
         </table>
       </div>
+
+      {isManager && (
+        <div style={{ marginTop: 32 }}>
+          <BackupPanel />
+        </div>
+      )}
     </section>
   );
 }

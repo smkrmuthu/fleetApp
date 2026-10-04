@@ -18,11 +18,12 @@ import sys
 # before the audit log — add new tables here when the schema grows.
 ORDER = [
     'orgs', 'branches', 'vehicles', 'drivers', 'users', 'settings', 'counters',
-    'expense_categories', 'driver_leaves', 'trips', 'trip_stops', 'trip_expenses',
-    'receipts', 'trip_documents', 'monthly_expenses', 'notifications',
+    'expense_categories', 'transporters', 'driver_leaves', 'vehicle_unavailability',
+    'trips', 'trip_stops', 'trip_expenses', 'receipts', 'trip_documents',
+    'monthly_expenses', 'monthly_expense_documents', 'notifications',
 ]
 LAST = ['audit_log', 'sqlite_sequence']
-SKIP = {'d1_migrations'}  # rebuilt by `wrangler d1 migrations apply`
+SKIP = {'d1_migrations', 'rate_limits'}  # rebuilt by `wrangler d1 migrations apply`
 
 statements = []
 for line in open(sys.argv[1], encoding='utf-8'):

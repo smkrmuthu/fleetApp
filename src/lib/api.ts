@@ -24,6 +24,13 @@ export function clearToken() {
   localStorage.removeItem(TOKEN_KEY);
 }
 
+// Called when the server rejects the stored sign-in (expired, or the account
+// was disabled/deleted) so the app can return to the sign-in screen.
+let onSessionEnded: (() => void) | null = null;
+export function setSessionEndedHandler(fn: (() => void) | null) {
+  onSessionEnded = fn;
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getToken();
   const res = await fetch(`${API_BASE}${path}`, {
@@ -36,6 +43,10 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   });
   const body = await res.json().catch(() => null);
   if (!res.ok) {
+    if (res.status === 401 && token && !path.startsWith('/auth/password')) {
+      clearToken();
+      onSessionEnded?.();
+    }
     throw new ApiError(body?.error?.message ?? `Request failed (${res.status})`, res.status);
   }
   return body as T;
@@ -271,6 +282,21 @@ export async function deleteUser(id: string): Promise<void> {
 
 export async function changeUserPassword(id: string, password: string): Promise<void> {
   await request(`/users/${encodeURIComponent(id)}/password`, { method: 'POST', body: JSON.stringify({ password }) });
+}
+
+// ── data backup (Manager) ────────────────────────────────────────────────
+export interface BackupStatus {
+  keepDays: number;
+  latest: { date: string; finishedAt: string; totalRows: number; bytes: number; files: { total: number; copiedThisRun: number } } | null;
+  lastError: { at: string; message: string } | null;
+}
+
+export async function fetchBackupStatus(): Promise<BackupStatus> {
+  return request<BackupStatus>('/admin/backups');
+}
+
+export async function runBackupNow(): Promise<void> {
+  await request('/admin/backups/run', { method: 'POST' });
 }
 
 // ── monthly expenses ─────────────────────────────────────────────────────

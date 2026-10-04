@@ -39,7 +39,7 @@ function ChangePasswordDialog({
   const [saving, setSaving] = useState(false);
 
   async function save() {
-    if (password.length < 6) return setError('Password must be at least 6 characters.');
+    if (password.length < 8) return setError('Password must be at least 8 characters.');
     if (password !== confirm) return setError("Passwords don't match.");
     setError('');
     setSaving(true);
@@ -98,7 +98,7 @@ function AddUserDialog({ onSave, onClose }: { onSave: (u: { name: string; phone:
   async function save() {
     if (!name.trim()) return setError('Enter a name.');
     if (!phone.trim()) return setError('Enter a mobile number.');
-    if (password.length < 6) return setError('Password must be at least 6 characters.');
+    if (password.length < 8) return setError('Password must be at least 8 characters.');
     if (password !== confirm) return setError("Passwords don't match.");
     setError('');
     setSaving(true);

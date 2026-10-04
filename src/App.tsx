@@ -95,6 +95,15 @@ export function App() {
     }
   }
 
+  // The server rejected the sign-in (expired, or the account was switched off).
+  useEffect(() => {
+    api.setSessionEndedHandler(() => {
+      setAuthed(false);
+      setError('');
+    });
+    return () => api.setSessionEndedHandler(null);
+  }, []);
+
   useEffect(() => {
     api.restoreSession().then((session) => {
       if (session) {
@@ -685,6 +694,7 @@ export function App() {
             categories={expenseCategories}
             onAddCategory={addExpenseCategory}
             onRemoveCategory={removeExpenseCategory}
+            isManager={role === 'Manager'}
           />
         )}
         {shownTab === 'schema' && <DataModel />}

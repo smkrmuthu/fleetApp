@@ -1,6 +1,10 @@
 import type { Context, Next } from 'hono';
 import type { Env, Role, Vars } from '../types';
 import { verifyAccessToken } from '../lib/jwt';
+import { resolveAuth, viewerBlocked } from '../lib/authCheck';
+import { getDb } from '../db';
+import { users } from '../../drizzle/schema';
+import { eq } from 'drizzle-orm';
 
 /**
  * Verifies the bearer token and sets `auth` on the context from it. Every
@@ -13,25 +17,23 @@ export async function requireAuth(c: Context<{ Bindings: Env; Variables: Vars }>
   const token = header?.startsWith('Bearer ') ? header.slice(7) : null;
   if (!token) return c.json({ error: { code: 'unauthorized', message: 'Missing bearer token' } }, 401);
 
+  let tokenAuth;
   try {
-    const auth = await verifyAccessToken(token, c.env.JWT_SECRET);
-    c.set('auth', auth);
+    tokenAuth = await verifyAccessToken(token, c.env.JWT_SECRET);
   } catch {
     return c.json({ error: { code: 'unauthorized', message: 'Invalid or expired token' } }, 401);
   }
 
-  // A viewer is strictly read-only. Enforcing it here — rather than adding
-  // the role to each route's requireRole list — means a route added later
-  // can't accidentally let a viewer write. Uploaded bills/receipts and the
-  // notification feed are also kept out of a viewer's reach: they aren't part
-  // of Dashboard / Movement Summary / Monthly Report.
-  if (c.get('auth').role === 'viewer') {
-    const path = c.req.path;
-    const readOnly = c.req.method === 'GET' || c.req.method === 'HEAD';
-    const privateData = /\/documents\/[^/]+\/file$/.test(path) || path.startsWith('/v1/notifications');
-    if (!readOnly || privateData) {
-      return c.json({ error: { code: 'forbidden', message: 'This account is read-only' } }, 403);
-    }
+  // Trust the database, not the token, for who this is and what they may do.
+  const [account] = await getDb(c.env)
+    .select({ orgId: users.orgId, role: users.role, driverId: users.driverId, disabledAt: users.disabledAt })
+    .from(users).where(eq(users.id, tokenAuth.userId)).limit(1);
+  const auth = resolveAuth(tokenAuth, account);
+  if (!auth) return c.json({ error: { code: 'unauthorized', message: 'This account is no longer active' } }, 401);
+  c.set('auth', auth);
+
+  if (auth.role === 'viewer' && viewerBlocked(c.req.method, c.req.path)) {
+    return c.json({ error: { code: 'forbidden', message: 'This account is read-only' } }, 403);
   }
   await next();
 }

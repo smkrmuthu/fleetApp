@@ -25,7 +25,7 @@ const loginSchema = z
 // design/handoff/API.md.
 authRoutes.post('/password', async (c) => {
   const clientIp = getClientIp(c.req.raw);
-  const ipLimit = checkRateLimit(clientIp, { windowSeconds: 60, maxRequests: 10, keyPrefix: 'auth_ip' });
+  const ipLimit = await checkRateLimit(c.env.DB, clientIp, { windowSeconds: 60, maxRequests: 10, keyPrefix: 'auth_ip' });
   if (!ipLimit.allowed) {
     c.header('Retry-After', String(ipLimit.resetInSeconds));
     return c.json(
@@ -40,7 +40,7 @@ authRoutes.post('/password', async (c) => {
 
   const identifier = (parsed.data.identifier ?? parsed.data.phone)!;
   const identifierKey = identifier.toLowerCase().trim();
-  const identifierLimit = checkRateLimit(identifierKey, { windowSeconds: 60, maxRequests: 5, keyPrefix: 'auth_account' });
+  const identifierLimit = await checkRateLimit(c.env.DB, identifierKey, { windowSeconds: 60, maxRequests: 5, keyPrefix: 'auth_account' });
   if (!identifierLimit.allowed) {
     c.header('Retry-After', String(identifierLimit.resetInSeconds));
     return c.json(

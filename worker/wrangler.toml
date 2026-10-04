@@ -9,6 +9,10 @@ compatibility_date = "2026-01-01"
 [vars]
 ALLOWED_ORIGIN = "https://smkrmuthu.github.io,https://fleetapp.smkrmuthu.workers.dev,https://fleet.oneuptech.co,capacitor://localhost,https://localhost,http://localhost:5180"
 
+# Nightly backup at 21:00 UTC (02:30 IST) — see src/lib/backup.ts
+[triggers]
+crons = ["0 21 * * *"]
+
 [[d1_databases]]
 binding = "DB"
 database_name = "fleet-ledger-db"

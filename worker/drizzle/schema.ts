@@ -330,6 +330,14 @@ export const transporters = sqliteTable(
 // A driver's time off, with both the date and time it starts/ends. Naive
 // local strings ("2026-09-25T09:00"), the same "no timezone math" approach
 // used for trip dates elsewhere in this schema.
+// Request counters for the rate limiter (sign-in attempts, bill scans), one row
+// per key per window. Disposable — it is not part of any restore.
+export const rateLimits = sqliteTable('rate_limits', {
+  key: text('key').primaryKey(),
+  count: integer('count').notNull(),
+  resetAt: integer('reset_at').notNull()
+});
+
 export const driverLeaves = sqliteTable(
   'driver_leaves',
   {

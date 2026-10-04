@@ -14,6 +14,9 @@ import { driverLeaveRoutes } from './routes/driverLeaves';
 import { expenseCategoryRoutes } from './routes/expenseCategories';
 import { vehicleUnavailabilityRoutes } from './routes/vehicleUnavailability';
 import { transporterRoutes } from './routes/transporters';
+import { adminRoutes } from './routes/admin';
+import { runBackup } from './lib/backup';
+import { purgeExpiredRateLimits } from './lib/rateLimit';
 
 const app = new Hono<{ Bindings: Env; Variables: Vars }>();
 
@@ -37,6 +40,7 @@ app.route('/v1/driver-leaves', driverLeaveRoutes);
 app.route('/v1/expense-categories', expenseCategoryRoutes);
 app.route('/v1/vehicle-unavailability', vehicleUnavailabilityRoutes);
 app.route('/v1/transporters', transporterRoutes);
+app.route('/v1/admin', adminRoutes);
 
 app.notFound((c) => c.json({ error: { code: 'not_found', message: 'No such route' } }, 404));
 app.onError((err, c) => {
@@ -44,4 +48,19 @@ app.onError((err, c) => {
   return c.json({ error: { code: 'internal_error', message: 'Something went wrong' } }, 500);
 });
 
-export default app;
+export default {
+  fetch: app.fetch,
+  // Runs on the cron schedule in wrangler.toml: the nightly backup, then a
+  // tidy-up of expired rate-limit counters. A failure is recorded by the
+  // backup itself (and shown in Master), so it is only logged here.
+  async scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext) {
+    ctx.waitUntil((async () => {
+      try {
+        await runBackup(env);
+      } catch (err) {
+        console.error('nightly backup failed', err);
+      }
+      await purgeExpiredRateLimits(env.DB).catch((err) => console.error('rate limit cleanup failed', err));
+    })());
+  }
+};
