@@ -49,7 +49,7 @@ export const TRIP_EXPENSE_LABEL: Record<string, string> = {
 };
 
 export const ROLE_TABS: Record<Role, TabId[]> = {
-  Driver: ['addtrip', 'fuel', 'triplog'],
+  Driver: ['addtrip', 'triplog'],
   Office: ['addtrip', 'fuel', 'triplog', 'summary', 'expenses'],
   Manager: ['dashboard', 'summary', 'addtrip', 'fuel', 'triplog', 'expenses', 'report', 'people', 'master', 'schema'],
   // Read-only: looks at the numbers, changes nothing.

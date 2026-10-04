@@ -63,7 +63,10 @@ export function App() {
       // Transporters are fetched for every role too — Add Movement's dropdown
       // is available to drivers.
       const [v, d, t, e, r, l, u2, tr] = await Promise.all([
-        api.fetchVehicles(), api.fetchDrivers(), api.fetchTrips(), api.fetchMonthlyExpenses(), api.fetchMasterSettings(), api.fetchDriverLeaves(), api.fetchVehicleUnavailability(), api.fetchTransporters()
+        api.fetchVehicles(), api.fetchDrivers(), api.fetchTrips(),
+        // Fixed costs are not for drivers (the server refuses them anyway).
+        currentRole === 'Driver' ? Promise.resolve([] as MonthlyExpense[]) : api.fetchMonthlyExpenses(),
+        api.fetchMasterSettings(), api.fetchDriverLeaves(), api.fetchVehicleUnavailability(), api.fetchTransporters()
       ]);
       setTransporters(tr);
       setVehicles(v);

@@ -52,8 +52,13 @@ async function fetchDocumentsByExpense(db: ReturnType<typeof getDb>, orgId: stri
   return byExpense;
 }
 
+// Drivers never see fixed costs: they get an empty list rather than an error,
+// so an older app build that loads everything in one go keeps working. A
+// Viewer reads the figures (they feed the reports) but not the bills (see
+// viewerBlocked).
 monthlyExpenseRoutes.get('/', async (c) => {
-  const { orgId } = c.get('auth');
+  const { orgId, role } = c.get('auth');
+  if (role === 'driver') return c.json({ monthlyExpenses: [] });
   const db = getDb(c.env);
   const query = new URL(c.req.url).searchParams;
 
@@ -204,7 +209,7 @@ monthlyExpenseRoutes.delete('/:id/documents/:docId', requireRole('office', 'mana
   return c.json({ ok: true });
 });
 
-monthlyExpenseRoutes.get('/:id/documents/:docId/file', async (c) => {
+monthlyExpenseRoutes.get('/:id/documents/:docId/file', requireRole('office', 'manager'), async (c) => {
   const auth = c.get('auth');
   const id = c.req.param('id')!;
   const docId = c.req.param('docId')!;

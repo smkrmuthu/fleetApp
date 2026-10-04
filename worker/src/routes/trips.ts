@@ -8,6 +8,7 @@ import { base64ToBytes, filenameFromKey, storageKeyFor } from '../lib/storage';
 import { ALLOWED_DOCUMENT_MIME_TYPES, MAX_DOCUMENT_BASE64_LENGTH, documentInputSchema, sanitizeFilenameForHeader } from '../lib/fileValidation';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { buildFilters, combine, parsePagination } from '../lib/filters';
+import { fuelLineBlocked, FUEL_BLOCKED_MESSAGE } from '../lib/fuelAccess';
 import { writeAudit } from '../lib/audit';
 
 export const tripRoutes = new Hono<{ Bindings: Env; Variables: Vars }>();
@@ -201,6 +202,10 @@ tripRoutes.post('/', async (c) => {
   const parsed = createTripSchema.safeParse(body);
   if (!parsed.success) return c.json({ error: { code: 'validation_error', message: parsed.error.message } }, 422);
   const data = parsed.data;
+
+  if (data.expenses.some((e) => fuelLineBlocked(auth.role, e.kind))) {
+    return c.json({ error: { code: 'forbidden', message: FUEL_BLOCKED_MESSAGE } }, 403);
+  }
 
   const db = getDb(c.env);
   const isDriver = auth.role === 'driver';
@@ -412,6 +417,7 @@ tripRoutes.post('/:id/expenses', async (c) => {
   const body = await c.req.json().catch(() => null);
   const parsed = expenseLineSchema.safeParse(body);
   if (!parsed.success) return c.json({ error: { code: 'validation_error', message: parsed.error.message } }, 422);
+  if (fuelLineBlocked(auth.role, parsed.data.kind)) return c.json({ error: { code: 'forbidden', message: FUEL_BLOCKED_MESSAGE } }, 403);
 
   const db = getDb(c.env);
   const [trip] = await db.select().from(trips).where(and(eq(trips.id, id), eq(trips.orgId, auth.orgId))).limit(1);
@@ -450,6 +456,7 @@ tripRoutes.delete('/:id/expenses/:expenseId', async (c) => {
   const [line] = await db.select().from(tripExpenses)
     .where(and(eq(tripExpenses.id, expenseId), eq(tripExpenses.tripId, id), eq(tripExpenses.orgId, auth.orgId))).limit(1);
   if (!line) return c.json({ error: { code: 'not_found', message: 'Expense line not found' } }, 404);
+  if (fuelLineBlocked(auth.role, line.kind)) return c.json({ error: { code: 'forbidden', message: FUEL_BLOCKED_MESSAGE } }, 403);
 
   await db.delete(tripExpenses).where(eq(tripExpenses.id, expenseId));
   await writeAudit(db, auth.orgId, 'trip_expenses', expenseId, 'delete', { tripId: id, kind: line.kind, amountPaise: line.amountPaise }, auth.userId);
@@ -466,6 +473,7 @@ tripRoutes.patch('/:id/expenses/:expenseId', async (c) => {
   const body = await c.req.json().catch(() => null);
   const parsed = expenseLineSchema.safeParse(body);
   if (!parsed.success) return c.json({ error: { code: 'validation_error', message: parsed.error.message } }, 422);
+  if (fuelLineBlocked(auth.role, parsed.data.kind)) return c.json({ error: { code: 'forbidden', message: FUEL_BLOCKED_MESSAGE } }, 403);
 
   const db = getDb(c.env);
   const [trip] = await db.select().from(trips).where(and(eq(trips.id, id), eq(trips.orgId, auth.orgId))).limit(1);
@@ -480,6 +488,7 @@ tripRoutes.patch('/:id/expenses/:expenseId', async (c) => {
   const [line] = await db.select().from(tripExpenses)
     .where(and(eq(tripExpenses.id, expenseId), eq(tripExpenses.tripId, id), eq(tripExpenses.orgId, auth.orgId))).limit(1);
   if (!line) return c.json({ error: { code: 'not_found', message: 'Expense line not found' } }, 404);
+  if (fuelLineBlocked(auth.role, line.kind)) return c.json({ error: { code: 'forbidden', message: FUEL_BLOCKED_MESSAGE } }, 403);
 
   const d = parsed.data;
   const changes = {

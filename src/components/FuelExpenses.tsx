@@ -44,9 +44,8 @@ type SortKey = 'date' | 'vehicle' | 'trip' | 'litres' | 'rate' | 'amount' | 'rem
 export function FuelExpenses({ trips, vehicles, drivers, master, role, onPost, onUpdate, onDelete }: Props) {
   // Only trips that are still open can take fuel from here.
   const openTrips = useMemo(() => trips.filter((t) => t.status === 'draft'), [trips]);
-  // A driver's trip list is already limited to their own trips by the server,
-  // so for them the truck list is just the trucks they have an open trip on.
-  const vehicleOptions = role === 'Driver' ? vehicles.filter((v) => openTrips.some((t) => t.vehicle === v.id)) : vehicles;
+  // This tab is for Office and Manager only (drivers don't get it).
+  const vehicleOptions = vehicles;
 
   const [date, setDate] = useState(todayIso());
   const [vehicle, setVehicle] = useState('');

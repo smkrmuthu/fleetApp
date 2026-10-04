@@ -608,7 +608,10 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, l
                           {l.kind === 'other' && (
                             <button type="button" className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => editLine(l)}>Edit</button>
                           )}
-                          <button type="button" className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => removeLine(l.id)}>Remove</button>
+                          {/* Fuel lines belong to Office/Manager; a driver can't change them (the server refuses it). */}
+                          {!(driverOnly && l.kind !== 'other') && (
+                            <button type="button" className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => removeLine(l.id)}>Remove</button>
+                          )}
                         </td>
                       </tr>
                     ))}
