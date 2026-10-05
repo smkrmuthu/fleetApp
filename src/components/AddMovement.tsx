@@ -416,7 +416,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, l
         <p style={{ color: 'var(--color-neutral-700)', marginTop: 6, fontSize: 13 }}>
           {isCompleted
             ? 'This movement is complete. Changes you save replace what is recorded and are kept in the audit log.'
-            : isEditing ? 'Update an open movement, add entries to it, or mark it complete.' : 'Start a new movement and add its expense entries as you go. Fuel is posted from the Fuel Expenses tab.'}
+            : isEditing ? 'Update an open movement, add entries to it, or mark it complete.' : 'Add a new movement and its expense entries as you go. Fuel is posted from the Fuel Expenses tab.'}
         </p>
       </div>
       <div className="movement-grid">
@@ -681,7 +681,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, l
                 </>
               ) : driverOnly ? (
                 <>
-                  <button type="button" className="btn btn-primary" onClick={() => tryAction('start', false)}>Start movement</button>
+                  <button type="button" className="btn btn-primary" onClick={() => tryAction('start', false)}>Add movement</button>
                   <button type="button" className="btn btn-ghost" onClick={resetForm}>Clear</button>
                 </>
               ) : (

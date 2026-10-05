@@ -72,7 +72,7 @@ function lineDetail(l: TripExpenseLine): string {
 
 const TITLE: Record<Action, string> = {
   create: 'Review before adding this movement',
-  start: 'Review before starting this movement',
+  start: 'Review before adding this movement',
   save: 'Review before saving',
   complete: 'Review before completing this movement'
 };
