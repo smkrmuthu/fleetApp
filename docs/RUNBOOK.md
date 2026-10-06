@@ -114,7 +114,7 @@ The older `order-dump.py` route is kept only for `wrangler d1 export` files.
 
 ## 8. Android app
 
-`cd android && ./gradlew assembleDebug` after `npx cap sync android`. Needs JDK 21 and the Android SDK
+`npx vite build && npx cap sync android && cd android && ./gradlew assembleDebug`. Latest build: 6 October 2026, `FleetLedger-debug-20261006.apk` (6.9 MB) in `~/FleetLedger-apk/`, built from `main` at `21c3226` and checked to hold the same web bundle as the live site (`index-CbwBR-rq.js`). Needs JDK 21 and the Android SDK
 (`JAVA_HOME`, `ANDROID_HOME`). This produces a **debug** file for installing directly. A Play Store release needs a
 Google Play developer account and a signing key that only the owner should hold, and is not set up. The iPhone app
 needs Xcode and an Apple developer account and is not set up.
