@@ -62,7 +62,7 @@ for i, (r, d) in enumerate(roles):
 
 # clients
 s.box(340, 100, 330, 520, F_CL, S_CL, 'Clients (one codebase)', [], 15)
-s.box(356, 140, 298, 140, '#ffffff', S_CL, 'Web app (React + TypeScript + Vite)', ['Single-page app, tabs by role', 'smkrmuthu.github.io/fleetApp', 'fleet.oneuptech.co (Cloudflare)', 'Sign-in token kept in browser storage'], 13, 12, 6)
+s.box(356, 140, 298, 140, '#ffffff', S_CL, 'Web app (React + TypeScript + Vite)', ['Single-page app, tabs by role', 'smkrmuthu.github.io/fleetApp', 'smt.oneuptech.co (Cloudflare)', 'Sign-in token kept in browser storage'], 13, 12, 6)
 s.box(356, 296, 298, 130, '#ffffff', S_CL, 'Installed web app (PWA)', ['Add to Home Screen', 'Service worker: network-first,', 'so a new deploy is never hidden'], 13, 12, 6)
 s.box(356, 442, 298, 160, '#ffffff', S_CL, 'Android app (Capacitor)', ['Same web bundle in a native shell', 'App id com.smkrmuthu.fleetledger', 'Debug build today; no Play Store', 'or iPhone app yet'], 13, 12, 6)
 
@@ -75,12 +75,12 @@ s.box(772, 446, 220, 112, F_GR, S_GR, 'Libraries', ['!password (PBKDF2) · jwt',
 s.box(1008, 446, 220, 112, F_SEC, S_SEC, 'Scheduled job (cron)', ['!21:00 UTC = 02:30 IST', 'Nightly backup, 30 nights', 'Cleans expired rate limits'], 13, 12, 6)
 s.box(756, 604, 236, 176, F_DB, S_DB, 'D1 database (SQLite)', ['!fleet-ledger-db · 22 tables', 'Trips, expenses, vehicles,', 'drivers, users, settings,', 'audit log, rate limits …', 'Time Travel: 7 / 30 days', 'Versioned migrations'], 13, 12, 6)
 s.box(1008, 604, 236, 176, F_DB, S_DB, 'R2 bucket', ['!fleet-ledger-docs', 'Uploaded bills & photos', '(<org>/<trip>/<file>)', 'backups/<date>/ …', 'backups/files/ (copies)'], 13, 12, 6)
-s.box(756, 800, 488, 130, '#ffffff', S_CF, 'Worker configuration', ['!Bindings: DB (D1) · DOCS (R2)', '!Secrets: JWT_SECRET · GEMINI_API_KEY (never in code or backups)', '!Variable: ALLOWED_ORIGIN (the sites allowed to call the API)', 'Static site: the web app is also served by a Cloudflare Worker', '(fleetapp) behind the domain fleet.oneuptech.co'], 13, 12, 6)
+s.box(756, 800, 488, 130, '#ffffff', S_CF, 'Worker configuration', ['!Bindings: DB (D1) · DOCS (R2)', '!Secrets: JWT_SECRET · GEMINI_API_KEY (never in code or backups)', '!Variable: ALLOWED_ORIGIN (the sites allowed to call the API)', 'Static site: the web app is also served by a Cloudflare Worker', '(fleetapp) behind the domain smt.oneuptech.co'], 13, 12, 6)
 
 # external
 s.box(1320, 100, 210, 150, F_EX, S_EX, 'Google Gemini API', ['Reads a fuel-bill photo', '(litres, rate, amount, date)', 'Called only from the Worker', 'Key is a Worker secret'], 13, 12, 6)
 s.box(1320, 290, 210, 190, F_EX, S_EX, 'GitHub', ['smkrmuthu/fleetApp', 'Actions: type-check, tests,', 'build · Pages hosting', 'Dependabot weekly updates'], 13, 12, 6)
-s.box(1320, 520, 210, 130, F_EX, S_EX, 'Cloudflare Git build', ['Rebuilds the web app on', 'fleet.oneuptech.co when', 'main changes'], 13, 12, 6)
+s.box(1320, 520, 210, 130, F_EX, S_EX, 'Cloudflare Git build', ['Rebuilds the web app on', 'smt.oneuptech.co when', 'main changes'], 13, 12, 6)
 
 # arrows
 s.arrow(280, 190, 340, 190, 'use', 310, 180)
@@ -208,7 +208,7 @@ s.label(30, 72, 'A change moves left to right: written and tested on a branch, m
 s.box(30, 100, 220, 150, F_GR, S_GR, 'Developer machine', ['Code + Claude Code', 'Branch per change', 'npx tsc · npm test', 'Local browser checks'], 14, 12, 8)
 s.box(300, 100, 260, 150, F_EX, S_EX, 'GitHub  smkrmuthu/fleetApp', ['!Branches → merge to main', 'CI on every push:', ' type-check · tests · build', ' (app and API, Node 22)'], 14, 12, 8)
 s.box(610, 100, 270, 150, F_EX, S_EX, 'Publish the web app', ['!GitHub Pages workflow', ' type-check + tests + build,', ' deploys only if they pass', '!Cloudflare Git build (fleetapp)'], 14, 12, 8)
-s.box(930, 100, 270, 150, F_CL, S_CL, 'Websites (same bundle)', ['smkrmuthu.github.io/fleetApp', 'fleet.oneuptech.co', 'fleetapp.smkrmuthu.workers.dev', 'Android app built from dist/'], 14, 12, 8)
+s.box(930, 100, 270, 150, F_CL, S_CL, 'Websites (same bundle)', ['smkrmuthu.github.io/fleetApp', 'smt.oneuptech.co', 'fleetapp.smkrmuthu.workers.dev', 'Android app built from dist/'], 14, 12, 8)
 s.arrow(250, 175, 300, 175, 'push', 275, 165)
 s.arrow(560, 175, 610, 175)
 s.arrow(880, 175, 930, 175)
