@@ -198,4 +198,18 @@ at the end, skips `d1_migrations` and `rate_limits`, and refuses to run if a fil
 `defer_foreign_keys` line removed, and loaded into a fresh database. Counts and values matched the source, including
 quotes, a line break, the rupee sign and Tamil text, a circular default-driver link was restored, and `PRAGMA foreign_key_check`
 returned no rows. The first attempt failed on a foreign-key error and led to the cycle handling above.
-**Not yet exercised against production:** the first scheduled run and the table-order lookup on the real D1; check the panel the morning after deploy.
+**Confirmed in production (6 Oct 2026):** the scheduled backup ran at 02:30 IST on 4 and 5 October (about 12 seconds each; 434 and 436 rows; the load order was read from the real D1's foreign keys). A comparison of the 5 October backup against the live database found every record still present except 19 that the audit log shows were removed deliberately (a duplicate trip, replaced expense lines, one availability window, re-saved trip stops).
+
+## 10. Manual full export (taken 6 Oct 2026)
+
+A manual copy is taken before any big change, and on request. It is separate from the nightly copy and sits outside Cloudflare.
+
+```bash
+cd worker
+D=~/FleetLedger-backups; mkdir -p $D; chmod 700 $D; ts=$(date +%Y%m%d-%H%M)
+npx wrangler d1 export fleet-ledger-db --remote --no-schema --output $D/fleet-ledger-db-DATA-$ts.sql   # restorable format
+npx wrangler d1 export fleet-ledger-db --remote            --output $D/fleet-ledger-db-FULL-$ts.sql   # schema + data, for reference
+chmod 600 $D/*$ts*.sql
+```
+
+Verify the file by counting its `INSERT INTO "<table>"` lines per table and comparing with `SELECT count(*)` on the live database. On 6 October 2026 the files `fleet-ledger-db-DATA-20261006-2027.sql` (238 KB) and `fleet-ledger-db-FULL-20261006-2027.sql` (250 KB) were taken, and all 16 main tables matched the live database row for row (51 trips, 71 trip expense lines, 50 stops, 7 monthly expenses, 9 vehicles, 12 drivers, 7 users, 386 audit entries, 19 expense descriptions, and so on). These files hold real company data and password hashes: keep them private and out of the repository (`backups/` and `*.dump.sql` are git-ignored; the home folder is outside the repository altogether).

@@ -59,6 +59,8 @@ Never edit or delete a migration file that has already been applied.
 - A Manager sees the last backup time under **Master > Data backup**, with a red warning if it is more than a day old or
   the latest attempt failed. **Check this panel when you open the app.**
 - "Back up now" runs it on demand. Nothing needs to be installed.
+- The scheduled run is confirmed working in production (4 and 5 October 2026, about 12 seconds each).
+- Before any big change, also take a manual full export (section 10 of the backup document); one was taken and verified on 6 October 2026.
 - Restore: see section 6 of this file and the backup document.
 - These copies sit in the same Cloudflare account as the live data. They protect against mistakes and bad changes,
   **not against losing the account**. Once a month, download one and keep it somewhere else, encrypted:
