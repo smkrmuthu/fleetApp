@@ -9,7 +9,7 @@ Last updated: 2026-10-04.
 
 | Part | Where | Notes |
 |---|---|---|
-| Web app (React) | GitHub Pages `smkrmuthu.github.io/fleetApp` and Cloudflare `smt.oneuptech.co` / `fleet.oneuptech.co` / `fleetapp.smkrmuthu.workers.dev` | Both rebuild when `main` changes |
+| Web app (React) | GitHub Pages `smkrmuthu.github.io/fleetApp` and Cloudflare `smt.oneuptech.co` / `fleetapp.smkrmuthu.workers.dev` | Both rebuild when `main` changes |
 | API (Cloudflare Worker) | `fleet-ledger-api.smkrmuthu.workers.dev` | Deployed by hand (section 3) |
 | Database | Cloudflare D1 `fleet-ledger-db` | Migrations in `worker/migrations/` |
 | Uploaded bills, nightly backups | Cloudflare R2 bucket `fleet-ledger-docs` | Backups under `backups/` |
@@ -27,7 +27,7 @@ cd worker && npx tsc --noEmit && npm test   # the API
 ```
 
 GitHub runs the same checks on every push (`.github/workflows/ci.yml`), and the Pages deployment
-refuses to publish if they fail. **The Cloudflare site (`smt.oneuptech.co`, `fleet.oneuptech.co`) is built by
+refuses to publish if they fail. **The Cloudflare site (`smt.oneuptech.co`) is built by
 Cloudflare's own Git integration, which these checks do not gate**, so a failing CI run on `main`
 should be treated as "do not trust this deploy" and fixed straight away.
 
