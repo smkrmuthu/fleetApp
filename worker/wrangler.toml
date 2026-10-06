@@ -4,10 +4,13 @@ compatibility_date = "2026-01-01"
 
 # Comma-separated list of origins allowed to call this API — the frontend is
 # deployed to GitHub Pages, Cloudflare Workers (fleetapp, and its custom
-# domain fleet.oneuptech.co), and (via Capacitor) the iOS and Android apps,
-# which serve their bundled web content from fixed origins regardless of device.
+# domains smt.oneuptech.co and fleet.oneuptech.co), and (via Capacitor) the iOS
+# and Android apps, which serve their bundled web content from fixed origins
+# regardless of device.
+# fleet.oneuptech.co stays listed until the separate demo takes that address;
+# remove it then (the demo has its own API and must never call this one).
 [vars]
-ALLOWED_ORIGIN = "https://smkrmuthu.github.io,https://fleetapp.smkrmuthu.workers.dev,https://fleet.oneuptech.co,capacitor://localhost,https://localhost,http://localhost:5180"
+ALLOWED_ORIGIN = "https://smkrmuthu.github.io,https://fleetapp.smkrmuthu.workers.dev,https://smt.oneuptech.co,https://fleet.oneuptech.co,capacitor://localhost,https://localhost,http://localhost:5180"
 
 # Nightly backup at 21:00 UTC (02:30 IST) — see src/lib/backup.ts
 [triggers]
