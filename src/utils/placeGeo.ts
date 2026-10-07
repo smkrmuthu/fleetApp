@@ -73,7 +73,8 @@ export function groupRoutes(trips: { from: string; to: string; stops?: string[];
 
 // --- remembered lookups ---------------------------------------------------
 
-const CACHE_KEY = 'fleet_place_geo_v1';
+// v2: earlier answers were searched without a region and some were in the wrong state
+const CACHE_KEY = 'fleet_place_geo_v2';
 const MISS_RETRY_MS = 7 * 86_400_000;
 
 interface CacheEntry { lat: number | null; lon: number | null; at: number }
@@ -111,25 +112,58 @@ export const SEARCH_GAP_MS = 1100;
 
 type FetchLike = (url: string) => Promise<{ ok: boolean; json(): Promise<unknown> }>;
 
-async function search(q: string, fetchImpl: FetchLike): Promise<LatLon | null> {
-  const url = `${SEARCH_URL}?format=jsonv2&limit=1&countrycodes=in&q=${encodeURIComponent(q)}`;
+// Where the company's places are. A search only accepts a result inside these
+// boxes (left, top, right, bottom as longitude/latitude), so a name that matches
+// nothing here can never be put on the other side of the country: it stays
+// "not found". The first box is Chennai and its surroundings; the second is
+// Tamil Nadu and the south of Andhra Pradesh, leaving out Kerala and Karnataka.
+const CHENNAI_BOX = '79.85,13.55,80.45,12.65';
+const SOUTH_BOX = '76.9,14.6,80.6,8.0';
+const HOME_STATES = /Tamil Nadu|Andhra Pradesh|Puducherry/i;
+
+// Places are written "CUSTOMER - AREA" (for example "KMR - KUNDRATHUR"): the area
+// is what can be found on a map, the customer is not.
+export function searchArea(key: string): string {
+  const parts = key.split(/\s+[-\u2013\u2014]\s+/);
+  const last = cleanPlace(parts[parts.length - 1] ?? '');
+  return last.length >= 3 ? last : cleanPlace(key);
+}
+
+async function search(q: string, box: string, fetchImpl: FetchLike, state?: RegExp): Promise<LatLon | null> {
+  const url = `${SEARCH_URL}?format=jsonv2&limit=1&countrycodes=in&viewbox=${box}&bounded=1&q=${encodeURIComponent(q)}`;
   const res = await fetchImpl(url);
   if (!res.ok) throw new Error('search failed');
-  const rows = (await res.json()) as { lat?: string; lon?: string }[];
+  const rows = (await res.json()) as { lat?: string; lon?: string; display_name?: string }[];
   const first = Array.isArray(rows) ? rows[0] : undefined;
+  if (state && first && !state.test(first.display_name ?? '')) return null;
   const lat = first?.lat != null ? Number(first.lat) : NaN;
   const lon = first?.lon != null ? Number(first.lon) : NaN;
   return Number.isFinite(lat) && Number.isFinite(lon) ? { lat, lon } : null;
 }
 
-// Searches the place as written; if nothing comes back, once more without the
-// site words. Returns null for "not found" and throws when the search itself
-// failed (offline, blocked), so a failure is never remembered as "not found".
-export async function lookupPlace(key: string, fetchImpl: FetchLike = (u) => fetch(u, { headers: { Accept: 'application/json' } })): Promise<LatLon | null> {
-  const found = await search(`${key}, India`, fetchImpl);
-  if (found) return found;
-  const bare = cleanPlace(key.replace(SITE_WORDS, ' '));
-  return bare && bare.toLowerCase() !== key.toLowerCase() ? search(`${bare}, India`, fetchImpl) : null;
+const defaultPause = () => new Promise<void>((r) => setTimeout(r, SEARCH_GAP_MS));
+
+// Searches the area part of the name in Chennai (then without the site words),
+// and only then across Tamil Nadu and southern Andhra Pradesh, accepting nothing
+// outside those regions. Returns null for "not found" and throws when the
+// search itself failed (offline, blocked), so a failure is never remembered as
+// "not found". Waits between searches, as OpenStreetMap asks.
+export async function lookupPlace(
+  key: string,
+  fetchImpl: FetchLike = (u) => fetch(u, { headers: { Accept: 'application/json' } }),
+  pause: () => Promise<void> = defaultPause
+): Promise<LatLon | null> {
+  const area = searchArea(key);
+  const bare = cleanPlace(area.replace(SITE_WORDS, ' '));
+  const attempts: (() => Promise<LatLon | null>)[] = [() => search(`${area}, Chennai`, CHENNAI_BOX, fetchImpl)];
+  if (bare && bare.toLowerCase() !== area.toLowerCase()) attempts.push(() => search(`${bare}, Chennai`, CHENNAI_BOX, fetchImpl));
+  attempts.push(() => search(`${area}, Tamil Nadu`, SOUTH_BOX, fetchImpl, HOME_STATES));
+  for (let i = 0; i < attempts.length; i++) {
+    if (i > 0) await pause();
+    const found = await attempts[i]!();
+    if (found) return found;
+  }
+  return null;
 }
 
 export function rememberPlace(store: KeyValueStore | null, key: string, pos: LatLon | null, now = Date.now()) {

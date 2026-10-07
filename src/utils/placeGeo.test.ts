@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { groupRoutes, knownPosition, lookupPlace, placeKey, readCache, rememberPlace, type KeyValueStore } from './placeGeo';
+import { groupRoutes, knownPosition, lookupPlace, placeKey, readCache, rememberPlace, searchArea, type KeyValueStore } from './placeGeo';
 
 const memory = (): KeyValueStore => {
   const m = new Map<string, string>();
@@ -96,24 +96,53 @@ describe('groupRoutes', () => {
   });
 });
 
+describe('searchArea', () => {
+  it('uses the area after the customer name', () => {
+    expect(searchArea('KMR - KUNDRATHUR')).toBe('KUNDRATHUR');
+    expect(searchArea('Aarov buildmart \u2013 kundrathur')).toBe('kundrathur');
+    expect(searchArea('CONCRETE OEM - SUNCITY')).toBe('SUNCITY');
+    expect(searchArea('WORKSHOP STOP')).toBe('WORKSHOP STOP');
+    expect(searchArea('Pollachi')).toBe('Pollachi');
+  });
+});
+
 describe('lookupPlace', () => {
-  it('returns the first result', async () => {
-    expect(await lookupPlace('Pollachi', reply([{ lat: '10.66', lon: '77.01' }]))).toEqual({ lat: 10.66, lon: 77.01 });
+  const noPause = async () => {};
+  it('searches the area inside Chennai first and returns the result', async () => {
+    const asked: string[] = [];
+    const found = await lookupPlace('KMR - KUNDRATHUR', async (u) => {
+      asked.push(decodeURIComponent(u));
+      return { ok: true, json: async () => [{ lat: '13.02', lon: '80.14', display_name: 'Kundrathur, Chennai, Tamil Nadu' }] };
+    }, noPause);
+    expect(found).toEqual({ lat: 13.02, lon: 80.14 });
+    expect(asked).toHaveLength(1);
+    expect(asked[0]).toContain('q=KUNDRATHUR, Chennai');
+    expect(asked[0]).toContain('bounded=1');
+    expect(asked[0]).toContain('viewbox=79.85,13.55,80.45,12.65');
   });
   it('returns null when nothing is found, and does not guess', async () => {
-    expect(await lookupPlace('Nowhere', reply([]))).toBeNull();
+    expect(await lookupPlace('Nowhere', reply([]), noPause)).toBeNull();
   });
-  it('tries again without the site words', async () => {
+  it('tries without the site words, then the wider region', async () => {
     const asked: string[] = [];
     const found = await lookupPlace('Pollachi Godown', async (u) => {
       asked.push(decodeURIComponent(u.split('q=')[1]!));
-      return { ok: true, json: async () => (asked.length === 1 ? [] : [{ lat: '10.66', lon: '77.01' }]) };
-    });
-    expect(asked).toEqual(['Pollachi Godown, India', 'Pollachi, India']);
+      return { ok: true, json: async () => (asked.length < 3 ? [] : [{ lat: '10.66', lon: '77.01', display_name: 'Pollachi, Coimbatore, Tamil Nadu' }]) };
+    }, noPause);
+    expect(asked).toEqual(['Pollachi Godown, Chennai', 'Pollachi, Chennai', 'Pollachi Godown, Tamil Nadu']);
     expect(found).toEqual({ lat: 10.66, lon: 77.01 });
   });
+  it('refuses a wider-region result that is in another state', async () => {
+    const kerala = reply([{ lat: '10.31', lon: '76.21', display_name: 'workshop stop, Thrissur, Kerala' }]);
+    expect(await lookupPlace('WORKSHOP STOP', async (u) => (u.includes('Tamil%20Nadu') ? kerala() : { ok: true, json: async () => [] }), noPause)).toBeNull();
+  });
+  it('waits between searches', async () => {
+    let pauses = 0;
+    await lookupPlace('Nowhere Yard', reply([]), async () => { pauses++; });
+    expect(pauses).toBe(2);
+  });
   it('throws on a failed search so it is never remembered as "not found"', async () => {
-    await expect(lookupPlace('Pollachi', async () => ({ ok: false, json: async () => [] }))).rejects.toThrow();
+    await expect(lookupPlace('Pollachi', async () => ({ ok: false, json: async () => [] }), noPause)).rejects.toThrow();
   });
 });
 
