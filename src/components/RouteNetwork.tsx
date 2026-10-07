@@ -106,20 +106,20 @@ export function RouteNetwork({ trips, periodLabel }: { trips: { from: string; to
           <ul className="lane-list">
             {singles.slice(0, 6).map((s) => (
               <li key={s.place}>
-                <span style={{ minWidth: 0 }}>{s.place} <span className="map-sub">· one place only</span></span>
+                <span style={{ minWidth: 0 }}>{s.place} <span className="map-sub" title="The other end is not recorded yet, or both ends are the same place, so it is marked without a line">· one place only</span></span>
                 <span className="lane-count">{s.trips}×</span>
               </li>
             ))}
           </ul>
         )}
         <div className="map-legend"><span><i /> Completed</span><span><i className="open" /> Open movement</span></div>
-        {singles.length > 0 && <div className="map-sub">"One place only" means the other end is not recorded yet (for example an open movement before its unloading place is entered) or both ends are the same place, so it is marked on the map without a line.</div>}
-        <div className="map-sub">
-          Places are found by searching OpenStreetMap for the place names on each movement; only the names are sent. Lines follow the likely road route through the loading place, the stops in order and the unloading place (found with a free routing service; only the positions of the places are sent). It is the usual road route, not the path the truck drove, as there is no GPS. A dashed line is straight: no road route was available.
-          {pending.length > 0 && <> Locating {pending.length} more {pending.length === 1 ? 'place' : 'places'}…</>}
-          {!pending.length && missing.length > 0 && <> Not found on the map: {missing.join(', ')}.</>}
-          {skipped > 0 && <> {skipped} {skipped === 1 ? 'movement has' : 'movements have'} no loading or unloading place recorded.</>}
-        </div>
+        {(pending.length > 0 || missing.length > 0 || skipped > 0) && (
+          <div className="map-sub">
+            {pending.length > 0 && <>Locating {pending.length} more {pending.length === 1 ? 'place' : 'places'}…</>}
+            {!pending.length && missing.length > 0 && <> Not found on the map: {missing.join(', ')}.</>}
+            {skipped > 0 && <> {skipped} {skipped === 1 ? 'movement has' : 'movements have'} no loading or unloading place recorded.</>}
+          </div>
+        )}
       </div>
     </div>
   );
