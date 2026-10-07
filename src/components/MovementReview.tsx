@@ -119,7 +119,7 @@ export function MovementReview({ action, form, original, lines, originalLines, s
   );
 
   return (
-    <div ref={rootRef} style={{ border: '2px solid var(--color-text)', marginTop: standalone ? 0 : 16, background: 'var(--color-bg)' }}>
+    <div ref={rootRef} style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', marginTop: standalone ? 0 : 16, background: 'var(--color-surface)' }}>
       <div style={{ background: 'var(--color-text)', color: 'var(--color-bg)', padding: '8px 12px', fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
         {TITLE[action]}
       </div>
@@ -227,6 +227,14 @@ export function MovementReview({ action, form, original, lines, originalLines, s
                 </tr>
               ))}
             </tbody>
+            {lines.length > 0 && (
+              <tfoot>
+                <tr>
+                  <td colSpan={3}>Total</td>
+                  <td style={{ textAlign: 'right' }}>{rupees(lines.reduce((a, l) => a + l.amount, 0))}</td>
+                </tr>
+              </tfoot>
+            )}
           </table>
         </div>
       )}

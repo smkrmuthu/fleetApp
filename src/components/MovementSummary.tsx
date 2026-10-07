@@ -26,10 +26,10 @@ interface Props {
 // Money figures carry paise now, so a big revenue can be 14+ characters wide —
 // step the size down for longer values so they stay inside their tile.
 function statValueSize(value: string): number {
-  if (value.length > 15) return 19;
-  if (value.length > 12) return 22;
-  if (value.length > 10) return 25;
-  return 28;
+  if (value.length > 15) return 18;
+  if (value.length > 12) return 20;
+  if (value.length > 10) return 22;
+  return 24;
 }
 
 export function MovementSummary({ trips, expenses, vehicles, drivers, vehicleFilter, driverFilter, dateFrom, dateTo, onVehicleFilter, onDriverFilter, onDateFrom, onDateTo, onResetFilters }: Props) {
@@ -59,7 +59,6 @@ export function MovementSummary({ trips, expenses, vehicles, drivers, vehicleFil
   const fixedShown = monthlyTotal - fastagTotal;
 
   const byVehicle = aggregateByVehicle(rows, expenseRows, vehicles);
-  const tot = sumVehicles(byVehicle);
 
   type SortKey = 'id' | 'model' | 'trips' | 'km' | 'tons' | 'tripExpense' | 'monthly' | 'revenue' | 'profit' | 'costPerKm';
   const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' } | null>(null);
@@ -133,7 +132,7 @@ export function MovementSummary({ trips, expenses, vehicles, drivers, vehicleFil
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap', marginBottom: 18 }}>
         <div>
           <div className="kicker">{rangeLabel}</div>
-          <h1 style={{ fontSize: 34, letterSpacing: '-0.02em' }}>Movement Summary</h1>
+          <h1>Movement Summary</h1>
           <p style={{ color: 'var(--color-neutral-700)', marginTop: 6, fontSize: 13 }}>Fleet-wide totals — movements, distance, cost and profit — for the selected period.</p>
         </div>
         <div style={{ display: 'grid', gap: 6, justifyItems: 'end' }}>
@@ -149,7 +148,7 @@ export function MovementSummary({ trips, expenses, vehicles, drivers, vehicleFil
         </div>
       </div>
 
-      <div style={{ border: '2px solid var(--color-divider)', padding: 16, marginBottom: 20 }}>
+      <div style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: 16, marginBottom: 20, background: 'var(--color-surface)' }}>
         <div style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--color-neutral-700)', marginBottom: 12 }}>Filters</div>
         <div className="filters-grid">
           <div className="field"><label>Loading date from</label><input className="input" type="date" value={dateFrom} onChange={(e) => onDateFrom(e.target.value)} /></div>
@@ -173,29 +172,29 @@ export function MovementSummary({ trips, expenses, vehicles, drivers, vehicleFil
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 2, background: 'var(--color-divider)', border: '2px solid var(--color-divider)', marginBottom: 28 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 'var(--space-4)', marginBottom: 28 }}>
         {stats.map((s) => (
-          <div key={s.label} style={{ background: 'var(--color-bg)', padding: '16px 18px 18px', minWidth: 0 }}>
+          <div key={s.label} className="card kpi-card" style={{ minWidth: 0 }}>
             <div className="stat-label">{s.label}</div>
             <div
               style={{
-                fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: statValueSize(s.value), letterSpacing: '-0.02em', lineHeight: 1.1, overflowWrap: 'anywhere',
+                fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: statValueSize(s.value), letterSpacing: '-0.02em', lineHeight: 1.15, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums',
                 // A loss shows in red, a profit in green — same colours as the Vehicle-wise table below.
                 ...(s.label === 'Profit' ? { color: s.raw < 0 ? 'var(--color-accent-700)' : 'var(--color-profit)' } : {})
               }}
             >
               {s.value}
             </div>
-            <div style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 8 }}>{s.note}</div>
+            <div className="kpi-sub">{s.note}</div>
           </div>
         ))}
       </div>
 
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, marginBottom: 12 }}>
-        <h2 style={{ fontSize: 20 }}>Vehicle-wise</h2>
+        <h2 style={{ fontSize: 'var(--fs-section)' }}>Vehicle-wise</h2>
         <span style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>{filterNote}</span>
       </div>
-      <div className="scroll-x" style={{ border: '2px solid var(--color-divider)' }}>
+      <div className="scroll-x" style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'var(--color-surface)' }}>
         <table className="table" style={{ minWidth: 940 }}>
           <thead>
             <tr>
@@ -229,21 +228,25 @@ export function MovementSummary({ trips, expenses, vehicles, drivers, vehicleFil
               </tr>
             ))}
           </tbody>
-          <tfoot>
-            <tr style={{ fontWeight: 700, background: 'var(--color-surface)' }}>
-              <td colSpan={2}>Total</td>
-              <td style={{ textAlign: 'right' }}>{formatNum(tot.trips)}</td>
-              <td style={{ textAlign: 'right' }}>{formatNum(tot.km)}</td>
-              <td style={{ textAlign: 'right' }}>{formatNum(tot.tons, 2)}</td>
-              <td style={{ textAlign: 'right' }}>{rupees(tot.ledgerTripExpense)}</td>
-              <td style={{ textAlign: 'right' }}>{rupees(tot.ledgerMonthly)}</td>
-              <td style={{ textAlign: 'right' }}>{rupees(tot.revenue)}</td>
-              <td style={{ textAlign: 'right' }}>
-                <span style={{ color: tot.profit >= 0 ? 'var(--color-profit)' : 'var(--color-accent-700)' }}>{rupees(tot.profit)}</span>
-              </td>
-              <td style={{ textAlign: 'right' }}>{tot.km ? rupees(tot.cost / tot.km) : '—'}</td>
-            </tr>
-          </tfoot>
+          {sortedByVehicle.length > 0 && (() => {
+            const t = sumVehicles(sortedByVehicle);
+            return (
+              <tfoot>
+                <tr>
+                  <td>Total</td>
+                  <td />
+                  <td style={{ textAlign: 'right' }}>{formatNum(t.trips)}</td>
+                  <td style={{ textAlign: 'right' }}>{formatNum(t.km)}</td>
+                  <td style={{ textAlign: 'right' }}>{formatNum(t.tons, 2)}</td>
+                  <td style={{ textAlign: 'right' }}>{rupees(t.ledgerTripExpense)}</td>
+                  <td style={{ textAlign: 'right' }}>{rupees(t.ledgerMonthly)}</td>
+                  <td style={{ textAlign: 'right' }}>{rupees(t.revenue)}</td>
+                  <td style={{ textAlign: 'right', color: t.profit >= 0 ? 'var(--color-profit)' : 'var(--color-accent-700)' }}>{rupees(t.profit)}</td>
+                  <td style={{ textAlign: 'right' }}>{t.km ? rupees(t.cost / t.km) : '—'}</td>
+                </tr>
+              </tfoot>
+            );
+          })()}
         </table>
       </div>
     </section>

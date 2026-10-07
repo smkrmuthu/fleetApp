@@ -581,11 +581,12 @@ export function App() {
         onMarkAllNotificationsRead={markAllNotificationsRead}
       >
         {error && (
-          <div style={{ border: '2px solid var(--color-accent)', color: 'var(--color-accent-700)', padding: '10px 16px', marginBottom: 16 }}>
-            {error} <button type="button" className="btn btn-ghost" style={{ padding: '0 6px' }} onClick={() => setError('')}>Dismiss</button>
+          <div className="banner" role="alert">
+            <span>{error}</span>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setError('')}>Dismiss</button>
           </div>
         )}
-        {loading && <div style={{ color: 'var(--color-neutral-700)', marginBottom: 16 }}>Loading…</div>}
+        {loading && <div className="loading-line"><span className="spinner" /> Loading…</div>}
 
         {shownTab === 'dashboard' && (
           <Dashboard
@@ -598,6 +599,7 @@ export function App() {
             onTabChange={setTab}
             onEditTrip={startEditingTrip}
             readOnly={role === 'Viewer'}
+            userName={currentUserName}
           />
         )}
         {shownTab === 'summary' && (

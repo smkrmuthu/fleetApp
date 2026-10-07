@@ -1,8 +1,12 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+import {
+  ChartColumn, ClipboardList, Database, FileText, Fuel, LayoutDashboard, LogOut, Menu, Receipt,
+  SlidersHorizontal, Truck, Users, X, type LucideIcon
+} from 'lucide-react';
 import type { AppNotification, Role, TabId } from '../types';
 import { ROLE_TABS, TAB_LABELS } from '../data/mockData';
 import { NotificationBell } from './NotificationBell';
-import logoFull from '../assets/logo-full.png';
+import { BrandMark } from './Brand';
 
 interface Props {
   role: Role;
@@ -16,67 +20,172 @@ interface Props {
   children: ReactNode;
 }
 
+interface NavSection { label?: string; items: TabId[] }
+
+// Where each screen sits in the sidebar. Screens a role can't open are left out.
+const NAV: NavSection[] = [
+  { items: ['dashboard'] },
+  { label: 'Operations', items: ['addtrip', 'triplog', 'fuel'] },
+  { label: 'Reports', items: ['summary', 'expenses', 'report'] },
+  { label: 'Management', items: ['people', 'master', 'schema'] }
+];
+
+const ICONS: Partial<Record<TabId, LucideIcon>> = {
+  dashboard: LayoutDashboard,
+  addtrip: Truck,
+  triplog: ClipboardList,
+  fuel: Fuel,
+  summary: ChartColumn,
+  expenses: Receipt,
+  report: FileText,
+  people: Users,
+  master: SlidersHorizontal,
+  schema: Database
+};
+
+function sectionOf(tab: TabId): string | undefined {
+  return NAV.find((s) => s.items.includes(tab))?.label;
+}
+
+function initials(name: string): string {
+  return name.split(/[\s.]+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join('') || '?';
+}
+
+function Sidebar({ role, tab, onSelect, onClose }: {
+  role: Role;
+  tab: TabId;
+  onSelect: (t: TabId) => void;
+  onClose: () => void;
+}) {
+  const allowed = ROLE_TABS[role];
+
+  const item = (t: TabId) => {
+    const Icon = ICONS[t];
+    const label = TAB_LABELS[t];
+    return (
+      <button
+        key={t}
+        type="button"
+        className="nav-item"
+        aria-current={tab === t ? 'page' : undefined}
+        title={label}
+        onClick={() => onSelect(t)}
+      >
+        {Icon && <Icon size={17} strokeWidth={1.75} aria-hidden="true" />}
+        <span className="nav-label">{label}</span>
+      </button>
+    );
+  };
+
+  return (
+    <aside className="sidebar" aria-label="Main navigation">
+      <div className="sidebar-brand">
+        <BrandMark height={30} />
+        <div className="sidebar-brand-text" style={{ flex: 1, minWidth: 0 }}>
+          <div className="sidebar-brand-name">Fleet Ledger</div>
+          <div className="sidebar-brand-sub">Shree Mira Trader</div>
+        </div>
+        <button type="button" className="btn btn-icon menu-toggle" aria-label="Close menu" onClick={onClose} style={{ color: 'var(--color-sidebar-text)' }}>
+          <X size={18} />
+        </button>
+      </div>
+      <nav className="sidebar-scroll">
+        {NAV.map((section, i) => {
+          const items = section.items.filter((t) => allowed.includes(t));
+          if (items.length === 0) return null;
+          return (
+            <div key={section.label ?? i} className="sidebar-section">
+              {section.label && <div className="sidebar-section-label">{section.label}</div>}
+              {items.map(item)}
+            </div>
+          );
+        })}
+      </nav>
+    </aside>
+  );
+}
+
+function TopHeader({ role, userName, tab, onMenu, onSignOut, notifications, onOpenNotification, onMarkAllNotificationsRead }: {
+  role: Role;
+  userName: string;
+  tab: TabId;
+  onMenu: () => void;
+  onSignOut: () => void;
+  notifications: AppNotification[];
+  onOpenNotification: (n: AppNotification) => void;
+  onMarkAllNotificationsRead: () => void;
+}) {
+  const section = sectionOf(tab);
+  return (
+    <header className="topbar">
+      <div className="topbar-left">
+        <button type="button" className="btn btn-icon menu-toggle" aria-label="Open menu" onClick={onMenu}>
+          <Menu size={20} />
+        </button>
+        <div className="topbar-crumb">
+          {section && <>{section} <span aria-hidden="true">/</span> </>}
+          <strong>{TAB_LABELS[tab]}</strong>
+        </div>
+      </div>
+      <div className="topbar-right">
+        {role !== 'Driver' && role !== 'Viewer' && (
+          <NotificationBell notifications={notifications} onOpen={onOpenNotification} onMarkAllRead={onMarkAllNotificationsRead} />
+        )}
+        <div className="topbar-divider" />
+        <div className="topbar-user">
+          <div className="avatar" aria-hidden="true">{initials(userName)}</div>
+          <div className="topbar-user-text">
+            <div className="topbar-user-name">{userName}</div>
+            <div className="topbar-user-role">{role}</div>
+          </div>
+        </div>
+        <button type="button" className="btn btn-secondary btn-sm" onClick={onSignOut} aria-label="Sign out">
+          <LogOut size={14} aria-hidden="true" /><span className="topbar-signout-label">Sign out</span>
+        </button>
+      </div>
+    </header>
+  );
+}
+
 export function AppShell({
   role, userName, tab, onTabChange, onSignOut, notifications, onOpenNotification, onMarkAllNotificationsRead, children
 }: Props) {
-  const tabs = ROLE_TABS[role];
-  const activeTabRef = useRef<HTMLButtonElement | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // A fresh screen starts at the top, and the phone drawer closes behind it.
   useEffect(() => {
-    activeTabRef.current?.scrollIntoView({ inline: 'center', block: 'nearest' });
+    window.scrollTo({ top: 0 });
+    setDrawerOpen(false);
   }, [tab]);
 
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setDrawerOpen(false); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [drawerOpen]);
+
   return (
-    <>
-      <header className="app-shell-bar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24, borderBottom: '2px solid var(--color-divider)', flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <img src={logoFull} alt="Shree Mira Trader" style={{ height: 44, width: 'auto' }} />
-          <div style={{ width: 2, alignSelf: 'stretch', background: 'var(--color-divider)' }} />
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 14 }}>
-            <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 20, letterSpacing: '-0.02em', textTransform: 'uppercase' }}>Fleet Ledger</div>
-            <div className="app-header-subtitle" style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--color-neutral-700)' }}>Goods movement &amp; expense log</div>
-          </div>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            {role !== 'Driver' && role !== 'Viewer' && (
-              <NotificationBell notifications={notifications} onOpen={onOpenNotification} onMarkAllRead={onMarkAllNotificationsRead} />
-            )}
-            <div style={{ textAlign: 'right', lineHeight: 1.25 }}>
-              <div style={{ fontWeight: 600 }}>{userName} · {role}</div>
-              <div className="app-user-sub" style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-neutral-700)' }}>Shree Mira Trader · Chennai</div>
-            </div>
-            <button type="button" className="btn btn-ghost" onClick={onSignOut}>Sign out</button>
-          </div>
-        </div>
-      </header>
-
-      <nav style={{ display: 'flex', gap: 0, borderBottom: '2px solid var(--color-divider)', padding: '0 12px', overflowX: 'auto' }}>
-        {tabs.map((t) => (
-          <button
-            key={t}
-            ref={t === tab ? activeTabRef : undefined}
-            type="button"
-            onClick={() => onTabChange(t)}
-            style={{
-              appearance: 'none', background: 'transparent', border: 0, padding: '14px 14px 12px',
-              fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase',
-              color: t === tab ? 'var(--color-text)' : 'var(--color-neutral-700)', cursor: 'pointer', whiteSpace: 'nowrap', position: 'relative'
-            }}
-          >
-            {TAB_LABELS[t]}
-            {t === tab && (
-              <span style={{ position: 'absolute', left: 14, right: 14, bottom: -2, height: 4, background: 'var(--color-accent)' }} />
-            )}
-          </button>
-        ))}
-      </nav>
-
-      <main className="app-shell-main">{children}</main>
-
-      <footer className="app-shell-bar" style={{ borderTop: '2px solid var(--color-divider)', display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', fontSize: 12, color: 'var(--color-neutral-700)' }}>
-        <span>© {new Date().getFullYear()} Shree Mira Trader. All rights reserved.</span>
-        <span>Fleet Ledger · Goods movement &amp; expense log</span>
-      </footer>
-    </>
+    <div className="app-layout" data-drawer={drawerOpen ? 'open' : 'closed'}>
+      <Sidebar role={role} tab={tab} onSelect={onTabChange} onClose={() => setDrawerOpen(false)} />
+      <div className="sidebar-backdrop" onClick={() => setDrawerOpen(false)} />
+      <div className="app-main">
+        <TopHeader
+          role={role}
+          userName={userName}
+          tab={tab}
+          onMenu={() => setDrawerOpen(true)}
+          onSignOut={onSignOut}
+          notifications={notifications}
+          onOpenNotification={onOpenNotification}
+          onMarkAllNotificationsRead={onMarkAllNotificationsRead}
+        />
+        <main className="app-shell-main">{children}</main>
+        <footer className="app-footer">
+          <span>© {new Date().getFullYear()} Shree Mira Trader. All rights reserved.</span>
+          <span>Fleet Ledger · Goods movement &amp; expense log</span>
+        </footer>
+      </div>
+    </div>
   );
 }
