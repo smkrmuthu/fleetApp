@@ -3,7 +3,8 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
 // The places of one lane in order (loading place, stops, unloading place), with their positions
-export interface MapLane { names: string[]; points: [number, number][]; trips: number; open: boolean }
+// `line` is the road route through those places when one was found; otherwise the lane is drawn straight.
+export interface MapLane { names: string[]; points: [number, number][]; line?: [number, number][]; trips: number; open: boolean }
 // A place with nothing to draw a line to yet (e.g. the unloading place is not recorded)
 export interface MapSpot { name: string; at: [number, number]; trips: number; open: boolean }
 
@@ -13,6 +14,7 @@ export default function RouteMap({ lanes, spots }: { lanes: MapLane[]; spots: Ma
   const host = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const layer = useRef<L.LayerGroup | null>(null);
+  const fitted = useRef('');
   const labels = useRef<{ marker: L.CircleMarker; name: string; weight: number }[]>([]);
 
   // Hides the name of a place that would sit on top of a busier place's name.
@@ -43,6 +45,7 @@ export default function RouteMap({ lanes, spots }: { lanes: MapLane[]; spots: Ma
     }).addTo(map);
     layer.current = L.layerGroup().addTo(map);
     mapRef.current = map;
+    fitted.current = ''; // a new map has no view yet
     map.on('zoomend moveend', declutter);
     return () => { map.remove(); mapRef.current = null; layer.current = null; };
   }, []);
@@ -55,9 +58,10 @@ export default function RouteMap({ lanes, spots }: { lanes: MapLane[]; spots: Ma
     const points = new Map<string, { name: string; at: [number, number]; open: boolean; weight: number }>();
     // completed lanes first so open ones are drawn on top
     for (const l of [...lanes].sort((x, y) => Number(x.open) - Number(y.open))) {
-      L.polyline(l.points, {
-        color: l.open ? '#EF2B1F' : '#5B6670', opacity: l.open ? 0.95 : 0.7, weight: 2 + Math.min(4, l.trips - 1), lineCap: 'round', lineJoin: 'round'
-      }).bindTooltip(`${l.names.join(' → ')} · ${l.trips}×${l.open ? ' · open' : ''}`, { sticky: true }).addTo(group);
+      L.polyline(l.line ?? l.points, {
+        color: l.open ? '#EF2B1F' : '#5B6670', opacity: l.open ? 0.95 : 0.7, weight: 2 + Math.min(4, l.trips - 1), lineCap: 'round', lineJoin: 'round',
+        dashArray: l.line ? undefined : '6 6'
+      }).bindTooltip(`${l.names.join(' → ')} · ${l.trips}×${l.open ? ' · open' : ''}${l.line ? '' : ' · straight line'}`, { sticky: true }).addTo(group);
       l.names.forEach((name, i) => {
         const prev = points.get(name.toLowerCase());
         points.set(name.toLowerCase(), { name, at: l.points[i]!, open: (prev?.open ?? false) || (l.open && i === l.names.length - 1), weight: (prev?.weight ?? 0) + l.trips });
@@ -73,7 +77,12 @@ export default function RouteMap({ lanes, spots }: { lanes: MapLane[]; spots: Ma
         .addTo(group);
       labels.current.push({ marker, name: p.name, weight: p.weight });
     }
-    if (points.size) map.fitBounds(L.latLngBounds([...points.values()].map((p) => p.at)), { padding: [48, 48], maxZoom: 12 });
+    // Fit the map to the places only when they change, not each time a road route arrives
+    const fit = [...points.values()].map((p) => p.at.join(',')).sort().join(';');
+    if (points.size && fit !== fitted.current) {
+      fitted.current = fit;
+      map.fitBounds(L.latLngBounds([...points.values()].map((p) => p.at)), { padding: [48, 48], maxZoom: 12 });
+    }
     declutter();
   }, [lanes, spots]);
 

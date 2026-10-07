@@ -3,6 +3,8 @@ import { ArrowRight } from 'lucide-react';
 import { groupRoutes } from '../utils/placeGeo';
 import { StatusBadge } from './ui';
 import { usePlacePositions } from './usePlacePositions';
+import { useRoadRoutes } from './useRoadRoutes';
+import { laneKey } from '../utils/roadRoute';
 import type { MapLane, MapSpot } from './RouteMap';
 
 const RouteMap = lazy(() => import('./RouteMap'));
@@ -46,16 +48,23 @@ export function RouteNetwork({ trips, periodLabel }: { trips: { from: string; to
   const spotSig = JSON.stringify(freshSpots);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const spots = useMemo(() => freshSpots, [spotSig]);
-  const laneSig = JSON.stringify(fresh);
+  const { roads, pending: roadsPending } = useRoadRoutes(fresh);
+  const laneSig = JSON.stringify(fresh) + fresh.map((l) => (roads.has(laneKey(l.points)) ? 'R' : 'S')).join('');
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const lanes = useMemo(() => fresh, [laneSig]);
+  const lanes: MapLane[] = useMemo(() => fresh.map((l) => ({ ...l, line: roads.get(laneKey(l.points)) })), [laneSig]);
+  const routed = lanes.filter((l) => l.line).length;
+  const tag = lanes.length === 0 ? 'Approximate positions'
+    : routed === lanes.length ? 'Likely road routes · not GPS'
+    : roadsPending > 0 ? `Finding roads… ${routed} of ${lanes.length}`
+    : routed === 0 ? 'Straight lines · not road routes'
+    : `Roads for ${routed} of ${lanes.length} lanes · rest straight`;
 
   const unplaced = (g: { path: string[] }) => g.path.filter((p) => positions.has(p.toLowerCase())).length < 2;
 
   return (
     <div className="card map-card">
       <div className="map-canvas">
-        <div className="map-tag"><StatusBadge>Straight lines · not road routes</StatusBadge></div>
+        <div className="map-tag"><StatusBadge>{tag}</StatusBadge></div>
         {groups.length === 0 && singles.length === 0 ? (
           <div className="map-empty">No routes to show for this period</div>
         ) : lanes.length === 0 && spots.length === 0 ? (
@@ -106,7 +115,7 @@ export function RouteNetwork({ trips, periodLabel }: { trips: { from: string; to
         <div className="map-legend"><span><i /> Completed</span><span><i className="open" /> Open movement</span></div>
         {singles.length > 0 && <div className="map-sub">"One place only" means the other end is not recorded yet (for example an open movement before its unloading place is entered) or both ends are the same place, so it is marked on the map without a line.</div>}
         <div className="map-sub">
-          Places are found by searching OpenStreetMap for the place names on each movement; only the names are sent. Lines join the loading place, the stops in order and the unloading place directly, as there is no GPS.
+          Places are found by searching OpenStreetMap for the place names on each movement; only the names are sent. Lines follow the likely road route through the loading place, the stops in order and the unloading place (found with a free routing service; only the positions of the places are sent). It is the usual road route, not the path the truck drove, as there is no GPS. A dashed line is straight: no road route was available.
           {pending.length > 0 && <> Locating {pending.length} more {pending.length === 1 ? 'place' : 'places'}…</>}
           {!pending.length && missing.length > 0 && <> Not found on the map: {missing.join(', ')}.</>}
           {skipped > 0 && <> {skipped} {skipped === 1 ? 'movement has' : 'movements have'} no loading or unloading place recorded.</>}
