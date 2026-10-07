@@ -33,6 +33,8 @@ const TOWNS: { keys: string[]; town: Town }[] = [
   // (the Thandalam by Kundrathur, not the village near Sriperumbudur).
   { keys: ['suncity', 'sun city'], town: { name: 'Suncity', lat: 12.8403, lon: 80.149 } },
   { keys: ['thandalam'], town: { name: 'Thandalam', lat: 13.0015, lon: 80.1182 } },
+  // Navalur on the OMR road (not the village of that name near Sriperumbudur)
+  { keys: ['navalur'], town: { name: 'Navalur', lat: 12.8456, lon: 80.2273 } },
   { keys: ['thirumudivakkam'], town: { name: 'Thirumudivakkam', lat: 12.9649, lon: 80.0815 } },
   { keys: ['mambakkam'], town: { name: 'Mambakkam', lat: 12.836, lon: 80.169 } },
   { keys: ['vyasarpadi'], town: { name: 'Vyasarpadi', lat: 13.113, lon: 80.2587 } },

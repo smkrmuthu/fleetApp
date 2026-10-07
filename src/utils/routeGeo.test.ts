@@ -40,8 +40,14 @@ describe('areas around Chennai', () => {
     expect(thandalam.name).toBe('Thandalam');
     expect(Math.hypot(thandalam.lat - kundrathur.lat, thandalam.lon - kundrathur.lon)).toBeLessThan(0.1);
   });
-  it('leaves names that are still ambiguous for the map to search or the user to place', () => {
-    expect(findTown('BOSON INFRA - NAVALUR')).toBeNull();
+  it('places Navalur on the OMR road, near Siruseri', () => {
+    const navalur = findTown('BOSON INFRA - NAVALUR')!;
+    const siruseri = findTown('SUN X - SIRUSERI')!;
+    expect(navalur.name).toBe('Navalur');
+    expect(Math.hypot(navalur.lat - siruseri.lat, navalur.lon - siruseri.lon)).toBeLessThan(0.1);
+  });
+  it('leaves the workshop places for the map to search or the user to place', () => {
     expect(findTown('WORKSHOP STOP')).toBeNull();
+    expect(findTown('WORKSHOP START')).toBeNull();
   });
 });
