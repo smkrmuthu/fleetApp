@@ -2,7 +2,8 @@ import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
-export interface MapLane { from: string; to: string; a: [number, number]; b: [number, number]; trips: number; open: boolean }
+// The places of one lane in order (loading place, stops, unloading place), with their positions
+export interface MapLane { names: string[]; points: [number, number][]; trips: number; open: boolean }
 // A place with nothing to draw a line to yet (e.g. the unloading place is not recorded)
 export interface MapSpot { name: string; at: [number, number]; trips: number; open: boolean }
 
@@ -54,13 +55,13 @@ export default function RouteMap({ lanes, spots }: { lanes: MapLane[]; spots: Ma
     const points = new Map<string, { name: string; at: [number, number]; open: boolean; weight: number }>();
     // completed lanes first so open ones are drawn on top
     for (const l of [...lanes].sort((x, y) => Number(x.open) - Number(y.open))) {
-      L.polyline([l.a, l.b], {
-        color: l.open ? '#EF2B1F' : '#5B6670', opacity: l.open ? 0.95 : 0.7, weight: 2 + Math.min(4, l.trips - 1), lineCap: 'round'
-      }).bindTooltip(`${l.from} → ${l.to} · ${l.trips}×${l.open ? ' · open' : ''}`, { sticky: true }).addTo(group);
-      for (const [name, at] of [[l.from, l.a], [l.to, l.b]] as const) {
+      L.polyline(l.points, {
+        color: l.open ? '#EF2B1F' : '#5B6670', opacity: l.open ? 0.95 : 0.7, weight: 2 + Math.min(4, l.trips - 1), lineCap: 'round', lineJoin: 'round'
+      }).bindTooltip(`${l.names.join(' → ')} · ${l.trips}×${l.open ? ' · open' : ''}`, { sticky: true }).addTo(group);
+      l.names.forEach((name, i) => {
         const prev = points.get(name.toLowerCase());
-        points.set(name.toLowerCase(), { name, at, open: (prev?.open ?? false) || (l.open && name === l.to), weight: (prev?.weight ?? 0) + l.trips });
-      }
+        points.set(name.toLowerCase(), { name, at: l.points[i]!, open: (prev?.open ?? false) || (l.open && i === l.names.length - 1), weight: (prev?.weight ?? 0) + l.trips });
+      });
     }
     for (const sp of spots) {
       const prev = points.get(sp.name.toLowerCase());

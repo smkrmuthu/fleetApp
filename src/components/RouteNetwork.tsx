@@ -11,23 +11,38 @@ const RouteMap = lazy(() => import('./RouteMap'));
 // lanes listed beside it. Positions come from the place names on each
 // movement, and lines join the two places directly: there is no GPS, so they
 // are not the roads driven. A place that cannot be found stays in the list.
-export function RouteNetwork({ trips, periodLabel }: { trips: { from: string; to: string; open: boolean }[]; periodLabel: string }) {
+export function RouteNetwork({ trips, periodLabel }: { trips: { from: string; to: string; stops?: string[]; open: boolean }[]; periodLabel: string }) {
   // The dashboard hands over a fresh array on every render; key on the content so the map is not redrawn (and re-zoomed) each time.
-  const tripSig = trips.map((t) => `${t.from}\u0001${t.to}\u0001${t.open ? 1 : 0}`).join('\u0002');
+  const tripSig = trips.map((t) => `${t.from}\u0001${(t.stops ?? []).join('\u0003')}\u0001${t.to}\u0001${t.open ? 1 : 0}`).join('\u0002');
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const { groups, singles, skipped } = useMemo(() => groupRoutes(trips), [tripSig]);
-  const keys = useMemo(() => [...new Set([...groups.flatMap((g) => [g.from, g.to]), ...singles.map((s) => s.place)])], [groups, singles]);
+  const keys = useMemo(() => [...new Set([...groups.flatMap((g) => g.path), ...singles.map((s) => s.place)])], [groups, singles]);
   const { positions, pending, missing } = usePlacePositions(keys);
 
-  const fresh: MapLane[] = groups.flatMap((g) => {
-    const a = positions.get(g.from.toLowerCase());
-    const b = positions.get(g.to.toLowerCase());
-    return a && b ? [{ from: g.from, to: g.to, a: [a.lat, a.lon] as [number, number], b: [b.lat, b.lon] as [number, number], trips: g.trips, open: g.open }] : [];
-  });
-  const freshSpots: MapSpot[] = singles.flatMap((s) => {
-    const a = positions.get(s.place.toLowerCase());
-    return a ? [{ name: s.place, at: [a.lat, a.lon] as [number, number], trips: s.trips, open: s.open }] : [];
-  });
+  // Each lane is drawn through the places that have a position, in order. A lane
+  // with only one placed place is marked instead; the places not found are noted.
+  const fresh: MapLane[] = [];
+  const freshSpots: MapSpot[] = [];
+  const spotAt = new Map<string, MapSpot>();
+  const addSpot = (name: string, at: [number, number], trips: number, open: boolean) => {
+    const prev = spotAt.get(name.toLowerCase());
+    if (prev) { prev.trips += trips; prev.open = prev.open || open; return; }
+    const spot = { name, at, trips, open };
+    spotAt.set(name.toLowerCase(), spot);
+    freshSpots.push(spot);
+  };
+  for (const g of groups) {
+    const placed = g.path.flatMap((name) => {
+      const p = positions.get(name.toLowerCase());
+      return p ? [{ name, at: [p.lat, p.lon] as [number, number] }] : [];
+    });
+    if (placed.length >= 2) fresh.push({ names: placed.map((p) => p.name), points: placed.map((p) => p.at), trips: g.trips, open: g.open });
+    else if (placed.length === 1) addSpot(placed[0]!.name, placed[0]!.at, g.trips, g.open);
+  }
+  for (const s of singles) {
+    const p = positions.get(s.place.toLowerCase());
+    if (p) addSpot(s.place, [p.lat, p.lon], s.trips, s.open);
+  }
   const spotSig = JSON.stringify(freshSpots);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const spots = useMemo(() => freshSpots, [spotSig]);
@@ -35,7 +50,7 @@ export function RouteNetwork({ trips, periodLabel }: { trips: { from: string; to
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const lanes = useMemo(() => fresh, [laneSig]);
 
-  const unplaced = (g: { from: string; to: string }) => !positions.has(g.from.toLowerCase()) || !positions.has(g.to.toLowerCase());
+  const unplaced = (g: { path: string[] }) => g.path.filter((p) => positions.has(p.toLowerCase())).length < 2;
 
   return (
     <div className="card map-card">
@@ -62,9 +77,14 @@ export function RouteNetwork({ trips, periodLabel }: { trips: { from: string; to
         ) : (
           <ul className="lane-list">
             {groups.slice(0, 8).map((g) => (
-              <li key={`${g.from}>${g.to}`}>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-                  {g.from} <ArrowRight size={13} aria-hidden="true" style={{ color: 'var(--color-sidebar-muted)', flex: 'none' }} /> {g.to}
+              <li key={g.path.join('>')}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: '2px 6px', minWidth: 0 }}>
+                  {g.path.map((place, i) => (
+                    <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      {i > 0 && <ArrowRight size={13} aria-hidden="true" style={{ color: 'var(--color-sidebar-muted)', flex: 'none' }} />}
+                      {place}
+                    </span>
+                  ))}
                   {unplaced(g) && !pending.length && <span className="map-sub" title="Not on the map">· not mapped</span>}
                 </span>
                 <span className="lane-count">{g.trips}×</span>
@@ -86,7 +106,7 @@ export function RouteNetwork({ trips, periodLabel }: { trips: { from: string; to
         <div className="map-legend"><span><i /> Completed</span><span><i className="open" /> Open movement</span></div>
         {singles.length > 0 && <div className="map-sub">"One place only" means the other end is not recorded yet (for example an open movement before its unloading place is entered) or both ends are the same place, so it is marked on the map without a line.</div>}
         <div className="map-sub">
-          Places are found by searching OpenStreetMap for the place names on each movement; only the names are sent. Lines join the two places directly, as there is no GPS.
+          Places are found by searching OpenStreetMap for the place names on each movement; only the names are sent. Lines join the loading place, the stops in order and the unloading place directly, as there is no GPS.
           {pending.length > 0 && <> Locating {pending.length} more {pending.length === 1 ? 'place' : 'places'}…</>}
           {!pending.length && missing.length > 0 && <> Not found on the map: {missing.join(', ')}.</>}
           {skipped > 0 && <> {skipped} {skipped === 1 ? 'movement has' : 'movements have'} no loading or unloading place recorded.</>}

@@ -239,7 +239,7 @@ export function Dashboard({ trips, expenses, vehicles, drivers, leaves, unavaila
     periodStats: Object.fromEntries(vehicleStats.map((v) => [v.id, { trips: v.trips, km: v.km, mileage: v.mileage }]))
   });
   const onRoadCount = truckRows.filter((r) => r.state === 'road').length;
-  const routeTrips = monthTrips.map((t) => ({ from: t.from, to: t.to, open: t.status !== 'approved' }));
+  const routeTrips = monthTrips.map((t) => ({ from: t.from, to: t.to, stops: t.stops.map((s) => s.location), open: t.status !== 'approved' }));
   const firstName = userName.trim();
 
   const recent = [...trips].sort((a, b) => parseDisplayDate(b.loadDate).localeCompare(parseDisplayDate(a.loadDate)) || b.id.localeCompare(a.id)).slice(0, 6);

@@ -29,17 +29,20 @@ export function placeKey(place: string): string {
   return stripped || clean;
 }
 
-export interface RouteGroup { from: string; to: string; trips: number; open: boolean }
+// A lane: the places a movement went through in order, loading place first and
+// unloading place last, with its stops between. Movements that took the same
+// path are one lane.
+export interface RouteGroup { path: string[]; trips: number; open: boolean }
 // A place a movement is known to have used with nothing to draw a line to: the
-// unloading place is not recorded yet (an open movement), or the loading and
-// unloading places are the same.
+// unloading place is not recorded yet (an open movement), or every place on the
+// movement is the same one.
 export interface SinglePlace { place: string; trips: number; open: boolean }
 
-// Groups movements into lanes (one per from → to pair of places). A movement
-// with only one usable place, or the same place at both ends, is kept as a
-// single place so it can still be marked on the map. Movements with no usable
-// place at all are counted in `skipped`.
-export function groupRoutes(trips: { from: string; to: string; open: boolean }[]): { groups: RouteGroup[]; singles: SinglePlace[]; skipped: number } {
+// Groups movements into lanes by the path loading place → stops → unloading
+// place (a place repeated straight after itself counts once). A movement with
+// only one distinct place is kept as a single place so it can still be marked
+// on the map. Movements with no usable place at all are counted in `skipped`.
+export function groupRoutes(trips: { from: string; to: string; stops?: string[]; open: boolean }[]): { groups: RouteGroup[]; singles: SinglePlace[]; skipped: number } {
   const byKey = new Map<string, RouteGroup>();
   const singles = new Map<string, SinglePlace>();
   let skipped = 0;
@@ -49,15 +52,17 @@ export function groupRoutes(trips: { from: string; to: string; open: boolean }[]
     else singles.set(place.toLowerCase(), { place, trips: 1, open });
   };
   for (const t of trips) {
-    const from = placeKey(t.from);
-    const to = placeKey(t.to);
-    if (!from && !to) { skipped++; continue; }
-    if (!from || !to) { single(from || to, t.open); continue; }
-    if (from.toLowerCase() === to.toLowerCase()) { single(from, t.open); continue; }
-    const key = `${from.toLowerCase()}>${to.toLowerCase()}`;
+    const path: string[] = [];
+    for (const raw of [t.from, ...(t.stops ?? []), t.to]) {
+      const key = placeKey(raw);
+      if (key && key.toLowerCase() !== path[path.length - 1]?.toLowerCase()) path.push(key);
+    }
+    if (path.length === 0) { skipped++; continue; }
+    if (path.length === 1) { single(path[0]!, t.open); continue; }
+    const key = path.map((p) => p.toLowerCase()).join('>');
     const g = byKey.get(key);
     if (g) { g.trips++; g.open = g.open || t.open; }
-    else byKey.set(key, { from, to, trips: 1, open: t.open });
+    else byKey.set(key, { path, trips: 1, open: t.open });
   }
   return {
     groups: [...byKey.values()].sort((a, b) => b.trips - a.trips),

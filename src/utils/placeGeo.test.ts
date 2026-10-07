@@ -38,7 +38,7 @@ describe('groupRoutes', () => {
     ]);
     expect(skipped).toBe(0);
     expect(groups).toHaveLength(2);
-    expect(groups[0]).toMatchObject({ from: 'Chennai', to: 'Pollachi', trips: 2, open: true });
+    expect(groups[0]).toMatchObject({ path: ['Chennai', 'Pollachi'], trips: 2, open: true });
   });
   it('draws lanes between the Chennai sites and keeps a site with no other end as a single place', () => {
     const { groups, singles, skipped } = groupRoutes([
@@ -48,7 +48,7 @@ describe('groupRoutes', () => {
       { from: 'Bharathi Cements', to: 'Bharathi Cements Manali', open: true }
     ]);
     expect(skipped).toBe(0);
-    expect(groups.map((g) => `${g.from}>${g.to}`).sort()).toEqual(['Bharathi (Manali)>Shree Mira (Guindy)', 'NTECL (Vallur)>Bharathi (Manali)']);
+    expect(groups.map((g) => g.path.join('>')).sort()).toEqual(['Bharathi (Manali)>Shree Mira (Guindy)', 'NTECL (Vallur)>Bharathi (Manali)']);
     expect(singles).toEqual([{ place: 'Bharathi (Manali)', trips: 2, open: true }]);
   });
   it('marks a place used at only one end (open movement, no unloading place yet) instead of dropping it', () => {
@@ -60,6 +60,29 @@ describe('groupRoutes', () => {
     expect(groups).toEqual([]);
     expect(singles.map((x) => x.place).sort()).toEqual(['Chennai', 'Hosur', 'Madurai']);
     expect(skipped).toBe(0);
+  });
+  it('runs a lane through the stops, in order, and keeps movements with the same path together', () => {
+    const { groups, singles, skipped } = groupRoutes([
+      { from: 'Chennai Yard', to: 'Madurai', stops: ['Salem', 'Trichy Depot'], open: false },
+      { from: 'Chennai', to: 'Madurai', stops: ['Salem Godown', 'Trichy'], open: true },
+      { from: 'Chennai', to: 'Madurai', open: false }
+    ]);
+    expect(skipped).toBe(0);
+    expect(singles).toEqual([]);
+    expect(groups).toHaveLength(2);
+    expect(groups[0]).toMatchObject({ path: ['Chennai', 'Salem', 'Trichy', 'Madurai'], trips: 2, open: true });
+    expect(groups[1]).toMatchObject({ path: ['Chennai', 'Madurai'], trips: 1 });
+  });
+  it('draws an open movement that has stops but no unloading place yet, and ignores blank or repeated stops', () => {
+    const { groups } = groupRoutes([
+      { from: 'Chennai', to: '—', stops: ['', 'Hosur', 'Hosur Warehouse', ' - '], open: true }
+    ]);
+    expect(groups).toEqual([{ path: ['Chennai', 'Hosur'], trips: 1, open: true }]);
+  });
+  it('treats a movement whose stops all sit at its one place as a single place', () => {
+    const { groups, singles } = groupRoutes([{ from: 'Hosur', to: 'Hosur Yard', stops: ['Hosur Warehouse'], open: false }]);
+    expect(groups).toEqual([]);
+    expect(singles).toEqual([{ place: 'Hosur', trips: 1, open: false }]);
   });
   it('skips only a movement with no usable place at all', () => {
     const { groups, singles, skipped } = groupRoutes([
