@@ -114,7 +114,7 @@ The older `order-dump.py` route is kept only for `wrangler d1 export` files.
 
 ## 8. Android app
 
-`npx vite build && npx cap sync android && cd android && ./gradlew assembleDebug`. Latest build: 7 October 2026, `FleetLedger-debug-20261007-f.apk` (7.0 MB) in `~/FleetLedger-apk/`, built from `main` at `f676ad4` (new design, Total rows, the OpenStreetMap route map with Chennai site spots, single-place markers, lanes through stops and road-following lines) and checked to hold the same web bundle as GitHub Pages (`index-DudR00-x.js`, cache `fleet-ledger-shell-v9`; `smt.oneuptech.co` was still finishing its Cloudflare build when this was written). It was built and inspected only; it has not been run on a phone or emulator. Needs JDK 21 and the Android SDK
+`npx vite build && npx cap sync android && cd android && ./gradlew assembleDebug`. Latest build: 7 October 2026, `FleetLedger-debug-20261007-f.apk` (7.0 MB) in `~/FleetLedger-apk/`, built from `main` at `f676ad4` (new design, Total rows, the OpenStreetMap route map with Chennai site spots, single-place markers, lanes through stops and road-following lines) and checked to hold the same web bundle as the live sites (`index-DudR00-x.js`, cache `fleet-ledger-shell-v9`). It was built and inspected only; it has not been run on a phone or emulator. Needs JDK 21 and the Android SDK
 (`JAVA_HOME`, `ANDROID_HOME`). This produces a **debug** file for installing directly. A Play Store release needs a
 Google Play developer account and a signing key that only the owner should hold, and is not set up. The iPhone app
 needs Xcode and an Apple developer account and is not set up.
