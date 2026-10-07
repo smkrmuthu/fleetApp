@@ -40,23 +40,35 @@ describe('groupRoutes', () => {
     expect(groups).toHaveLength(2);
     expect(groups[0]).toMatchObject({ from: 'Chennai', to: 'Pollachi', trips: 2, open: true });
   });
-  it('draws lanes between the Chennai sites but not to a placeholder or from a site to itself', () => {
-    const { groups, skipped } = groupRoutes([
+  it('draws lanes between the Chennai sites and keeps a site with no other end as a single place', () => {
+    const { groups, singles, skipped } = groupRoutes([
       { from: 'Bharathi Cements', to: '—', open: false },
       { from: 'Bharathi Cements', to: 'Shree Mira Yard', open: true },
       { from: 'NTECL Vallur', to: 'Bharathi Cements', open: false },
-      { from: 'Bharathi Cements', to: 'Bharathi Cements Manali', open: false }
+      { from: 'Bharathi Cements', to: 'Bharathi Cements Manali', open: true }
     ]);
-    expect(skipped).toBe(2);
+    expect(skipped).toBe(0);
     expect(groups.map((g) => `${g.from}>${g.to}`).sort()).toEqual(['Bharathi (Manali)>Shree Mira (Guindy)', 'NTECL (Vallur)>Bharathi (Manali)']);
+    expect(singles).toEqual([{ place: 'Bharathi (Manali)', trips: 2, open: true }]);
   });
-  it('counts movements with a missing place or the same start and end instead of drawing them', () => {
-    const { groups, skipped } = groupRoutes([
-      { from: '', to: 'Hosur', open: false },
-      { from: 'Chennai Port', to: 'Chennai Yard', open: false },
+  it('marks a place used at only one end (open movement, no unloading place yet) instead of dropping it', () => {
+    const { groups, singles, skipped } = groupRoutes([
+      { from: 'Hosur Warehouse', to: '', open: true },
+      { from: '', to: 'Madurai', open: false },
+      { from: 'Chennai Port', to: 'Chennai Yard', open: false }
+    ]);
+    expect(groups).toEqual([]);
+    expect(singles.map((x) => x.place).sort()).toEqual(['Chennai', 'Hosur', 'Madurai']);
+    expect(skipped).toBe(0);
+  });
+  it('skips only a movement with no usable place at all', () => {
+    const { groups, singles, skipped } = groupRoutes([
+      { from: '', to: '—', open: false },
+      { from: ' - ', to: 'N/A', open: false },
       { from: 'Madurai', to: 'Tuticorin', open: false }
     ]);
     expect(groups).toHaveLength(1);
+    expect(singles).toEqual([]);
     expect(skipped).toBe(2);
   });
 });

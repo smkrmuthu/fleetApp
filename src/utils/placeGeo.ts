@@ -30,23 +30,40 @@ export function placeKey(place: string): string {
 }
 
 export interface RouteGroup { from: string; to: string; trips: number; open: boolean }
+// A place a movement is known to have used with nothing to draw a line to: the
+// unloading place is not recorded yet (an open movement), or the loading and
+// unloading places are the same.
+export interface SinglePlace { place: string; trips: number; open: boolean }
 
-// Groups movements into lanes (one per from → to pair of places). Movements
-// with a missing place, or that start and end in the same place, are counted
-// in `skipped`.
-export function groupRoutes(trips: { from: string; to: string; open: boolean }[]): { groups: RouteGroup[]; skipped: number } {
+// Groups movements into lanes (one per from → to pair of places). A movement
+// with only one usable place, or the same place at both ends, is kept as a
+// single place so it can still be marked on the map. Movements with no usable
+// place at all are counted in `skipped`.
+export function groupRoutes(trips: { from: string; to: string; open: boolean }[]): { groups: RouteGroup[]; singles: SinglePlace[]; skipped: number } {
   const byKey = new Map<string, RouteGroup>();
+  const singles = new Map<string, SinglePlace>();
   let skipped = 0;
+  const single = (place: string, open: boolean) => {
+    const s = singles.get(place.toLowerCase());
+    if (s) { s.trips++; s.open = s.open || open; }
+    else singles.set(place.toLowerCase(), { place, trips: 1, open });
+  };
   for (const t of trips) {
     const from = placeKey(t.from);
     const to = placeKey(t.to);
-    if (!from || !to || from.toLowerCase() === to.toLowerCase()) { skipped++; continue; }
+    if (!from && !to) { skipped++; continue; }
+    if (!from || !to) { single(from || to, t.open); continue; }
+    if (from.toLowerCase() === to.toLowerCase()) { single(from, t.open); continue; }
     const key = `${from.toLowerCase()}>${to.toLowerCase()}`;
     const g = byKey.get(key);
     if (g) { g.trips++; g.open = g.open || t.open; }
     else byKey.set(key, { from, to, trips: 1, open: t.open });
   }
-  return { groups: [...byKey.values()].sort((a, b) => b.trips - a.trips), skipped };
+  return {
+    groups: [...byKey.values()].sort((a, b) => b.trips - a.trips),
+    singles: [...singles.values()].sort((a, b) => b.trips - a.trips),
+    skipped
+  };
 }
 
 // --- remembered lookups ---------------------------------------------------

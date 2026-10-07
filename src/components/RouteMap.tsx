@@ -3,10 +3,12 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
 export interface MapLane { from: string; to: string; a: [number, number]; b: [number, number]; trips: number; open: boolean }
+// A place with nothing to draw a line to yet (e.g. the unloading place is not recorded)
+export interface MapSpot { name: string; at: [number, number]; trips: number; open: boolean }
 
 // A real map (OpenStreetMap tiles) with a marker per place and a straight line
 // per lane. Loaded on demand so the dashboard opens quickly without it.
-export default function RouteMap({ lanes }: { lanes: MapLane[] }) {
+export default function RouteMap({ lanes, spots }: { lanes: MapLane[]; spots: MapSpot[] }) {
   const host = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const layer = useRef<L.LayerGroup | null>(null);
@@ -60,6 +62,10 @@ export default function RouteMap({ lanes }: { lanes: MapLane[] }) {
         points.set(name.toLowerCase(), { name, at, open: (prev?.open ?? false) || (l.open && name === l.to), weight: (prev?.weight ?? 0) + l.trips });
       }
     }
+    for (const sp of spots) {
+      const prev = points.get(sp.name.toLowerCase());
+      points.set(sp.name.toLowerCase(), { name: sp.name, at: sp.at, open: (prev?.open ?? false) || sp.open, weight: (prev?.weight ?? 0) + sp.trips });
+    }
     for (const p of points.values()) {
       const marker = L.circleMarker(p.at, { radius: 6, color: p.open ? '#EF2B1F' : '#17212B', weight: 2, fillColor: '#fff', fillOpacity: 1 })
         .bindTooltip(p.name, { permanent: true, direction: 'top', offset: [0, -6], className: 'map-place-label' })
@@ -68,7 +74,7 @@ export default function RouteMap({ lanes }: { lanes: MapLane[] }) {
     }
     if (points.size) map.fitBounds(L.latLngBounds([...points.values()].map((p) => p.at)), { padding: [48, 48], maxZoom: 12 });
     declutter();
-  }, [lanes]);
+  }, [lanes, spots]);
 
   return <div ref={host} className="map-leaflet" role="img" aria-label="Map of the routes run in this period" />;
 }
