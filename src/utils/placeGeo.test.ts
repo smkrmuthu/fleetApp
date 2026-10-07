@@ -13,10 +13,12 @@ describe('placeKey', () => {
     expect(placeKey('Kallakurichi Cements Pvt Ltd Plant')).toBe('Kallakurichi Cements');
     expect(placeKey('  Pollachi   Godown ')).toBe('Pollachi');
   });
-  it('puts Shree Mira, Bharathi and NTECL at Chennai', () => {
-    expect(placeKey('Bharathi Cements')).toBe('Chennai');
-    expect(placeKey('NTECL Vallur')).toBe('Chennai');
-    expect(placeKey('Shree Mira Trader Yard')).toBe('Chennai');
+  it('gives Bharathi, Shree Mira and NTECL their own spot in Chennai', () => {
+    expect(placeKey('Bharathi Cements')).toBe('Bharathi (Manali)');
+    expect(placeKey('Bharathi Cements, Chennai')).toBe('Bharathi (Manali)');
+    expect(placeKey('NTECL Vallur')).toBe('NTECL (Vallur)');
+    expect(placeKey('Shree Mira Trader Yard')).toBe('Shree Mira (Guindy)');
+    expect(placeKey('Chennai Port')).toBe('Chennai');
   });
   it('treats a dash or N/A as no place at all', () => {
     for (const none of ['—', '-', ' – ', 'N/A', 'na', 'nil', '.', '']) expect(placeKey(none)).toBe('');
@@ -38,14 +40,15 @@ describe('groupRoutes', () => {
     expect(groups).toHaveLength(2);
     expect(groups[0]).toMatchObject({ from: 'Chennai', to: 'Pollachi', trips: 2, open: true });
   });
-  it('does not draw a lane to a placeholder place or between two Chennai sites', () => {
+  it('draws lanes between the Chennai sites but not to a placeholder or from a site to itself', () => {
     const { groups, skipped } = groupRoutes([
       { from: 'Bharathi Cements', to: '—', open: false },
-      { from: 'Bharathi Cements', to: 'Shree Mira Yard', open: false },
-      { from: 'Bharathi Cements', to: 'Hosur', open: false }
+      { from: 'Bharathi Cements', to: 'Shree Mira Yard', open: true },
+      { from: 'NTECL Vallur', to: 'Bharathi Cements', open: false },
+      { from: 'Bharathi Cements', to: 'Bharathi Cements Manali', open: false }
     ]);
     expect(skipped).toBe(2);
-    expect(groups).toEqual([{ from: 'Chennai', to: 'Hosur', trips: 1, open: false }]);
+    expect(groups.map((g) => `${g.from}>${g.to}`).sort()).toEqual(['Bharathi (Manali)>Shree Mira (Guindy)', 'NTECL (Vallur)>Bharathi (Manali)']);
   });
   it('counts movements with a missing place or the same start and end instead of drawing them', () => {
     const { groups, skipped } = groupRoutes([

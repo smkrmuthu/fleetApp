@@ -66,7 +66,7 @@ export default function RouteMap({ lanes }: { lanes: MapLane[] }) {
         .addTo(group);
       labels.current.push({ marker, name: p.name, weight: p.weight });
     }
-    if (points.size) map.fitBounds(L.latLngBounds([...points.values()].map((p) => p.at)), { padding: [48, 48], maxZoom: 9 });
+    if (points.size) map.fitBounds(L.latLngBounds([...points.values()].map((p) => p.at)), { padding: [48, 48], maxZoom: 12 });
     declutter();
   }, [lanes]);
 
