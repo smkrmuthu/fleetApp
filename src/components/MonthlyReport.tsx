@@ -1,5 +1,5 @@
 import type { DriverMaster, MonthlyExpense, Trip, Vehicle } from '../types';
-import { aggregateByVehicle } from '../utils/aggregate';
+import { aggregateByVehicle, sumVehicles } from '../utils/aggregate';
 import { dateInRange, formatDateRange, formatNum, rupees, tripCost, yearOptions } from '../utils/calc';
 import { MonthYearFilter } from './MonthYearFilter';
 import { exportReportExcel, exportReportPdf, type ReportData, type Stat } from '../lib/reports';
@@ -44,6 +44,7 @@ export function MonthlyReport({ trips: allTrips, expenses: allExpenses, vehicles
   const profit = totals.rev - totals.exp - monthlyTotal;
 
   const byVehicle = aggregateByVehicle(trips, expenses, vehicles);
+  const tot = sumVehicles(byVehicle);
   const maxPerKm = Math.max(...byVehicle.map((b) => (b.km ? b.cost / b.km : 0)), 1);
 
   const totalCost = totals.exp + monthlyTotal;
@@ -163,6 +164,24 @@ export function MonthlyReport({ trips: allTrips, expenses: allExpenses, vehicles
               </tr>
             ))}
           </tbody>
+          <tfoot>
+            <tr style={{ fontWeight: 700, background: 'var(--color-surface)' }}>
+              <td>Total</td>
+              <td style={{ textAlign: 'right' }}>{formatNum(tot.trips)}</td>
+              <td style={{ textAlign: 'right' }}>{formatNum(tot.km)}</td>
+              <td style={{ textAlign: 'right' }}>{formatNum(tot.tons, 1)}</td>
+              <td style={{ textAlign: 'right' }}>{rupees(tot.diesel)}</td>
+              <td style={{ textAlign: 'right' }}>{rupees(tot.ledgerToll)}</td>
+              <td style={{ textAlign: 'right' }}>{rupees(tot.other)}</td>
+              <td style={{ textAlign: 'right' }}>{rupees(tot.ledgerMonthly)}</td>
+              <td style={{ textAlign: 'right' }}>{rupees(tot.cost)}</td>
+              <td style={{ textAlign: 'right' }}>{rupees(tot.revenue)}</td>
+              <td style={{ textAlign: 'right' }}>
+                <span style={{ color: tot.profit >= 0 ? 'var(--color-profit)' : 'var(--color-accent-700)' }}>{rupees(tot.profit)}</span>
+              </td>
+              <td style={{ textAlign: 'right' }}>{tot.revenue ? Math.round((tot.profit / tot.revenue) * 100) + '%' : '—'}</td>
+            </tr>
+          </tfoot>
         </table>
       </div>
     </section>

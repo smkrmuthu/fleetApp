@@ -137,6 +137,13 @@ export function Dashboard({ trips, expenses, vehicles, drivers, leaves, unavaila
     })
     .filter((v) => v.trips > 0);
 
+  const fleetTot = {
+    trips: vehicleStats.reduce((a, v) => a + v.trips, 0), km: vehicleStats.reduce((a, v) => a + v.km, 0),
+    onRoadDays: vehicleStats.reduce((a, v) => a + v.onRoadDays, 0), dieselL: vehicleStats.reduce((a, v) => a + v.dieselL, 0),
+    tons: vehicleStats.reduce((a, v) => a + v.tons, 0), expense: vehicleStats.reduce((a, v) => a + v.expense, 0),
+    revenue: vehicleStats.reduce((a, v) => a + v.revenue, 0)
+  };
+
   const recent = trips.slice(0, 6);
 
   return (
@@ -207,6 +214,20 @@ export function Dashboard({ trips, expenses, vehicles, drivers, leaves, unavaila
                   </tr>
                 ))}
               </tbody>
+              <tfoot>
+                <tr style={{ fontWeight: 700, background: 'var(--color-surface)' }}>
+                  <td>Total</td>
+                  <td style={{ textAlign: 'right' }}>{formatNum(fleetTot.trips)}</td>
+                  <td style={{ textAlign: 'right' }}>{formatNum(fleetTot.km)}</td>
+                  <td style={{ textAlign: 'right' }}>{formatNum(fleetTot.onRoadDays)}</td>
+                  <td style={{ textAlign: 'right' }}>{formatNum(fleetTot.dieselL)}</td>
+                  <td style={{ textAlign: 'right' }}>{formatNum(fleetTot.tons, 1)}</td>
+                  <td style={{ textAlign: 'right' }}>{fleetTot.dieselL ? (fleetTot.km / fleetTot.dieselL).toFixed(2) : '—'}</td>
+                  <td style={{ textAlign: 'right' }}>{rupees(fleetTot.expense)}</td>
+                  <td style={{ textAlign: 'right' }}>{rupees(fleetTot.revenue)}</td>
+                  <td style={{ textAlign: 'right' }}>{fleetTot.tons ? rupees(fleetTot.revenue / fleetTot.tons) : '—'}</td>
+                </tr>
+              </tfoot>
             </table>
           </div>
 

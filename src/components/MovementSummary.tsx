@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { DriverMaster, MonthlyExpense, Trip, Vehicle } from '../types';
 import type { VehicleAgg } from '../utils/aggregate';
-import { aggregateByVehicle, isFastag } from '../utils/aggregate';
+import { aggregateByVehicle, isFastag, sumVehicles } from '../utils/aggregate';
 import { dateInRange, formatDateRange, formatNum, rupees, tripCost, yearOptions } from '../utils/calc';
 import { MonthYearFilter } from './MonthYearFilter';
 import { exportSummaryExcel, exportSummaryPdf, type Stat, type SummaryData } from '../lib/reports';
@@ -59,6 +59,7 @@ export function MovementSummary({ trips, expenses, vehicles, drivers, vehicleFil
   const fixedShown = monthlyTotal - fastagTotal;
 
   const byVehicle = aggregateByVehicle(rows, expenseRows, vehicles);
+  const tot = sumVehicles(byVehicle);
 
   type SortKey = 'id' | 'model' | 'trips' | 'km' | 'tons' | 'tripExpense' | 'monthly' | 'revenue' | 'profit' | 'costPerKm';
   const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' } | null>(null);
@@ -228,6 +229,21 @@ export function MovementSummary({ trips, expenses, vehicles, drivers, vehicleFil
               </tr>
             ))}
           </tbody>
+          <tfoot>
+            <tr style={{ fontWeight: 700, background: 'var(--color-surface)' }}>
+              <td colSpan={2}>Total</td>
+              <td style={{ textAlign: 'right' }}>{formatNum(tot.trips)}</td>
+              <td style={{ textAlign: 'right' }}>{formatNum(tot.km)}</td>
+              <td style={{ textAlign: 'right' }}>{formatNum(tot.tons, 2)}</td>
+              <td style={{ textAlign: 'right' }}>{rupees(tot.ledgerTripExpense)}</td>
+              <td style={{ textAlign: 'right' }}>{rupees(tot.ledgerMonthly)}</td>
+              <td style={{ textAlign: 'right' }}>{rupees(tot.revenue)}</td>
+              <td style={{ textAlign: 'right' }}>
+                <span style={{ color: tot.profit >= 0 ? 'var(--color-profit)' : 'var(--color-accent-700)' }}>{rupees(tot.profit)}</span>
+              </td>
+              <td style={{ textAlign: 'right' }}>{tot.km ? rupees(tot.cost / tot.km) : '—'}</td>
+            </tr>
+          </tfoot>
         </table>
       </div>
     </section>

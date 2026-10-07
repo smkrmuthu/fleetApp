@@ -25,6 +25,18 @@ export interface VehicleAgg {
   profit: number;
 }
 
+// The "Total" row of the per-truck tables: every figure is the sum of the rows,
+// so a total can never disagree with what is shown above it.
+export function sumVehicles(rows: VehicleAgg[]): Omit<VehicleAgg, 'id' | 'model'> {
+  const sum = (pick: (r: VehicleAgg) => number) => rows.reduce((a, r) => a + pick(r), 0);
+  return {
+    trips: sum((r) => r.trips), km: sum((r) => r.km), tons: sum((r) => r.tons), diesel: sum((r) => r.diesel), adblue: sum((r) => r.adblue),
+    toll: sum((r) => r.toll), other: sum((r) => r.other), tripExpense: sum((r) => r.tripExpense), monthly: sum((r) => r.monthly),
+    ledgerToll: sum((r) => r.ledgerToll), ledgerMonthly: sum((r) => r.ledgerMonthly), ledgerTripExpense: sum((r) => r.ledgerTripExpense),
+    cost: sum((r) => r.cost), revenue: sum((r) => r.revenue), profit: sum((r) => r.profit)
+  };
+}
+
 // A monthly expense whose description is "Fastag" (any capitalisation).
 export const isFastag = (e: MonthlyExpense) => e.category.trim().toLowerCase() === 'fastag';
 

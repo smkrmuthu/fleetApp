@@ -1,5 +1,5 @@
 import type { DriverMaster, MasterSettings, MonthlyExpense, Trip, UserAccount, Vehicle } from '../types';
-import type { VehicleAgg } from '../utils/aggregate';
+import { sumVehicles, type VehicleAgg } from '../utils/aggregate';
 import { tripCost, vehicleAge } from '../utils/calc';
 import { parseDisplayDate } from './api';
 import {
@@ -135,7 +135,11 @@ export async function exportSummaryExcel(d: SummaryData): Promise<void> {
     name: 'Vehicle-wise',
     rows: [
       ['Vehicle', 'Model', 'Trips', 'KM', 'Tons', 'Trip expense', 'Monthly expense', 'Revenue', 'Profit', 'Rs / km'].map((h, i) => th(h, i >= 2)),
-      ...d.byVehicle.map((b) => [b.id, b.model === '—' ? '' : b.model, int(b.trips), int(b.km), dec(b.tons), money(b.ledgerTripExpense), money(b.ledgerMonthly), money(b.revenue), money(b.profit), b.km ? money(b.cost / b.km) : null] as SheetCell[])
+      ...d.byVehicle.map((b) => [b.id, b.model === '—' ? '' : b.model, int(b.trips), int(b.km), dec(b.tons), money(b.ledgerTripExpense), money(b.ledgerMonthly), money(b.revenue), money(b.profit), b.km ? money(b.cost / b.km) : null] as SheetCell[]),
+      (() => {
+        const t = sumVehicles(d.byVehicle);
+        return [label('Total'), '', int(t.trips), int(t.km), dec(t.tons), money(t.ledgerTripExpense), money(t.ledgerMonthly), money(t.revenue), money(t.profit), t.km ? money(t.cost / t.km) : null] as SheetCell[];
+      })()
     ],
     widths: [14, 18, 8, 10, 10, 14, 16, 14, 14, 10],
     freezeRows: 1
@@ -164,7 +168,10 @@ export async function exportSummaryPdf(d: SummaryData): Promise<void> {
         body: d.byVehicle.map((b) => [
           b.id, b.model === '—' ? '' : b.model, String(b.trips), b.km.toLocaleString('en-IN'), b.tons.toFixed(1),
           rs(b.ledgerTripExpense), rs(b.ledgerMonthly), rs(b.revenue), rs(b.profit), b.km ? rs(b.cost / b.km) : '-'
-        ]),
+        ]).concat((() => {
+          const t = sumVehicles(d.byVehicle);
+          return [['TOTAL', '', String(t.trips), t.km.toLocaleString('en-IN'), t.tons.toFixed(1), rs(t.ledgerTripExpense), rs(t.ledgerMonthly), rs(t.revenue), rs(t.profit), t.km ? rs(t.cost / t.km) : '-']];
+        })()),
         right: [2, 3, 4, 5, 6, 7, 8, 9]
       }
     ]
@@ -198,7 +205,14 @@ export async function exportReportExcel(d: ReportData): Promise<void> {
       ...d.byVehicle.map((b) => [
         b.id, int(b.trips), int(b.km), dec(b.tons), money(b.diesel), money(b.ledgerToll), money(b.other), money(b.ledgerMonthly), money(b.cost),
         money(b.revenue), money(b.profit), b.revenue ? percent(b.profit / b.revenue) : null, b.km ? money(b.cost / b.km) : null
-      ] as SheetCell[])
+      ] as SheetCell[]),
+      (() => {
+        const t = sumVehicles(d.byVehicle);
+        return [
+          label('Total'), int(t.trips), int(t.km), dec(t.tons), money(t.diesel), money(t.ledgerToll), money(t.other), money(t.ledgerMonthly), money(t.cost),
+          money(t.revenue), money(t.profit), t.revenue ? percent(t.profit / t.revenue) : null, t.km ? money(t.cost / t.km) : null
+        ] as SheetCell[];
+      })()
     ],
     widths: [14, 8, 10, 10, 13, 12, 12, 13, 14, 14, 14, 9, 13],
     freezeRows: 1
@@ -233,7 +247,13 @@ export async function exportReportPdf(d: ReportData): Promise<void> {
         body: d.byVehicle.map((b) => [
           b.id, String(b.trips), b.km.toLocaleString('en-IN'), b.tons.toFixed(1), rs(b.diesel), rs(b.ledgerToll), rs(b.other), rs(b.ledgerMonthly),
           rs(b.cost), rs(b.revenue), rs(b.profit), b.revenue ? `${Math.round((b.profit / b.revenue) * 100)}%` : '-'
-        ]),
+        ]).concat((() => {
+          const t = sumVehicles(d.byVehicle);
+          return [[
+            'TOTAL', String(t.trips), t.km.toLocaleString('en-IN'), t.tons.toFixed(1), rs(t.diesel), rs(t.ledgerToll), rs(t.other), rs(t.ledgerMonthly),
+            rs(t.cost), rs(t.revenue), rs(t.profit), t.revenue ? `${Math.round((t.profit / t.revenue) * 100)}%` : '-'
+          ]];
+        })()),
         right: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
       }
     ]
