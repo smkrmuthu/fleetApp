@@ -3,7 +3,7 @@
 For whoever looks after the app. Read this first; the database details are in
 [database-backup-and-restore.md](database-backup-and-restore.md).
 
-Last updated: 2026-10-07.
+Last updated: 2026-10-07 (new design, Total rows and route map released).
 
 ## 1. What runs where
 
@@ -33,7 +33,7 @@ should be treated as "do not trust this deploy" and fixed straight away.
 
 ## 3. Deploying a change
 
-Web app only: merge to `main` and push. Both sites rebuild within a couple of minutes. Check the new file name
+Web app only: merge to `main` and push. GitHub Pages rebuilds within a couple of minutes; the Cloudflare site (`smt.oneuptech.co`) usually takes a few minutes too, but took about 25 minutes on 7 October 2026, so check before assuming a failure (Cloudflare dashboard > Workers & Pages > `fleetapp` > Deployments). Check the new file name
 in the page source (`assets/index-XXXX.js`) changed, and hard-refresh your browser.
 
 API change:
@@ -104,7 +104,7 @@ The older `order-dump.py` route is kept only for `wrangler d1 export` files.
 
 ## 7. People and access
 
-- Roles: **Driver** (starts and logs their own open trips; no fuel entry and no fixed costs), **Office** (movements, fuel, monthly expenses, summary), **Manager** (everything),
+- Roles: **Driver** (starts and logs their own open trips; no fuel entry and no fixed costs), **Office** (movements, monthly expenses, summary, monthly report; no fuel entry, which is Manager-only), **Manager** (everything),
   **Viewer** (read-only: Dashboard, Movement Summary, Monthly Report).
 - Managers add and edit users under **People**. Passwords must be at least 8 characters; a Manager sets and resets them
   (there is no "forgot password" email yet).
@@ -137,4 +137,5 @@ needs Xcode and an Apple developer account and is not set up.
 - Screens load all records for the company; this is fine for thousands of trips but will need paging later.
 - Backups live in the same Cloudflare account (monthly off-site copy is manual).
 - One company per deployment.
+- The Dashboard route map uses OpenStreetMap (tiles and a place-name search from the browser, one search a second, answers remembered on the device). Place names it cannot find are listed under the map, not drawn. If that proves unreliable for the real place names, the fix is a list of places with map positions under Master (needs a migration) or Google Maps (needs a Google Cloud billing account and a restricted key).
 - Android is a debug build; there is no iPhone app.
