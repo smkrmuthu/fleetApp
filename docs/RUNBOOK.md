@@ -3,7 +3,7 @@
 For whoever looks after the app. Read this first; the database details are in
 [database-backup-and-restore.md](database-backup-and-restore.md).
 
-Last updated: 2026-10-04.
+Last updated: 2026-10-07.
 
 ## 1. What runs where
 
@@ -114,7 +114,7 @@ The older `order-dump.py` route is kept only for `wrangler d1 export` files.
 
 ## 8. Android app
 
-`npx vite build && npx cap sync android && cd android && ./gradlew assembleDebug`. Latest build: 6 October 2026, `FleetLedger-debug-20261006.apk` (6.9 MB) in `~/FleetLedger-apk/`, built from `main` at `21c3226` and checked to hold the same web bundle as the live site (`index-CbwBR-rq.js`). Needs JDK 21 and the Android SDK
+`npx vite build && npx cap sync android && cd android && ./gradlew assembleDebug`. Latest build: 7 October 2026, `FleetLedger-debug-20261007.apk` (6.9 MB) in `~/FleetLedger-apk/`, built from `main` at `3f57036` (new design, Total rows and the OpenStreetMap route map) and checked to hold the same web bundle as the GitHub Pages site (`index-BXCgPflI.js`). It was built and inspected only; it has not been run on a phone or emulator. Needs JDK 21 and the Android SDK
 (`JAVA_HOME`, `ANDROID_HOME`). This produces a **debug** file for installing directly. A Play Store release needs a
 Google Play developer account and a signing key that only the owner should hold, and is not set up. The iPhone app
 needs Xcode and an Apple developer account and is not set up.
