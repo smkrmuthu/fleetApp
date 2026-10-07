@@ -114,7 +114,7 @@ The older `order-dump.py` route is kept only for `wrangler d1 export` files.
 
 ## 8. Android app
 
-`npx vite build && npx cap sync android && cd android && ./gradlew assembleDebug`. Latest build: 7 October 2026, `FleetLedger-debug-20261007-b.apk` (7.0 MB) in `~/FleetLedger-apk/`, built from `main` at `b3d1239` (new design, Total rows, the OpenStreetMap route map and the Chennai place aliases) and checked to hold the same web bundle as the live sites (`index-Bms8bqKn.js`, cache `fleet-ledger-shell-v5`). It was built and inspected only; it has not been run on a phone or emulator. Needs JDK 21 and the Android SDK
+`npx vite build && npx cap sync android && cd android && ./gradlew assembleDebug`. Latest build: 7 October 2026, `FleetLedger-debug-20261007-c.apk` (7.0 MB) in `~/FleetLedger-apk/`, built from `main` at `fdf63af` (new design, Total rows, the OpenStreetMap route map and the Chennai site spots) and checked to hold the same web bundle as the live sites (`index-CVema0Su.js`, cache `fleet-ledger-shell-v6`). It was built and inspected only; it has not been run on a phone or emulator. Needs JDK 21 and the Android SDK
 (`JAVA_HOME`, `ANDROID_HOME`). This produces a **debug** file for installing directly. A Play Store release needs a
 Google Play developer account and a signing key that only the owner should hold, and is not set up. The iPhone app
 needs Xcode and an Apple developer account and is not set up.
@@ -137,5 +137,5 @@ needs Xcode and an Apple developer account and is not set up.
 - Screens load all records for the company; this is fine for thousands of trips but will need paging later.
 - Backups live in the same Cloudflare account (monthly off-site copy is manual).
 - One company per deployment.
-- The Dashboard route map uses OpenStreetMap (tiles and a place-name search from the browser, one search a second, answers remembered on the device). Place names it cannot find are listed under the map, not drawn. Places containing Shree Mira, Bharathi or NTECL are placed at Chennai (the list is in `src/utils/routeGeo.ts`; adding a name is a small code change). If that proves unreliable for the real place names, the fix is a list of places with map positions under Master (needs a migration) or Google Maps (needs a Google Cloud billing account and a restricted key).
+- The Dashboard route map uses OpenStreetMap (tiles and a place-name search from the browser, one search a second, answers remembered on the device). Place names it cannot find are listed under the map, not drawn. Places containing Bharathi, Shree Mira or NTECL have their own approximate spots in Chennai (Manali, Guindy and Vallur; the list is in `src/utils/routeGeo.ts`, and adding a name is a small code change). If that proves unreliable for the real place names, the fix is a list of places with map positions under Master (needs a migration) or Google Maps (needs a Google Cloud billing account and a restricted key).
 - Android is a debug build; there is no iPhone app.
