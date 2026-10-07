@@ -7,7 +7,8 @@
 export interface Town { name: string; lat: number; lon: number }
 
 const TOWNS: { keys: string[]; town: Town }[] = [
-  { keys: ['chennai', 'madras'], town: { name: 'Chennai', lat: 13.08, lon: 80.27 } },
+  // Shree Mira, Bharathi and NTECL are the company's own sites and customers, shown at Chennai.
+  { keys: ['chennai', 'madras', 'shree mira', 'bharathi', 'ntecl'], town: { name: 'Chennai', lat: 13.08, lon: 80.27 } },
   { keys: ['ennore'], town: { name: 'Ennore', lat: 13.21, lon: 80.32 } },
   { keys: ['sriperumbudur'], town: { name: 'Sriperumbudur', lat: 12.97, lon: 79.94 } },
   { keys: ['hosur'], town: { name: 'Hosur', lat: 12.74, lon: 77.83 } },

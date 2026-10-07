@@ -10,8 +10,16 @@ const reply = (rows: unknown) => async () => ({ ok: true, json: async () => rows
 describe('placeKey', () => {
   it('uses the town for a known place and drops site words from the rest', () => {
     expect(placeKey('Chennai Yard')).toBe('Chennai');
-    expect(placeKey('Bharathi Cements Pvt Ltd Plant')).toBe('Bharathi Cements');
+    expect(placeKey('Kallakurichi Cements Pvt Ltd Plant')).toBe('Kallakurichi Cements');
     expect(placeKey('  Pollachi   Godown ')).toBe('Pollachi');
+  });
+  it('puts Shree Mira, Bharathi and NTECL at Chennai', () => {
+    expect(placeKey('Bharathi Cements')).toBe('Chennai');
+    expect(placeKey('NTECL Vallur')).toBe('Chennai');
+    expect(placeKey('Shree Mira Trader Yard')).toBe('Chennai');
+  });
+  it('treats a dash or N/A as no place at all', () => {
+    for (const none of ['—', '-', ' – ', 'N/A', 'na', 'nil', '.', '']) expect(placeKey(none)).toBe('');
   });
   it('keeps the whole text when stripping would leave nothing', () => {
     expect(placeKey('Depot')).toBe('Depot');
@@ -29,6 +37,15 @@ describe('groupRoutes', () => {
     expect(skipped).toBe(0);
     expect(groups).toHaveLength(2);
     expect(groups[0]).toMatchObject({ from: 'Chennai', to: 'Pollachi', trips: 2, open: true });
+  });
+  it('does not draw a lane to a placeholder place or between two Chennai sites', () => {
+    const { groups, skipped } = groupRoutes([
+      { from: 'Bharathi Cements', to: '—', open: false },
+      { from: 'Bharathi Cements', to: 'Shree Mira Yard', open: false },
+      { from: 'Bharathi Cements', to: 'Hosur', open: false }
+    ]);
+    expect(skipped).toBe(2);
+    expect(groups).toEqual([{ from: 'Chennai', to: 'Hosur', trips: 1, open: false }]);
   });
   it('counts movements with a missing place or the same start and end instead of drawing them', () => {
     const { groups, skipped } = groupRoutes([

@@ -71,7 +71,7 @@ export function RouteNetwork({ trips, periodLabel }: { trips: { from: string; to
           Places are found by searching OpenStreetMap for the place names on each movement; only the names are sent. Lines join the two places directly, as there is no GPS.
           {pending.length > 0 && <> Locating {pending.length} more {pending.length === 1 ? 'place' : 'places'}…</>}
           {!pending.length && missing.length > 0 && <> Not found on the map: {missing.join(', ')}.</>}
-          {skipped > 0 && <> {skipped} {skipped === 1 ? 'movement has' : 'movements have'} no usable loading or unloading place.</>}
+          {skipped > 0 && <> {skipped} {skipped === 1 ? 'movement has' : 'movements have'} no real loading or unloading place, or start and end in the same place, so no lane is drawn.</>}
         </div>
       </div>
     </div>

@@ -17,9 +17,12 @@ export function cleanPlace(place: string): string {
 
 // The name a place is grouped and searched under: a known town's name, or the
 // place with its site words removed ("Chennai Yard" and "Chennai" are one place).
+// "-", "—", "N/A" and the like are what people type when there is no place.
+const NO_PLACE = /^[\s\-\u2010-\u2015.?_/]*$|^(n\/?a|nil|none|null|tbd|na)$/i;
+
 export function placeKey(place: string): string {
   const clean = cleanPlace(place);
-  if (!clean) return '';
+  if (!clean || NO_PLACE.test(clean)) return '';
   const town = findTown(clean);
   if (town) return town.name;
   const stripped = cleanPlace(clean.replace(SITE_WORDS, ' ').replace(/[,;()]+/g, ' '));
