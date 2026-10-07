@@ -30,9 +30,17 @@ describe('areas around Chennai', () => {
     expect(findTown('KMR - Kundrathur, Chennai')?.name).toBe('Kundrathur');
     expect(findTown('Chennai Port')?.name).toBe('Chennai');
   });
-  it('leaves names that are ambiguous for the map to search or the user to place', () => {
-    expect(findTown('CONCRETE OEM - SUNCITY')).toBeNull();
-    expect(findTown('PREMIX CONCRETE - THANDALAM')).toBeNull();
+  it('places Suncity near Siruseri and Thandalam near Kundrathur', () => {
+    const suncity = findTown('CONCRETE OEM - SUNCITY')!;
+    const siruseri = findTown('SUN X - SIRUSERI')!;
+    expect(suncity.name).toBe('Suncity');
+    expect(Math.hypot(suncity.lat - siruseri.lat, suncity.lon - siruseri.lon)).toBeLessThan(0.1);
+    const thandalam = findTown('PREMIX CONCRETE - THANDALAM')!;
+    const kundrathur = findTown('KMR - KUNDRATHUR')!;
+    expect(thandalam.name).toBe('Thandalam');
+    expect(Math.hypot(thandalam.lat - kundrathur.lat, thandalam.lon - kundrathur.lon)).toBeLessThan(0.1);
+  });
+  it('leaves names that are still ambiguous for the map to search or the user to place', () => {
     expect(findTown('BOSON INFRA - NAVALUR')).toBeNull();
     expect(findTown('WORKSHOP STOP')).toBeNull();
   });

@@ -29,6 +29,10 @@ const TOWNS: { keys: string[]; town: Town }[] = [
   { keys: ['red hills', 'redhills'], town: { name: 'Red Hills', lat: 13.1923, lon: 80.1838 } },
   { keys: ['sunguvarchatram', 'sunguvarchathiram'], town: { name: 'Sunguvarchatram', lat: 12.9256, lon: 79.879 } },
   { keys: ['siruseri'], town: { name: 'Siruseri', lat: 12.8315, lon: 80.2094 } },
+  // The owner's clarification: Suncity is near Siruseri, Thandalam near Kundrathur
+  // (the Thandalam by Kundrathur, not the village near Sriperumbudur).
+  { keys: ['suncity', 'sun city'], town: { name: 'Suncity', lat: 12.8403, lon: 80.149 } },
+  { keys: ['thandalam'], town: { name: 'Thandalam', lat: 13.0015, lon: 80.1182 } },
   { keys: ['thirumudivakkam'], town: { name: 'Thirumudivakkam', lat: 12.9649, lon: 80.0815 } },
   { keys: ['mambakkam'], town: { name: 'Mambakkam', lat: 12.836, lon: 80.169 } },
   { keys: ['vyasarpadi'], town: { name: 'Vyasarpadi', lat: 13.113, lon: 80.2587 } },
