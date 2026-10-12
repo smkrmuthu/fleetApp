@@ -2,9 +2,10 @@ export type Role = 'Driver' | 'Office' | 'Manager' | 'Viewer';
 
 export type TabId = 'dashboard' | 'summary' | 'addtrip' | 'fuel' | 'triplog' | 'expenses' | 'report' | 'people' | 'master' | 'schema';
 
-// 'draft' is a trip a driver has started but not yet completed — a
-// multi-day trip logs fuel stops against it before Complete flips it to
-// 'pending' for approval.
+// 'draft' is an open trip: one a driver has started, or one Office/Manager
+// entered before its closing readings were known. Fuel and other entries are
+// logged against it, and Complete Trip approves it. 'pending' only remains on
+// older records (a trip a driver had finished, awaiting approval).
 export type TripStatus = 'draft' | 'pending' | 'approved';
 
 export interface Vehicle {

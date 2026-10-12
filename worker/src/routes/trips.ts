@@ -10,6 +10,7 @@ import { requireAuth, requireRole } from '../middleware/auth';
 import { buildFilters, combine, parsePagination } from '../lib/filters';
 import { fuelLineBlocked, FUEL_BLOCKED_MESSAGE } from '../lib/fuelAccess';
 import { writeAudit } from '../lib/audit';
+import { newTripStatus } from '../lib/tripStatus';
 
 export const tripRoutes = new Hono<{ Bindings: Env; Variables: Vars }>();
 tripRoutes.use('*', requireAuth);
@@ -227,8 +228,8 @@ tripRoutes.post('/', async (c) => {
   // A driver can only ever open a trip, never finalize it. Office/Manager
   // must give the loading weight and start odometer up front, but the end
   // odometer (and per-stop readings) may still be unknown — such a trip is
-  // created 'pending' rather than 'approved', and is finalized later via
-  // /:id/approve once completionProblem (the strict, default check) passes.
+  // created as an open draft rather than 'approved', and is finalized later via
+  // /:id/complete once completionProblem (the strict, default check) passes.
   const now = nowIso();
 
   const problem = isDriver
@@ -236,7 +237,7 @@ tripRoutes.post('/', async (c) => {
     : completionProblem(data, data.stops, { requireOdoEnd: false });
   if (problem) return c.json({ error: { code: 'validation_error', ...problem } }, 422);
 
-  const status = isDriver ? 'draft' : completionProblem(data, data.stops) ? 'pending' : 'approved';
+  const status = newTripStatus(isDriver, !completionProblem(data, data.stops));
 
   const dateProb = stopDateProblem(data.loadDate, data.unloadDate, data.stops);
   if (dateProb) return c.json({ error: { code: 'validation_error', ...dateProb } }, 422);

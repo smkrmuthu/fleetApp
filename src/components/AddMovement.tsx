@@ -353,7 +353,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, l
       fromNote: form.fromNote.trim(), toNote: form.toNote.trim(),
       remarks: form.remarks.trim(),
       transporter: form.transporter,
-      status: editingTrip?.status ?? 'pending',
+      status: editingTrip?.status ?? 'draft',
       expenses: lines,
       stops: cleanStops,
       documents
