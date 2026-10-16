@@ -3,7 +3,7 @@
 For whoever looks after the app. Read this first; the database details are in
 [database-backup-and-restore.md](database-backup-and-restore.md).
 
-Last updated: 2026-10-16 (expense entry categories released; migration 0016 applied; API version 849f0e67).
+Last updated: 2026-10-16 (dependency updates released: Capacitor 8.5.3, Vite 8.3.3, Hono 4.13.13, Wrangler 4.148; API version 06857d61, previous 849f0e67).
 
 ## 1. What runs where
 
@@ -114,7 +114,7 @@ The older `order-dump.py` route is kept only for `wrangler d1 export` files.
 
 ## 8. Android app
 
-`npx vite build && npx cap sync android && cd android && ./gradlew assembleDebug`. Latest build: 16 October 2026, `FleetLedger-debug-20261016-b.apk` (7.0 MB) in `~/FleetLedger-apk/`, built from `main` at `aa306b4` (new design, Total rows, the route map, the Draft rule, live refresh and expense entry categories) and checked to hold the same web bundle as the live sites (`index-2bPEIPAE.js`, cache `fleet-ledger-shell-v17`). It was built and inspected only; it has not been run on a phone or emulator. Needs JDK 21 and the Android SDK
+`npx vite build && npx cap sync android && cd android && ./gradlew assembleDebug`. Latest build: 16 October 2026, `FleetLedger-debug-20261016-c.apk` (7.0 MB) in `~/FleetLedger-apk/`, built from `main` at `e4bd33a` (new design, Total rows, the route map, the Draft rule, live refresh, expense entry categories and the updated packages) and checked to hold the same web bundle as the live sites (`index-BqEOI6me.js`, cache `fleet-ledger-shell-v18`). It was built and inspected only; it has not been run on a phone or emulator. Needs JDK 21 and the Android SDK
 (`JAVA_HOME`, `ANDROID_HOME`). This produces a **debug** file for installing directly. A Play Store release needs a
 Google Play developer account and a signing key that only the owner should hold, and is not set up. The iPhone app
 needs Xcode and an Apple developer account and is not set up.
