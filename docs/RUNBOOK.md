@@ -3,7 +3,7 @@
 For whoever looks after the app. Read this first; the database details are in
 [database-backup-and-restore.md](database-backup-and-restore.md).
 
-Last updated: 2026-10-07 (new design, Total rows and route map released).
+Last updated: 2026-10-16 (live refresh and the Draft rule released; API version d5c0953f).
 
 ## 1. What runs where
 
@@ -114,7 +114,7 @@ The older `order-dump.py` route is kept only for `wrangler d1 export` files.
 
 ## 8. Android app
 
-`npx vite build && npx cap sync android && cd android && ./gradlew assembleDebug`. Latest build: 7 October 2026, `FleetLedger-debug-20261007-j.apk` (7.0 MB) in `~/FleetLedger-apk/`, built from `main` at `9a7f4b8` (new design, Total rows, the OpenStreetMap route map with Chennai site spots and areas, single-place markers, lanes through stops, road-following lines and the shorter map notes) and checked to hold the same web bundle as the live sites (`index-BtUMvM9-.js`, cache `fleet-ledger-shell-v14`). It was built and inspected only; it has not been run on a phone or emulator. Needs JDK 21 and the Android SDK
+`npx vite build && npx cap sync android && cd android && ./gradlew assembleDebug`. Latest build: 16 October 2026, `FleetLedger-debug-20261016-a.apk` (7.0 MB) in `~/FleetLedger-apk/`, built from `main` at `c1007a9` (new design, Total rows, the route map, the Draft rule and live refresh) and checked to hold the same web bundle as the live sites (`index-Dl2zYfcW.js`, cache `fleet-ledger-shell-v16`). It was built and inspected only; it has not been run on a phone or emulator. Needs JDK 21 and the Android SDK
 (`JAVA_HOME`, `ANDROID_HOME`). This produces a **debug** file for installing directly. A Play Store release needs a
 Google Play developer account and a signing key that only the owner should hold, and is not set up. The iPhone app
 needs Xcode and an Apple developer account and is not set up.
@@ -124,6 +124,7 @@ needs Xcode and an Apple developer account and is not set up.
 | Symptom | First thing to try |
 |---|---|
 | Everyone sees an old screen | Hard refresh; confirm the new `assets/index-XXXX.js` is being served |
+| One person's entries do not show on another's screen without a refresh | That device is on an old version: hard refresh (or reinstall the APK). Screens check `GET /v1/sync` every 20 seconds while visible; if `/v1/sync` answers 401 or errors, check the API log |
 | "Too many sign-in attempts" | Wait a minute. Repeated for one person: check the password, reset it under People |
 | A user is thrown back to sign-in | Their account was disabled or deleted, or their 12-hour sign-in expired |
 | Data Backup panel is red | Press "Back up now". If it fails again, run `cd worker && npx wrangler tail` and press it again to see the error |
@@ -135,6 +136,8 @@ needs Xcode and an Apple developer account and is not set up.
 - No second-factor sign-in and no "forgot password" email or SMS (needs a provider).
 - No alert emails or paging if the app or the nightly backup fails; the Data Backup panel is the only warning.
 - Screens load all records for the company; this is fine for thousands of trips but will need paging later.
+- Live refresh: every open, visible screen asks `GET /v1/sync` (one row) every 20 seconds, and reloads everything only when the change stamp (`settings` key `data_version`, moved by one middleware after any successful write) has moved. About 1,800 checks per user per 10-hour day; with many more users, or on the free Workers plan's 100,000 requests a day, raise `LIVE_REFRESH_MS` in `src/App.tsx`.
+- A movement an Office or Manager enters without its end odometer starts as Draft (open, can take fuel, finished with Complete Trip); `pending` only remains on older records. Rule: `worker/src/lib/tripStatus.ts`.
 - Backups live in the same Cloudflare account (monthly off-site copy is manual).
 - One company per deployment.
 - The Dashboard route map uses OpenStreetMap (tiles and a place-name search from the browser, one search a second, answers remembered on the device). Place names it cannot find are listed under the map, not drawn. Places containing Bharathi, Shree Mira or NTECL have their own approximate spots in Chennai (Manali, Guindy and Vallur; the list is in `src/utils/routeGeo.ts`, and adding a name is a small code change). Names written "CUSTOMER - AREA" are placed by their area: 24 Chennai-area localities are built in (same file, including Suncity near Siruseri, Thandalam near Kundrathur and Navalur on the OMR road), and any other area is searched on OpenStreetMap only inside Chennai, Tamil Nadu and southern Andhra Pradesh, never in another state. Still to be placed by the owner: the workshop (start/stop) places. A movement with only one place recorded (an open movement before its unloading place is entered) is shown as a marker listed as "one place only"; its line appears once the unloading place is entered. A lane runs from the loading place through the movement's stops, in order, to the unloading place; an open movement with stops is drawn as far as its last stop. Each lane follows the likely road route from the public OSRM routing servers (one request a second, only the positions of the places are sent, answers remembered on the device); it is the usual road route, not the truck's path. If the servers cannot be reached the lines are dashed and straight and the map's label says so. If that proves unreliable for the real place names, the fix is a list of places with map positions under Master (needs a migration) or Google Maps (needs a Google Cloud billing account and a restricted key).
