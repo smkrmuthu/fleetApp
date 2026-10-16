@@ -16,6 +16,9 @@ import { vehicleUnavailabilityRoutes } from './routes/vehicleUnavailability';
 import { transporterRoutes } from './routes/transporters';
 import { adminRoutes } from './routes/admin';
 import { fuelEntryRoutes } from './routes/fuelEntries';
+import { syncRoutes } from './routes/sync';
+import { bumpDataVersion, changesData } from './lib/dataVersion';
+import { getDb } from './db';
 import { runBackup } from './lib/backup';
 import { purgeExpiredRateLimits } from './lib/rateLimit';
 
@@ -23,10 +26,26 @@ const app = new Hono<{ Bindings: Env; Variables: Vars }>();
 
 app.use('*', async (c, next) => {
   const allowed = c.env.ALLOWED_ORIGIN.split(',').map((o) => o.trim());
-  return cors({ origin: allowed, allowHeaders: ['Content-Type', 'Authorization'], allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'] })(c, next);
+  return cors({ origin: allowed, allowHeaders: ['Content-Type', 'Authorization'], allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'], maxAge: 600 })(c, next);
 });
 
 app.get('/', (c) => c.json({ name: 'fleet-ledger-api', ok: true }));
+
+// After any successful save by a signed-in user, move the change stamp so other
+// open screens know to reload (see routes/sync.ts). It runs after the response
+// is built and must never turn a good save into an error.
+app.use('/v1/*', async (c, next) => {
+  await next();
+  try {
+    const auth = c.get('auth');
+    if (auth && changesData(c.req.method, c.req.path, c.res.status)) {
+      const work = bumpDataVersion(getDb(c.env), auth.orgId, auth.userId).catch((e) => console.error('data version', e));
+      try { c.executionCtx.waitUntil(work); } catch { await work; }
+    }
+  } catch (e) {
+    console.error('data version', e);
+  }
+});
 
 app.route('/v1/auth', authRoutes);
 app.route('/v1/trips', tripRoutes);
@@ -43,6 +62,7 @@ app.route('/v1/vehicle-unavailability', vehicleUnavailabilityRoutes);
 app.route('/v1/transporters', transporterRoutes);
 app.route('/v1/admin', adminRoutes);
 app.route('/v1/fuel-entries', fuelEntryRoutes);
+app.route('/v1/sync', syncRoutes);
 
 app.notFound((c) => c.json({ error: { code: 'not_found', message: 'No such route' } }, 404));
 app.onError((err, c) => {

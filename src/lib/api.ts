@@ -458,6 +458,13 @@ function tripFromApi(t: ApiTrip): Trip {
   };
 }
 
+// The server's change stamp: it moves whenever anyone saves anything. Open screens
+// compare it every few seconds and reload only when it has moved.
+export async function fetchSyncStamp(): Promise<string> {
+  const res = await request<{ version: string }>('/sync');
+  return String(res.version ?? '0');
+}
+
 export async function fetchTrips(params: { vehicleId?: string; status?: string } = {}): Promise<Trip[]> {
   const qs = new URLSearchParams();
   if (params.vehicleId) qs.set('vehicle_id', params.vehicleId);

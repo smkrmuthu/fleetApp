@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { AppNotification, DriverLeave, DriverMaster, FuelEntry, MasterSettings, MonthlyExpense, Role, TabId, Trip, TripDocument, TripExpenseLine, UserAccount, Vehicle, VehicleUnavailability } from './types';
 import { ROLE_TABS } from './data/mockData';
 import { rupees, toIsoDate } from './utils/calc';
@@ -19,6 +19,9 @@ import { Master } from './components/Master';
 import { DataModel } from './components/DataModel';
 
 type PersonUser = UserAccount & { id: string };
+
+// How often an open screen checks whether someone else has saved something.
+const LIVE_REFRESH_MS = 20_000;
 
 function currentMonthRange(): { from: string; to: string } {
   const now = new Date();
@@ -54,10 +57,21 @@ export function App() {
   const [dateTo, setDateTo] = useState(() => currentMonthRange().to);
   const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
 
-  async function loadAll(currentRole: Role) {
-    setLoading(true);
-    setError('');
+  // The server's change stamp as of the last full load, so the background check can
+  // tell when somebody else has saved something.
+  const dataStamp = useRef<string | null>(null);
+
+  // `quiet` is the background refresh: no loading banner, and a failure is ignored
+  // (the next check tries again) so a weak connection never throws up an error.
+  async function loadAll(currentRole: Role, quiet = false) {
+    if (!quiet) {
+      setLoading(true);
+      setError('');
+    }
     try {
+      // Read the stamp before the data, so a save that lands while loading is
+      // noticed by the next check instead of being missed.
+      dataStamp.current = await api.fetchSyncStamp().catch(() => dataStamp.current);
       // Leaves are fetched for every role, not just Office/Manager — a driver
       // login can enter movements for other drivers too, and needs the same
       // on-leave warning in Add Movement.
@@ -96,11 +110,43 @@ export function App() {
         setExpenseCategories([]);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load data');
+      if (!quiet) setError(e instanceof Error ? e.message : 'Failed to load data');
     } finally {
-      setLoading(false);
+      if (!quiet) setLoading(false);
     }
   }
+
+  // Keep every open screen current: while the app is open and visible, ask the server
+  // every few seconds whether anyone has saved something, and reload quietly if so.
+  // Also checks the moment the app comes back to the front or regains a connection.
+  useEffect(() => {
+    if (!authed) return;
+    let stopped = false;
+    let checking = false;
+    const check = async () => {
+      if (checking || stopped || document.visibilityState !== 'visible') return;
+      checking = true;
+      try {
+        const stamp = await api.fetchSyncStamp();
+        if (!stopped && dataStamp.current !== null && stamp !== dataStamp.current) await loadAll(role, true);
+      } catch { /* offline or a hiccup: try again next time */ } finally {
+        checking = false;
+      }
+    };
+    const timer = window.setInterval(check, LIVE_REFRESH_MS);
+    const onShow = () => { void check(); };
+    document.addEventListener('visibilitychange', onShow);
+    window.addEventListener('focus', onShow);
+    window.addEventListener('online', onShow);
+    return () => {
+      stopped = true;
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', onShow);
+      window.removeEventListener('focus', onShow);
+      window.removeEventListener('online', onShow);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authed, role]);
 
   // The server rejected the sign-in (expired, or the account was switched off).
   useEffect(() => {
