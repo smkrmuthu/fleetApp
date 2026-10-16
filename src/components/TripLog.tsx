@@ -7,9 +7,8 @@ import { MovementReview } from './MovementReview';
 import { DualScroll } from './DualScroll';
 import { exportTripLog } from '../lib/reports';
 import { useExport } from '../lib/useExport';
-import { TRIP_EXPENSE_LABEL } from '../data/mockData';
 import { fetchDocumentBlobUrl, parseDisplayDate } from '../lib/api';
-import { dateInRange, formatDateRange, formatDuration, formatNum, overlappingUnavailability, rupees, tripCost, tripDurationDays, yearOptions } from '../utils/calc';
+import { dateInRange, formatDateRange, formatDuration, formatNum, overlappingUnavailability, rupees, tripCost, tripDurationDays, yearOptions, expenseCategoryLabel } from '../utils/calc';
 import { MonthYearFilter } from './MonthYearFilter';
 import { SortableTh, type SortDir } from './SortableTh';
 
@@ -77,7 +76,7 @@ function TripDetailBody({ t, showFinancials }: { t: Trip; showFinancials: boolea
               <div style={{ display: 'grid', gap: 3, fontSize: 13 }}>
                 {t.expenses.map((l) => (
                   <div key={l.id} style={{ color: 'var(--color-neutral-700)' }}>
-                    {l.date} — {TRIP_EXPENSE_LABEL[l.kind]}
+                    {l.date} — {expenseCategoryLabel(l)}
                     {l.litres != null ? ` · ${l.litres.toFixed(2)} L${l.ratePerLitre != null ? ` × ₹${l.ratePerLitre.toFixed(2)}` : ''}` : ''}
                     {l.details ? ` — ${l.details}` : ''}
                     {' — '}<strong style={{ color: 'var(--color-text)' }}>{rupees(l.amount)}</strong>

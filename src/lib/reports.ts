@@ -1,6 +1,6 @@
 import type { DriverMaster, MasterSettings, MonthlyExpense, Trip, UserAccount, Vehicle } from '../types';
 import { sumVehicles, type VehicleAgg } from '../utils/aggregate';
-import { tripCost, vehicleAge } from '../utils/calc';
+import { tripCost, vehicleAge, expenseCategoryLabel } from '../utils/calc';
 import { parseDisplayDate } from './api';
 import {
   pdfText, dateCell, dec, int, label, money, note, percent, rs, safeName, saveWorkbook, savePdf, th, title,
@@ -83,12 +83,11 @@ export function routeSheet(trips: Trip[]): SheetSpec {
 }
 
 export function expenseLinesSheet(trips: Trip[], withTotal = false): SheetSpec {
-  const kindLabel: Record<string, string> = { diesel: 'Diesel', adblue: 'AdBlue', toll: 'Toll', other: 'Other' };
-  const rows: SheetCell[][] = [[th('Trip no.'), th('Vehicle'), th('Date'), th('Kind'), th('Litres', true), th('Rate / litre', true), th('Amount', true), th('Details')]];
+  const rows: SheetCell[][] = [[th('Trip no.'), th('Vehicle'), th('Date'), th('Category'), th('Litres', true), th('Rate / litre', true), th('Amount', true), th('Details')]];
   for (const t of trips) {
     for (const l of t.expenses) {
       rows.push([
-        t.waybillNo === '—' ? '' : t.waybillNo, t.vehicle, dateCell(parseDisplayDate(l.date) || l.date), kindLabel[l.kind] ?? l.kind,
+        t.waybillNo === '—' ? '' : t.waybillNo, t.vehicle, dateCell(parseDisplayDate(l.date) || l.date), expenseCategoryLabel(l),
         l.litres != null ? dec(l.litres, 2) : null, l.ratePerLitre != null ? money(l.ratePerLitre) : null, money(l.amount), l.details ?? ''
       ]);
     }

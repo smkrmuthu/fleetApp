@@ -23,6 +23,10 @@ interface Props {
   transporters: string[];
   onAddTransporter: (name: string) => Promise<string | null>;
   onRemoveTransporter: (name: string) => void;
+  // Categories offered for an expense entry in Add Movement
+  tripCategories: string[];
+  onAddTripCategory: (name: string) => Promise<string | null>;
+  onRemoveTripCategory: (name: string) => void;
   isManager: boolean;
 }
 
@@ -39,7 +43,7 @@ const fmt = (n: number | null) => (n === null ? '' : String(n));
 export function Master({
   vehicles, drivers, settings, onSave, onSetDefaultDriver, leaves, onAddLeave, onRemoveLeave,
   unavailability, onAddUnavailability, onUpdateUnavailability, onRemoveUnavailability, categories, onAddCategory, onRemoveCategory,
-  transporters, onAddTransporter, onRemoveTransporter, isManager
+  transporters, onAddTransporter, onRemoveTransporter, tripCategories, onAddTripCategory, onRemoveTripCategory, isManager
 }: Props) {
   const rates = settings;
   const [diesel, setDiesel] = useState(fmt(rates.dieselRate));
@@ -173,6 +177,22 @@ export function Master({
   const [newTransporter, setNewTransporter] = useState('');
   const [transporterError, setTransporterError] = useState('');
   const [savingTransporter, setSavingTransporter] = useState(false);
+
+  const [newTripCategory, setNewTripCategory] = useState('');
+  const [tripCategoryError, setTripCategoryError] = useState('');
+  const [savingTripCategory, setSavingTripCategory] = useState(false);
+
+  async function addTripCategory() {
+    const name = newTripCategory.trim();
+    if (!name) return setTripCategoryError('Enter a category name.');
+    if (tripCategories.some((t) => t.toLowerCase() === name.toLowerCase())) return setTripCategoryError('That category already exists.');
+    setTripCategoryError('');
+    setSavingTripCategory(true);
+    const err = await onAddTripCategory(name);
+    setSavingTripCategory(false);
+    if (err) setTripCategoryError(err);
+    else setNewTripCategory('');
+  }
 
   async function addTransporter() {
     const name = newTransporter.trim();
@@ -495,6 +515,47 @@ export function Master({
             {transporters.length === 0 && (
               <tr><td colSpan={2} style={{ color: 'var(--color-neutral-700)' }}>No transporters yet — add one above.</td></tr>
             )}
+          </tbody>
+        </table>
+      </div>
+
+      <h2 style={{ fontSize: 'var(--fs-section)', margin: 'var(--space-8) 0 12px' }}>Expense entry categories</h2>
+      <p style={{ color: 'var(--color-neutral-700)', fontSize: 13, marginTop: -4, marginBottom: 12, maxWidth: '74ch', lineHeight: 1.6 }}>
+        The list offered under "Category" for each expense entry in Add Movement (and shown in the Excel report to filter by).
+        A category is only a label: it does not change any cost or profit figure. Removing one only stops it being offered for new
+        entries; entries already saved keep their category. "Other" is always available and cannot be removed.
+      </p>
+      <div style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: 16, marginBottom: 20, background: 'var(--color-surface)' }}>
+        <form className="filters-grid" onSubmit={(e) => { e.preventDefault(); addTripCategory(); }}>
+          <div className="field field-span-2">
+            <label htmlFor="new-trip-category">Category name</label>
+            <input
+              id="new-trip-category" className="input" type="text" placeholder="e.g. Police / check post" maxLength={60}
+              value={newTripCategory} onChange={(e) => { setNewTripCategory(e.target.value); setTripCategoryError(''); }}
+            />
+          </div>
+          <button type="submit" className="btn btn-primary" style={{ justifySelf: 'start' }} disabled={savingTripCategory}>
+            {savingTripCategory ? 'Adding…' : 'Add category'}
+          </button>
+          {tripCategoryError && <div role="alert" style={{ color: 'var(--color-accent-700)', fontSize: 13 }}>{tripCategoryError}</div>}
+        </form>
+      </div>
+      <div className="scroll-x" style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', marginBottom: 30, background: 'var(--color-surface)' }}>
+        <table className="table" style={{ minWidth: 360 }}>
+          <thead>
+            <tr><th>Category</th><th className="col-actions"></th></tr>
+          </thead>
+          <tbody>
+            {tripCategories.map((name) => (
+              <tr key={name}>
+                <td style={{ fontWeight: 600 }}>{name}</td>
+                <td className="col-actions">
+                  {name !== 'Other' && (
+                    <button type="button" className="btn btn-ghost" style={{ color: 'var(--color-accent-700)' }} onClick={() => onRemoveTripCategory(name)}>Delete</button>
+                  )}
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>

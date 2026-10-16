@@ -161,6 +161,9 @@ export const tripExpenses = sqliteTable(
     ratePaise: integer('rate_paise'),
     amountPaise: integer('amount_paise').notNull(),
     details: text('details'), // required by the API when kind = 'other'
+    // The label picked in Add Movement (a name from trip_expense_categories). It is a tag for
+    // filtering and reports only: costs are still worked out from `kind`.
+    category: text('category'),
     receiptId: text('receipt_id').references(() => receipts.id),
     createdBy: text('created_by').references(() => users.id),
     createdAt: text('created_at').notNull().default(sql`(current_timestamp)`)
@@ -423,5 +426,19 @@ export const settings = sqliteTable(
   },
   (t) => ({
     pk: primaryKey({ columns: [t.orgId, t.key] })
+  })
+);
+
+// The categories offered for an expense entry in Add Movement, edited from Master.
+// Removing one only stops it being offered; entries already saved keep their label.
+export const tripExpenseCategories = sqliteTable(
+  'trip_expense_categories',
+  {
+    orgId: text('org_id').notNull().references(() => orgs.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    active: integer('active', { mode: 'boolean' }).notNull().default(true)
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.orgId, t.name] })
   })
 );

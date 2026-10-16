@@ -214,3 +214,14 @@ export function formatDateRange(from: string, to: string): string {
   };
   return `${fmt(from)} – ${fmt(to)}`;
 }
+
+// The label an expense line is shown under in lists and the Excel report: the
+// category picked in Add Movement for an "other" entry ("Other" when none was
+// picked, as on entries saved before categories existed), or the kind for the
+// fuel and toll lines posted elsewhere.
+export function expenseCategoryLabel(line: { kind: string; category?: string }): string {
+  if (line.kind === 'diesel') return 'Diesel';
+  if (line.kind === 'adblue') return 'AdBlue';
+  if (line.kind === 'toll') return 'Toll';
+  return line.category?.trim() || 'Other';
+}

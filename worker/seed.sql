@@ -102,3 +102,12 @@ INSERT INTO notifications (id, org_id, kind, message, tab, related_trip_id, read
   ('n4', 'org-meridian', 'alert', 'Rafiq A''s licence expires 02 Nov 2026', 'people', NULL, 0, '2026-09-10T06:00:00Z'),
   ('n5', 'org-meridian', 'alert', 'TN52 BK 2290 fitness certificate renewal due 04 Nov 2026', 'people', NULL, 0, '2026-09-10T06:00:00Z'),
   ('n6', 'org-meridian', 'alert', 'TN45 CQ 9087 fitness certificate renewal due 29 Sep 2026', 'people', NULL, 0, '2026-09-10T06:00:00Z');
+
+-- Starting categories for expense entries in Add Movement (production gets these from migration 0016).
+INSERT INTO trip_expense_categories (org_id, name, active) VALUES
+  ('org-meridian', 'Diesel', 1),
+  ('org-meridian', 'Driver Trip Expenses', 1),
+  ('org-meridian', 'Toll', 1),
+  ('org-meridian', 'Loading / Unloading', 1),
+  ('org-meridian', 'Repairs & Tyres', 1),
+  ('org-meridian', 'Other', 1);

@@ -94,6 +94,9 @@ export interface TripExpenseLine {
   ratePerLitre?: number;
   amount: number;
   details?: string;
+  // The label picked in Add Movement (a name from Master). A tag for filtering and
+  // reports only: costs are still worked out from `kind`.
+  category?: string;
 }
 
 // `base64` is only ever set for a document staged locally in the Add

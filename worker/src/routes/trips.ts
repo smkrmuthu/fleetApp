@@ -23,7 +23,8 @@ const expenseLineSchema = z
     litres: z.number().nonnegative().optional(),
     ratePaise: z.number().int().nonnegative().optional(),
     amountPaise: z.number().int().nonnegative(),
-    details: z.string().optional()
+    details: z.string().optional(),
+    category: z.string().trim().max(60).optional()
   })
   .refine((l) => l.kind !== 'other' || !!l.details?.trim(), { message: "details is required when kind = 'other'", path: ['details'] });
 
@@ -285,6 +286,7 @@ tripRoutes.post('/', async (c) => {
     ratePaise: e.ratePaise,
     amountPaise: e.amountPaise,
     details: e.details,
+    category: e.category || null,
     createdBy: auth.userId,
     createdAt: now
   }));
@@ -430,7 +432,7 @@ tripRoutes.post('/:id/expenses', async (c) => {
     return c.json({ error: { code: 'forbidden', message: 'Only a manager can change a completed movement' } }, 403);
   }
 
-  const row = { id: parsed.data.id ?? newId(), orgId: auth.orgId, tripId: id, createdBy: auth.userId, createdAt: nowIso(), ...parsed.data };
+  const row = { id: parsed.data.id ?? newId(), orgId: auth.orgId, tripId: id, createdBy: auth.userId, createdAt: nowIso(), ...parsed.data, category: parsed.data.category || null };
   await db.insert(tripExpenses).values(row);
   await writeAudit(db, auth.orgId, 'trip_expenses', row.id, 'insert', { tripId: id, kind: row.kind }, auth.userId);
   return c.json(row, 201);
@@ -494,7 +496,8 @@ tripRoutes.patch('/:id/expenses/:expenseId', async (c) => {
   const d = parsed.data;
   const changes = {
     spentOn: d.spentOn, kind: d.kind, litres: d.litres ?? null, ratePaise: d.ratePaise ?? null,
-    amountPaise: d.amountPaise, details: d.details?.trim() ? d.details.trim() : null
+    amountPaise: d.amountPaise, details: d.details?.trim() ? d.details.trim() : null,
+    category: d.category || null
   };
   await db.update(tripExpenses).set(changes).where(eq(tripExpenses.id, expenseId));
   await writeAudit(db, auth.orgId, 'trip_expenses', expenseId, 'update', { tripId: id, ...changes }, auth.userId);

@@ -1,8 +1,7 @@
 import { useEffect, useRef } from 'react';
 import type { DriverLeave, TripDocument, TripExpenseLine, TripFormState, TripStop, VehicleUnavailability } from '../types';
-import { TRIP_EXPENSE_LABEL } from '../data/mockData';
 import { formatDisplayDate, formatDisplayDateTime } from '../lib/api';
-import { overlappingLeaves, overlappingUnavailability, rupees, toNumber } from '../utils/calc';
+import { overlappingLeaves, overlappingUnavailability, rupees, toNumber, expenseCategoryLabel } from '../utils/calc';
 
 type Action = 'create' | 'start' | 'save' | 'complete';
 
@@ -204,7 +203,7 @@ export function MovementReview({ action, form, original, lines, originalLines, s
         <div className="scroll-x" style={{ padding: '0 12px 8px' }}>
           <table className="table" style={{ minWidth: 480, fontSize: 13 }}>
             <thead>
-              <tr><th>Date</th><th>Kind</th><th>Detail</th><th style={{ textAlign: 'right' }}>Amount</th></tr>
+              <tr><th>Date</th><th>Category</th><th>Detail</th><th style={{ textAlign: 'right' }}>Amount</th></tr>
             </thead>
             <tbody>
               {lines.map((l) => {
@@ -212,7 +211,7 @@ export function MovementReview({ action, form, original, lines, originalLines, s
                 return (
                   <tr key={l.id} style={isNew ? { color: changedColor } : undefined}>
                     <td style={{ whiteSpace: 'nowrap' }}>{lineDate(l.date)}</td>
-                    <td>{TRIP_EXPENSE_LABEL[l.kind]}{isNew && tag('New', changedColor)}</td>
+                    <td>{expenseCategoryLabel(l)}{isNew && tag('New', changedColor)}</td>
                     <td>{lineDetail(l)}</td>
                     <td style={{ textAlign: 'right', fontWeight: 600 }}>{rupees(l.amount)}</td>
                   </tr>
@@ -221,7 +220,7 @@ export function MovementReview({ action, form, original, lines, originalLines, s
               {removedLines.map((l) => (
                 <tr key={l.id} style={{ color: changedColor, textDecoration: 'line-through' }}>
                   <td style={{ whiteSpace: 'nowrap' }}>{lineDate(l.date)}</td>
-                  <td>{TRIP_EXPENSE_LABEL[l.kind]}<span style={{ textDecoration: 'none', display: 'inline-block' }}>{tag('Removed', changedColor)}</span></td>
+                  <td>{expenseCategoryLabel(l)}<span style={{ textDecoration: 'none', display: 'inline-block' }}>{tag('Removed', changedColor)}</span></td>
                   <td>{lineDetail(l)}</td>
                   <td style={{ textAlign: 'right' }}>{rupees(l.amount)}</td>
                 </tr>

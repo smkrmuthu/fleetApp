@@ -423,9 +423,23 @@ export async function deleteTransporter(name: string): Promise<void> {
   await request(`/transporters/${encodeURIComponent(name)}`, { method: 'DELETE' });
 }
 
+// ── expense categories for Add Movement entries (Master) ─────────────────
+export async function fetchTripExpenseCategories(): Promise<string[]> {
+  const res = await request<{ categories: string[] }>('/trip-expense-categories');
+  return res.categories;
+}
+
+export async function createTripExpenseCategory(name: string): Promise<void> {
+  await request('/trip-expense-categories', { method: 'POST', body: JSON.stringify({ name }) });
+}
+
+export async function deleteTripExpenseCategory(name: string): Promise<void> {
+  await request(`/trip-expense-categories/${encodeURIComponent(name)}`, { method: 'DELETE' });
+}
+
 // ── trips ────────────────────────────────────────────────────────────────
 interface ApiTripExpense {
-  id: string; spentOn: string; kind: TripExpenseKind; litres: number | null; ratePaise: number | null; amountPaise: number; details: string | null;
+  id: string; spentOn: string; kind: TripExpenseKind; litres: number | null; ratePaise: number | null; amountPaise: number; details: string | null; category?: string | null;
 }
 interface ApiTripDocument {
   id: string; filename: string; mimeType: string | null;
@@ -451,7 +465,7 @@ function tripFromApi(t: ApiTrip): Trip {
     transporter: t.transporter ?? undefined,
     expenses: t.expenses.map((e) => ({
       id: e.id, date: formatDisplayDate(e.spentOn), kind: e.kind, litres: e.litres ?? undefined,
-      ratePerLitre: e.ratePaise != null ? paiseToRupees(e.ratePaise) : undefined, amount: paiseToRupees(e.amountPaise), details: e.details ?? undefined
+      ratePerLitre: e.ratePaise != null ? paiseToRupees(e.ratePaise) : undefined, amount: paiseToRupees(e.amountPaise), details: e.details ?? undefined, category: e.category ?? undefined
     })),
     stops: (t.stops ?? []).map((st) => ({ id: st.id, location: st.location, date: st.date ?? undefined, odo: st.odo ?? undefined, note: st.note ?? undefined })),
     documents: (t.documents ?? []).map((d) => ({ id: d.id, filename: d.filename, mimeType: d.mimeType ?? undefined }))
@@ -518,7 +532,7 @@ export async function createTrip(t: NewTripInput): Promise<Trip> {
       stops: (t.stops ?? []).map(stopToApi),
       expenses: t.expenses.map((l) => ({
         spentOn: l.date, kind: l.kind, litres: l.litres, ratePaise: l.ratePerLitre != null ? rupeesToPaise(l.ratePerLitre) : undefined,
-        amountPaise: rupeesToPaise(l.amount), details: l.details
+        amountPaise: rupeesToPaise(l.amount), details: l.details, category: l.category
       })),
       documents: (t.documents ?? []).filter((d) => d.base64).map((d) => ({ filename: d.filename, mimeType: d.mimeType || 'application/octet-stream', base64: d.base64 }))
     })
@@ -560,7 +574,7 @@ export async function addTripExpense(tripId: string, line: TripExpenseLine): Pro
     body: JSON.stringify({
       spentOn: line.date, kind: line.kind, litres: line.litres,
       ratePaise: line.ratePerLitre != null ? rupeesToPaise(line.ratePerLitre) : undefined,
-      amountPaise: rupeesToPaise(line.amount), details: line.details
+      amountPaise: rupeesToPaise(line.amount), details: line.details, category: line.category
     })
   });
 }
@@ -571,7 +585,7 @@ export async function updateTripExpense(tripId: string, expenseId: string, line:
     body: JSON.stringify({
       spentOn: line.date, kind: line.kind, litres: line.litres,
       ratePaise: line.ratePerLitre != null ? rupeesToPaise(line.ratePerLitre) : undefined,
-      amountPaise: rupeesToPaise(line.amount), details: line.details
+      amountPaise: rupeesToPaise(line.amount), details: line.details, category: line.category
     })
   });
 }

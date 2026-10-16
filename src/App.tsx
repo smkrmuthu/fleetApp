@@ -50,6 +50,7 @@ export function App() {
   const [vehicleUnavailability, setVehicleUnavailability] = useState<VehicleUnavailability[]>([]);
   const [expenseCategories, setExpenseCategories] = useState<string[]>([]);
   const [transporters, setTransporters] = useState<string[]>([]);
+  const [tripCategories, setTripCategories] = useState<string[]>(['Other']);
   const [fuelEntries, setFuelEntries] = useState<FuelEntry[]>([]);
   const [vehicleFilter, setVehicleFilter] = useState('all');
   const [driverFilter, setDriverFilter] = useState('');
@@ -77,13 +78,16 @@ export function App() {
       // on-leave warning in Add Movement.
       // Transporters are fetched for every role too — Add Movement's dropdown
       // is available to drivers.
-      const [v, d, t, e, r, l, u2, tr] = await Promise.all([
+      const [v, d, t, e, r, l, u2, tr, tc] = await Promise.all([
         api.fetchVehicles(), api.fetchDrivers(), api.fetchTrips(),
         // Fixed costs are not for drivers (the server refuses them anyway).
         currentRole === 'Driver' ? Promise.resolve([] as MonthlyExpense[]) : api.fetchMonthlyExpenses(),
-        api.fetchMasterSettings(), api.fetchDriverLeaves(), api.fetchVehicleUnavailability(), api.fetchTransporters()
+        api.fetchMasterSettings(), api.fetchDriverLeaves(), api.fetchVehicleUnavailability(), api.fetchTransporters(),
+        // Every role: the Category box in Add Movement is available to drivers too.
+        api.fetchTripExpenseCategories()
       ]);
       setTransporters(tr);
+      setTripCategories(tc);
       setVehicles(v);
       setDrivers(d);
       setTrips(t);
@@ -493,6 +497,25 @@ export function App() {
     }
   }
 
+  async function addTripCategory(name: string): Promise<string | null> {
+    try {
+      await api.createTripExpenseCategory(name);
+      setTripCategories(await api.fetchTripExpenseCategories());
+      return null;
+    } catch (e) {
+      return e instanceof Error ? e.message : 'Could not add category';
+    }
+  }
+
+  async function removeTripCategory(name: string) {
+    try {
+      await api.deleteTripExpenseCategory(name);
+      setTripCategories((prev) => prev.filter((t) => t !== name));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not delete category');
+    }
+  }
+
   async function removeVehicleUnavailability(id: string) {
     try {
       await api.deleteVehicleUnavailability(id);
@@ -676,6 +699,7 @@ export function App() {
             leaves={driverLeaves}
             unavailability={vehicleUnavailability}
             transporters={transporters}
+            tripCategories={tripCategories}
             defaultDriverName={role === 'Driver' ? currentUserName : undefined}
             editingTrip={editingTrip}
             onCancelEdit={cancelEditingTrip}
@@ -777,8 +801,11 @@ export function App() {
             onUpdateUnavailability={editVehicleUnavailability}
             onRemoveUnavailability={removeVehicleUnavailability}
             transporters={transporters}
+            tripCategories={tripCategories}
             onAddTransporter={addTransporter}
             onRemoveTransporter={removeTransporter}
+            onAddTripCategory={addTripCategory}
+            onRemoveTripCategory={removeTripCategory}
             categories={expenseCategories}
             onAddCategory={addExpenseCategory}
             onRemoveCategory={removeExpenseCategory}

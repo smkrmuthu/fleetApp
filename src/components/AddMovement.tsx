@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { DriverLeave, DriverMaster, MasterSettings, Trip, TripDocument, TripExpenseLine, TripFormState, TripStop, Vehicle, VehicleUnavailability } from '../types';
-import { TRIP_EXPENSE_LABEL } from '../data/mockData';
-import { dieselLitres, overlappingLeaves, overlappingUnavailability, rupees, todayIso, toNumber } from '../utils/calc';
+import { dieselLitres, overlappingLeaves, overlappingUnavailability, rupees, todayIso, toNumber, expenseCategoryLabel } from '../utils/calc';
 import { MovementReview } from './MovementReview';
 import { fetchDocumentBlobUrl, fetchNextTripNumberPreview, formatDisplayDateTime, parseDisplayDate } from '../lib/api';
 
@@ -43,10 +42,10 @@ export function formFromTrip(trip: Trip): TripFormState {
 
 // Trip Movement only takes "other" expenses now — fuel is posted from the Fuel
 // Expenses tab (and toll is Fastag under Monthly Expenses).
-interface NewLine { date: string; amount: string; details: string }
+interface NewLine { date: string; amount: string; details: string; category: string }
 
 function blankLine(): NewLine {
-  return { date: todayIso(), amount: '0', details: '' };
+  return { date: todayIso(), amount: '0', details: '', category: 'Other' };
 }
 
 // Toll isn't entered per trip any more — Fastag is recorded under Monthly
@@ -84,12 +83,14 @@ interface Props {
   leaves: DriverLeave[];
   unavailability: VehicleUnavailability[];
   transporters: string[];
+  // The Master list offered in the Category box of an expense entry
+  tripCategories: string[];
   defaultDriverName?: string;
   editingTrip?: Trip | null;
   onCancelEdit?: () => void;
 }
 
-export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, leaves, unavailability, transporters, defaultDriverName, editingTrip, onCancelEdit }: Props) {
+export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, leaves, unavailability, transporters, tripCategories, defaultDriverName, editingTrip, onCancelEdit }: Props) {
   const showFinancials = !driverOnly;
   const isEditing = !!editingTrip;
   const isCompleted = editingTrip?.status === 'approved';
@@ -167,7 +168,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, l
   function addLine() {
     const amount = toNumber(newLine.amount);
     if (!amount || !newLine.details.trim()) return;
-    const line: TripExpenseLine = { id: 'x' + Date.now(), date: newLine.date, kind: 'other', amount, details: newLine.details.trim() };
+    const line: TripExpenseLine = { id: 'x' + Date.now(), date: newLine.date, kind: 'other', amount, details: newLine.details.trim(), category: newLine.category || 'Other' };
     setLines((prev) => [...prev, line]);
     setNewLine(blankLine());
   }
@@ -175,7 +176,7 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, l
   // Edit = put the entry back in the form above and take it off the list; press
   // Add entry to save it again. Fuel lines are edited on the Fuel Expenses tab.
   function editLine(l: TripExpenseLine) {
-    setNewLine({ date: parseDisplayDate(l.date) || l.date, amount: String(l.amount), details: l.details ?? '' });
+    setNewLine({ date: parseDisplayDate(l.date) || l.date, amount: String(l.amount), details: l.details ?? '', category: l.category || 'Other' });
     setLines((prev) => prev.filter((x) => x.id !== l.id));
   }
 
@@ -582,6 +583,15 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, l
                 <input className="input" type="number" step="any" inputMode="decimal" value={newLine.amount} onChange={(e) => setNewLine((l) => ({ ...l, amount: e.target.value }))} />
               </div>
               <div className="field">
+                <label htmlFor="entry-category">Category *</label>
+                <select id="entry-category" className="input" value={newLine.category} onChange={(e) => setNewLine((l) => ({ ...l, category: e.target.value }))}>
+                  {/* 'Other' is always there; a category since removed from Master still shows on the entry it was saved with. */}
+                  {[...new Set([...tripCategories, 'Other', newLine.category])].map((c) => (
+                    <option key={c} value={c}>{c}{!tripCategories.includes(c) && c !== 'Other' ? ' (removed)' : ''}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="field">
                 <label>Details *</label>
                 <input className="input" type="text" placeholder="What was this for?" value={newLine.details} onChange={(e) => setNewLine((l) => ({ ...l, details: e.target.value }))} />
               </div>
@@ -594,13 +604,13 @@ export function AddMovement({ onSubmit, driverOnly, vehicles, drivers, master, l
               <div className="scroll-x" style={{ border: '1px solid var(--color-neutral-300)' }}>
                 <table className="table" style={{ minWidth: 620 }}>
                   <thead>
-                    <tr><th>Date</th><th>Kind</th><th>Details</th><th style={{ textAlign: 'right' }}>Litres</th><th style={{ textAlign: 'right' }}>Amount</th><th></th></tr>
+                    <tr><th>Date</th><th>Category</th><th>Details</th><th style={{ textAlign: 'right' }}>Litres</th><th style={{ textAlign: 'right' }}>Amount</th><th></th></tr>
                   </thead>
                   <tbody>
                     {lines.map((l) => (
                       <tr key={l.id}>
                         <td style={{ whiteSpace: 'nowrap' }}>{l.date}</td>
-                        <td>{TRIP_EXPENSE_LABEL[l.kind]}</td>
+                        <td>{expenseCategoryLabel(l)}</td>
                         <td style={{ color: 'var(--color-neutral-700)' }}>{l.details ?? '—'}</td>
                         <td style={{ textAlign: 'right' }}>{l.litres != null ? l.litres.toFixed(2) : '—'}</td>
                         <td style={{ textAlign: 'right' }}>{rupees(l.amount)}</td>
