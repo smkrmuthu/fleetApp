@@ -3,7 +3,7 @@
 For whoever looks after the app. Read this first; the database details are in
 [database-backup-and-restore.md](database-backup-and-restore.md).
 
-Last updated: 2026-10-16 (live refresh and the Draft rule released; API version d5c0953f).
+Last updated: 2026-10-16 (expense entry categories released; migration 0016 applied; API version 849f0e67).
 
 ## 1. What runs where
 
@@ -114,7 +114,7 @@ The older `order-dump.py` route is kept only for `wrangler d1 export` files.
 
 ## 8. Android app
 
-`npx vite build && npx cap sync android && cd android && ./gradlew assembleDebug`. Latest build: 16 October 2026, `FleetLedger-debug-20261016-a.apk` (7.0 MB) in `~/FleetLedger-apk/`, built from `main` at `c1007a9` (new design, Total rows, the route map, the Draft rule and live refresh) and checked to hold the same web bundle as the live sites (`index-Dl2zYfcW.js`, cache `fleet-ledger-shell-v16`). It was built and inspected only; it has not been run on a phone or emulator. Needs JDK 21 and the Android SDK
+`npx vite build && npx cap sync android && cd android && ./gradlew assembleDebug`. Latest build: 16 October 2026, `FleetLedger-debug-20261016-b.apk` (7.0 MB) in `~/FleetLedger-apk/`, built from `main` at `aa306b4` (new design, Total rows, the route map, the Draft rule, live refresh and expense entry categories) and checked to hold the same web bundle as the live sites (`index-2bPEIPAE.js`, cache `fleet-ledger-shell-v17`). It was built and inspected only; it has not been run on a phone or emulator. Needs JDK 21 and the Android SDK
 (`JAVA_HOME`, `ANDROID_HOME`). This produces a **debug** file for installing directly. A Play Store release needs a
 Google Play developer account and a signing key that only the owner should hold, and is not set up. The iPhone app
 needs Xcode and an Apple developer account and is not set up.
@@ -137,6 +137,7 @@ needs Xcode and an Apple developer account and is not set up.
 - No alert emails or paging if the app or the nightly backup fails; the Data Backup panel is the only warning.
 - Screens load all records for the company; this is fine for thousands of trips but will need paging later.
 - Live refresh: every open, visible screen asks `GET /v1/sync` (one row) every 20 seconds, and reloads everything only when the change stamp (`settings` key `data_version`, moved by one middleware after any successful write) has moved. About 1,800 checks per user per 10-hour day; with many more users, or on the free Workers plan's 100,000 requests a day, raise `LIVE_REFRESH_MS` in `src/App.tsx`.
+- Expense entry categories: each "other" expense entry in Add Movement carries a category chosen from a list the Manager keeps under Master (table `trip_expense_categories`, added by migration 0016 with six starting values; `Other` can never be removed). It is a label only: costs and profit still come from the entry's `kind`. The Excel expense-lines sheet shows it as the Category column; entries saved before categories show "Other". 0016 was applied to production on 2026-10-16 after a backup (it only adds a table and a nullable column, so the old API kept working until the new one was deployed).
 - A movement an Office or Manager enters without its end odometer starts as Draft (open, can take fuel, finished with Complete Trip); `pending` only remains on older records. Rule: `worker/src/lib/tripStatus.ts`.
 - Backups live in the same Cloudflare account (monthly off-site copy is manual).
 - One company per deployment.
