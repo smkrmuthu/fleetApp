@@ -130,6 +130,8 @@ export interface Stat {
   raw: number;
   fmt: 'int' | 'dec' | 'money';
   note: string;
+  // 'category' marks a piece of the Trip expense figure: on screen these sit in their own row
+  group?: 'category';
 }
 
 const statCell = (s: Stat): SheetCell => (s.fmt === 'money' ? money(s.raw) : s.fmt === 'dec' ? dec(s.raw) : int(s.raw));

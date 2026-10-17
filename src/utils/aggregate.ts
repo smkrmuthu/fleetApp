@@ -1,5 +1,5 @@
 import type { MonthlyExpense, Trip, Vehicle } from '../types';
-import { tripCost } from './calc';
+import { expenseCategoryLabel, tripCost } from './calc';
 
 export interface VehicleAgg {
   id: string;
@@ -66,4 +66,42 @@ export function aggregateByVehicle(trips: Trip[], expenses: MonthlyExpense[], ve
       cost, profit: agg.revenue - cost, ...agg
     };
   });
+}
+
+export interface CategoryTotal { label: string; amount: number; entries: number }
+
+// The trip expense of the movements shown, split by the category on each entry, so the
+// pieces add up to the "Trip expense" figure exactly. A diesel fill posted from Fuel
+// Expenses counts as Diesel, an entry saved before categories existed as Other, and Fastag
+// (a monthly expense, shown as toll on this screen) as Toll. Every Master category is listed
+// in Master order even when it is zero; any other label found in the data (AdBlue, or a
+// category since removed from Master) follows, largest first. Worked in whole paise so no
+// rounding drift creeps in.
+export function expenseByCategory(trips: Trip[], fastagTotal: number, fastagEntries: number, master: string[]): CategoryTotal[] {
+  const paise = (rupees: number) => Math.round(rupees * 100);
+  const byKey = new Map<string, { label: string; paise: number; entries: number }>();
+  const slot = (label: string) => {
+    const key = label.toLowerCase();
+    let s = byKey.get(key);
+    if (!s) { s = { label, paise: 0, entries: 0 }; byKey.set(key, s); }
+    return s;
+  };
+  for (const name of master) slot(name);
+  for (const t of trips) {
+    for (const l of t.expenses) {
+      const s = slot(expenseCategoryLabel(l));
+      s.paise += paise(l.amount);
+      s.entries += 1;
+    }
+  }
+  if (fastagTotal) {
+    const s = slot('Toll');
+    s.paise += paise(fastagTotal);
+    s.entries += fastagEntries;
+  }
+  const inMaster = new Set(master.map((m) => m.toLowerCase()));
+  const all = [...byKey.entries()].map(([key, s]) => ({ key, label: s.label, amount: s.paise / 100, entries: s.entries }));
+  const listed = master.map((m) => all.find((a) => a.key === m.toLowerCase())!);
+  const extra = all.filter((a) => !inMaster.has(a.key) && (a.amount !== 0 || a.entries > 0)).sort((x, y) => y.amount - x.amount);
+  return [...listed, ...extra].map(({ label, amount, entries }) => ({ label, amount, entries }));
 }

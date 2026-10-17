@@ -674,6 +674,7 @@ export function App() {
         {shownTab === 'summary' && (
           <MovementSummary
             trips={trips}
+            tripCategories={tripCategories}
             expenses={expenses}
             vehicles={vehicles}
             drivers={drivers}

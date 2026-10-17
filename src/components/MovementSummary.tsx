@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { DriverMaster, MonthlyExpense, Trip, Vehicle } from '../types';
 import type { VehicleAgg } from '../utils/aggregate';
-import { aggregateByVehicle, isFastag, sumVehicles } from '../utils/aggregate';
+import { aggregateByVehicle, expenseByCategory, isFastag, sumVehicles } from '../utils/aggregate';
 import { dateInRange, formatDateRange, formatNum, rupees, tripCost, yearOptions } from '../utils/calc';
 import { MonthYearFilter } from './MonthYearFilter';
 import { exportSummaryExcel, exportSummaryPdf, type Stat, type SummaryData } from '../lib/reports';
@@ -10,6 +10,8 @@ import { useExport } from '../lib/useExport';
 interface Props {
   trips: Trip[];
   expenses: MonthlyExpense[];
+  // The expense categories kept under Master, in order: one box each below Trip expense
+  tripCategories: string[];
   vehicles: Vehicle[];
   drivers: DriverMaster[];
   vehicleFilter: string;
@@ -32,7 +34,7 @@ function statValueSize(value: string): number {
   return 24;
 }
 
-export function MovementSummary({ trips, expenses, vehicles, drivers, vehicleFilter, driverFilter, dateFrom, dateTo, onVehicleFilter, onDriverFilter, onDateFrom, onDateTo, onResetFilters }: Props) {
+export function MovementSummary({ trips, expenses, tripCategories, vehicles, drivers, vehicleFilter, driverFilter, dateFrom, dateTo, onVehicleFilter, onDriverFilter, onDateFrom, onDateTo, onResetFilters }: Props) {
   const rows = trips.filter(
     (t) => (vehicleFilter === 'all' || t.vehicle === vehicleFilter) &&
       (!driverFilter || t.driver === driverFilter) &&
@@ -103,6 +105,17 @@ export function MovementSummary({ trips, expenses, vehicles, drivers, vehicleFil
     );
   }
 
+  // One box per expense category, right after Trip expense; together they make up that figure.
+  const fastagEntries = expenseRows.filter(isFastag).length;
+  const categoryStats: Stat[] = expenseByCategory(rows, fastagTotal, fastagEntries, tripCategories).map((c) => ({
+    label: c.label,
+    value: rupees(c.amount),
+    raw: c.amount,
+    fmt: 'money' as const,
+    group: 'category' as const,
+    note: `${tripExpenseShown ? Math.round((c.amount / tripExpenseShown) * 100) : 0}% of trip expense${c.label.toLowerCase() === 'toll' && fastagTotal ? ' (incl. Fastag)' : ''}`
+  }));
+
   const avgPerKm = totals.km ? tripExpenseShown / totals.km : 0;
   const profit = totals.rev - totals.exp - monthlyTotal;
   const stats: Stat[] = [
@@ -111,6 +124,7 @@ export function MovementSummary({ trips, expenses, vehicles, drivers, vehicleFil
     { label: 'Total km', value: formatNum(totals.km), raw: totals.km, fmt: 'int', note: 'odometer based' },
     { label: 'Total tons', value: formatNum(totals.tons, 2), raw: totals.tons, fmt: 'dec', note: 'loading weight' },
     { label: 'Trip expense', value: rupees(tripExpenseShown), raw: tripExpenseShown, fmt: 'money', note: 'diesel, toll, other' },
+    ...categoryStats,
     { label: 'Fixed costs', value: rupees(fixedShown), raw: fixedShown, fmt: 'money', note: 'permits, insurance, EMI' },
     { label: 'Avg ₹/km', value: totals.km ? rupees(avgPerKm) : '₹0', raw: avgPerKm, fmt: 'money', note: 'running cost' },
     { label: 'Revenue', value: rupees(totals.rev), raw: totals.rev, fmt: 'money', note: 'billed to consignee' },
@@ -172,8 +186,8 @@ export function MovementSummary({ trips, expenses, vehicles, drivers, vehicleFil
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 'var(--space-4)', marginBottom: 28 }}>
-        {stats.map((s) => (
+      {(() => {
+        const card = (s: Stat) => (
           <div key={s.label} className="card kpi-card" style={{ minWidth: 0 }}>
             <div className="stat-label">{s.label}</div>
             <div
@@ -187,8 +201,23 @@ export function MovementSummary({ trips, expenses, vehicles, drivers, vehicleFil
             </div>
             <div className="kpi-sub">{s.note}</div>
           </div>
-        ))}
-      </div>
+        );
+        const grid = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 'var(--space-4)' } as const;
+        return (
+          <>
+            <div style={{ ...grid, marginBottom: 28 }}>{stats.filter((s) => !s.group).map(card)}</div>
+            {categoryStats.length > 0 && (
+              <>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, marginBottom: 12 }}>
+                  <h2 style={{ fontSize: 'var(--fs-section)' }}>Trip expense by category</h2>
+                  <span style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>The pieces add up to the Trip expense above</span>
+                </div>
+                <div style={{ ...grid, marginBottom: 28 }}>{categoryStats.map(card)}</div>
+              </>
+            )}
+          </>
+        );
+      })()}
 
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, marginBottom: 12 }}>
         <h2 style={{ fontSize: 'var(--fs-section)' }}>Vehicle-wise</h2>
