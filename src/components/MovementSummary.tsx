@@ -116,7 +116,9 @@ export function MovementSummary({ trips, expenses, tripCategories, vehicles, dri
     note: `${tripExpenseShown ? Math.round((c.amount / tripExpenseShown) * 100) : 0}% of trip expense${c.label.toLowerCase() === 'toll' && fastagTotal ? ' (incl. Fastag)' : ''}`
   }));
 
-  const profit = totals.rev - totals.exp - monthlyTotal;
+  // Everything spent in the period: trip expense plus monthly expenses (Fastag is one of the monthly expenses, so it is counted once).
+  const totalCosts = totals.exp + monthlyTotal;
+  const profit = totals.rev - totalCosts;
   const stats: Stat[] = [
     { label: 'Movements', value: formatNum(rows.length), raw: rows.length, fmt: 'int', note: 'gated this month' },
     { label: 'Vehicles', value: formatNum(byVehicle.filter((b) => b.trips).length), raw: byVehicle.filter((b) => b.trips).length, fmt: 'int', note: `active of ${vehicles.length}` },
@@ -126,6 +128,7 @@ export function MovementSummary({ trips, expenses, tripCategories, vehicles, dri
     ...categoryStats,
     { label: 'Fixed costs', value: rupees(fixedShown), raw: fixedShown, fmt: 'money', note: 'permits, insurance, EMI' },
     { label: 'Revenue', value: rupees(totals.rev), raw: totals.rev, fmt: 'money', note: 'billed to consignee' },
+    { label: 'Total costs', value: rupees(totalCosts), raw: totalCosts, fmt: 'money', note: 'trip expense + fixed costs' },
     { label: 'Profit', value: rupees(profit), raw: profit, fmt: 'money', note: 'after monthly expenses' }
   ];
 
