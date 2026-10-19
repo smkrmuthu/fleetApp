@@ -116,7 +116,6 @@ export function MovementSummary({ trips, expenses, tripCategories, vehicles, dri
     note: `${tripExpenseShown ? Math.round((c.amount / tripExpenseShown) * 100) : 0}% of trip expense${c.label.toLowerCase() === 'toll' && fastagTotal ? ' (incl. Fastag)' : ''}`
   }));
 
-  const avgPerKm = totals.km ? tripExpenseShown / totals.km : 0;
   const profit = totals.rev - totals.exp - monthlyTotal;
   const stats: Stat[] = [
     { label: 'Movements', value: formatNum(rows.length), raw: rows.length, fmt: 'int', note: 'gated this month' },
@@ -126,7 +125,6 @@ export function MovementSummary({ trips, expenses, tripCategories, vehicles, dri
     { label: 'Trip expense', value: rupees(tripExpenseShown), raw: tripExpenseShown, fmt: 'money', note: 'diesel, toll, other' },
     ...categoryStats,
     { label: 'Fixed costs', value: rupees(fixedShown), raw: fixedShown, fmt: 'money', note: 'permits, insurance, EMI' },
-    { label: 'Avg ₹/km', value: totals.km ? rupees(avgPerKm) : '₹0', raw: avgPerKm, fmt: 'money', note: 'running cost' },
     { label: 'Revenue', value: rupees(totals.rev), raw: totals.rev, fmt: 'money', note: 'billed to consignee' },
     { label: 'Profit', value: rupees(profit), raw: profit, fmt: 'money', note: 'after monthly expenses' }
   ];
@@ -202,10 +200,13 @@ export function MovementSummary({ trips, expenses, tripCategories, vehicles, dri
             <div className="kpi-sub">{s.note}</div>
           </div>
         );
+        // Totals first, then where the trip expense went, then revenue and profit.
+        const main = stats.filter((s) => !s.group);
+        const split = main.findIndex((s) => s.label === 'Revenue');
         const grid = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 'var(--space-4)' } as const;
         return (
           <>
-            <div style={{ ...grid, marginBottom: 28 }}>{stats.filter((s) => !s.group).map(card)}</div>
+            <div style={{ ...grid, marginBottom: 28 }}>{main.slice(0, split).map(card)}</div>
             {categoryStats.length > 0 && (
               <>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, marginBottom: 12 }}>
@@ -215,6 +216,7 @@ export function MovementSummary({ trips, expenses, tripCategories, vehicles, dri
                 <div style={{ ...grid, marginBottom: 28 }}>{categoryStats.map(card)}</div>
               </>
             )}
+            <div style={{ ...grid, marginBottom: 28 }}>{main.slice(split).map(card)}</div>
           </>
         );
       })()}
