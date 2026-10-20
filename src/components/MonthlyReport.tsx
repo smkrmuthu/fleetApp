@@ -1,5 +1,5 @@
 import type { DriverMaster, MonthlyExpense, Trip, Vehicle } from '../types';
-import { aggregateByVehicle, sumVehicles } from '../utils/aggregate';
+import { aggregateByVehicle, filterMonthlyExpenses, sumVehicles } from '../utils/aggregate';
 import { dateInRange, formatDateRange, formatNum, rupees, tripCost, yearOptions } from '../utils/calc';
 import { MonthYearFilter } from './MonthYearFilter';
 import { exportReportExcel, exportReportPdf, type ReportData, type Stat } from '../lib/reports';
@@ -27,7 +27,7 @@ export function MonthlyReport({ trips: allTrips, expenses: allExpenses, vehicles
       (!driverFilter || t.driver === driverFilter) &&
       dateInRange(t.loadDate, dateFrom, dateTo)
   );
-  const expenses = allExpenses.filter((e) => dateInRange(e.date, dateFrom, dateTo));
+  const expenses = filterMonthlyExpenses(allExpenses, { vehicle: vehicleFilter, driver: driverFilter, from: dateFrom, to: dateTo });
   const rangeLabel = formatDateRange(dateFrom, dateTo);
 
   const totals = trips.reduce(

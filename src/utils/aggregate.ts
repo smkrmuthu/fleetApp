@@ -1,5 +1,5 @@
 import type { MonthlyExpense, Trip, Vehicle } from '../types';
-import { expenseCategoryLabel, tripCost } from './calc';
+import { dateInRange, expenseCategoryLabel, tripCost } from './calc';
 
 export interface VehicleAgg {
   id: string;
@@ -104,4 +104,19 @@ export function expenseByCategory(trips: Trip[], fastagTotal: number, fastagEntr
   const listed = master.map((m) => all.find((a) => a.key === m.toLowerCase())!);
   const extra = all.filter((a) => !inMaster.has(a.key) && (a.amount !== 0 || a.entries > 0)).sort((x, y) => y.amount - x.amount);
   return [...listed, ...extra].map(({ label, amount, entries }) => ({ label, amount, entries }));
+}
+
+// The monthly expenses (Fastag, permits, insurance, EMI ...) that belong to the screen's
+// filters: the dates, and the Vehicle and Driver picked. Trips were always cut by all four;
+// monthly expenses used to be cut by the dates only, so picking one truck still showed the
+// whole fleet's Fastag and fixed costs next to that truck's revenue.
+export function filterMonthlyExpenses(
+  expenses: MonthlyExpense[],
+  f: { vehicle: string; driver: string; from: string; to: string }
+): MonthlyExpense[] {
+  return expenses.filter(
+    (e) => (f.vehicle === 'all' || e.vehicle === f.vehicle) &&
+      (!f.driver || e.driver === f.driver) &&
+      dateInRange(e.date, f.from, f.to)
+  );
 }

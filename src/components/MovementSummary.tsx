@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { DriverMaster, MonthlyExpense, Trip, Vehicle } from '../types';
 import type { VehicleAgg } from '../utils/aggregate';
-import { aggregateByVehicle, expenseByCategory, isFastag, sumVehicles } from '../utils/aggregate';
+import { aggregateByVehicle, expenseByCategory, filterMonthlyExpenses, isFastag, sumVehicles } from '../utils/aggregate';
 import { dateInRange, formatDateRange, formatNum, rupees, tripCost, yearOptions } from '../utils/calc';
 import { MonthYearFilter } from './MonthYearFilter';
 import { exportSummaryExcel, exportSummaryPdf, type Stat, type SummaryData } from '../lib/reports';
@@ -40,7 +40,7 @@ export function MovementSummary({ trips, expenses, tripCategories, vehicles, dri
       (!driverFilter || t.driver === driverFilter) &&
       dateInRange(t.loadDate, dateFrom, dateTo)
   );
-  const expenseRows = expenses.filter((e) => dateInRange(e.date, dateFrom, dateTo));
+  const expenseRows = filterMonthlyExpenses(expenses, { vehicle: vehicleFilter, driver: driverFilter, from: dateFrom, to: dateTo });
 
   const totals = rows.reduce(
     (a, t) => {

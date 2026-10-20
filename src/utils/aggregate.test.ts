@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aggregateByVehicle, isFastag, sumVehicles } from './aggregate';
+import { aggregateByVehicle, filterMonthlyExpenses, isFastag, sumVehicles } from './aggregate';
 import type { MonthlyExpense, Trip, Vehicle } from '../types';
 
 const vehicle = (id: string) => ({ id, model: 'Tata' }) as Vehicle;
@@ -82,5 +82,42 @@ describe('sumVehicles (the Total row)', () => {
 
   it('is all zeros for no rows', () => {
     expect(sumVehicles([])).toMatchObject({ trips: 0, km: 0, revenue: 0, cost: 0, profit: 0 });
+  });
+});
+
+describe('monthly expenses follow the Vehicle and Driver filters', () => {
+  const m = (vehicle: string, driver: string, category: string, amount: number, date = '30 Sep 2026') =>
+    ({ id: `${vehicle}-${category}`, vehicle, driver, category, amount, date }) as unknown as MonthlyExpense;
+  const all = [
+    m('A', 'Ravi', 'Fastag', 11355), m('A', 'Ravi', 'Permit', 2000),
+    m('B', 'Mani', 'Fastag', 14540), m('B', '—', 'EMI', 5000),
+    m('B', 'Mani', 'Fastag', 700, '02 Oct 2026')
+  ];
+  const sept = { from: '2026-09-01', to: '2026-09-30' };
+  const fastag = (rows: MonthlyExpense[]) => rows.filter(isFastag).reduce((a, e) => a + e.amount, 0);
+
+  it('keeps the whole fleet when no vehicle or driver is picked', () => {
+    const rows = filterMonthlyExpenses(all, { vehicle: 'all', driver: '', ...sept });
+    expect(rows).toHaveLength(4);
+    expect(fastag(rows)).toBe(11355 + 14540);
+  });
+
+  it('shows only the picked truck\'s Fastag and fixed costs', () => {
+    const a = filterMonthlyExpenses(all, { vehicle: 'A', driver: '', ...sept });
+    expect(fastag(a)).toBe(11355);
+    expect(a.reduce((s, e) => s + e.amount, 0)).toBe(13355);
+    const b = filterMonthlyExpenses(all, { vehicle: 'B', driver: '', ...sept });
+    expect(fastag(b)).toBe(14540);
+  });
+
+  it('shows only the picked driver\'s entries, and the dates still apply', () => {
+    const rows = filterMonthlyExpenses(all, { vehicle: 'all', driver: 'Mani', ...sept });
+    expect(rows.map((e) => e.amount)).toEqual([14540]);
+  });
+
+  it('the truck figures add up across the fleet', () => {
+    const total = filterMonthlyExpenses(all, { vehicle: 'all', driver: '', ...sept }).reduce((s, e) => s + e.amount, 0);
+    const parts = ['A', 'B'].map((v) => filterMonthlyExpenses(all, { vehicle: v, driver: '', ...sept }).reduce((s, e) => s + e.amount, 0));
+    expect(parts[0] + parts[1]).toBe(total);
   });
 });
