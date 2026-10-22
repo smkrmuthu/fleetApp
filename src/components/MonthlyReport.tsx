@@ -1,9 +1,12 @@
+import { useState } from 'react';
 import type { DriverMaster, MonthlyExpense, Trip, Vehicle } from '../types';
-import { aggregateByVehicle, filterMonthlyExpenses, sumVehicles } from '../utils/aggregate';
+import { aggregateByVehicle, filterMonthlyExpenses, sumVehicles, type VehicleAgg } from '../utils/aggregate';
 import { dateInRange, formatDateRange, formatNum, rupees, tripCost, yearOptions } from '../utils/calc';
 import { MonthYearFilter } from './MonthYearFilter';
 import { exportReportExcel, exportReportPdf, type ReportData, type Stat } from '../lib/reports';
 import { useExport } from '../lib/useExport';
+import { nextSort, sortRows, type SortState } from '../utils/sortRows';
+import { SortHeader } from './SortHeader';
 
 interface Props {
   trips: Trip[];
@@ -19,6 +22,18 @@ interface Props {
   onDateFrom: (v: string) => void;
   onDateTo: (v: string) => void;
   onResetFilters: () => void;
+}
+
+type LedgerKey = 'id' | 'trips' | 'km' | 'tons' | 'diesel' | 'toll' | 'other' | 'monthly' | 'cost' | 'revenue' | 'profit' | 'margin';
+
+function ledgerValue(b: VehicleAgg, key: LedgerKey): number | string {
+  switch (key) {
+    case 'id': return b.id;
+    case 'toll': return b.ledgerToll;
+    case 'monthly': return b.ledgerMonthly;
+    case 'margin': return b.revenue ? b.profit / b.revenue : NaN; // no revenue: blank, listed last
+    default: return b[key];
+  }
 }
 
 export function MonthlyReport({ trips: allTrips, expenses: allExpenses, vehicles, drivers, vehicleFilter, driverFilter, dateFrom, dateTo, onVehicleFilter, onDriverFilter, onDateFrom, onDateTo, onResetFilters }: Props) {
@@ -44,6 +59,9 @@ export function MonthlyReport({ trips: allTrips, expenses: allExpenses, vehicles
   const profit = totals.rev - totals.exp - monthlyTotal;
 
   const byVehicle = aggregateByVehicle(trips, expenses, vehicles);
+  const [sort, setSort] = useState<SortState<LedgerKey>>(null);
+  const ledgerRows = sortRows(byVehicle, sort, (b, k) => ledgerValue(b, k));
+  const onSort = (k: LedgerKey) => setSort((prev) => nextSort(prev, k, k === 'id' ? 'asc' : 'desc', null));
   const maxPerKm = Math.max(...byVehicle.map((b) => (b.km ? b.cost / b.km : 0)), 1);
 
   const totalCost = totals.exp + monthlyTotal;
@@ -58,7 +76,7 @@ export function MonthlyReport({ trips: allTrips, expenses: allExpenses, vehicles
   const { busy, error, run } = useExport();
   const exportData = (): ReportData => ({
     period: { from: dateFrom, to: dateTo, label: rangeLabel },
-    headline, byVehicle, trips, expenses
+    headline, byVehicle: ledgerRows, trips, expenses
   });
 
   return (
@@ -136,15 +154,22 @@ export function MonthlyReport({ trips: allTrips, expenses: allExpenses, vehicles
         <table className="table" style={{ minWidth: 1100 }}>
           <thead>
             <tr>
-              <th>Vehicle</th><th style={{ textAlign: 'right' }}>Trips</th><th style={{ textAlign: 'right' }}>KM</th>
-              <th style={{ textAlign: 'right' }}>Tons</th><th style={{ textAlign: 'right' }}>Diesel</th>
-              <th style={{ textAlign: 'right' }}>Toll</th><th style={{ textAlign: 'right' }}>Other</th>
-              <th style={{ textAlign: 'right' }}>Monthly</th><th style={{ textAlign: 'right' }}>Total cost</th>
-              <th style={{ textAlign: 'right' }}>Revenue</th><th style={{ textAlign: 'right' }}>Profit</th><th style={{ textAlign: 'right' }}>Margin</th>
+              <SortHeader label="Vehicle" sortKey="id" sort={sort} onSort={onSort} />
+              <SortHeader label="Trips" sortKey="trips" sort={sort} onSort={onSort} align="right" firstDir="desc" />
+              <SortHeader label="KM" sortKey="km" sort={sort} onSort={onSort} align="right" firstDir="desc" />
+              <SortHeader label="Tons" sortKey="tons" sort={sort} onSort={onSort} align="right" firstDir="desc" />
+              <SortHeader label="Diesel" sortKey="diesel" sort={sort} onSort={onSort} align="right" firstDir="desc" />
+              <SortHeader label="Toll" sortKey="toll" sort={sort} onSort={onSort} align="right" firstDir="desc" />
+              <SortHeader label="Other" sortKey="other" sort={sort} onSort={onSort} align="right" firstDir="desc" />
+              <SortHeader label="Monthly" sortKey="monthly" sort={sort} onSort={onSort} align="right" firstDir="desc" />
+              <SortHeader label="Total cost" sortKey="cost" sort={sort} onSort={onSort} align="right" firstDir="desc" />
+              <SortHeader label="Revenue" sortKey="revenue" sort={sort} onSort={onSort} align="right" firstDir="desc" />
+              <SortHeader label="Profit" sortKey="profit" sort={sort} onSort={onSort} align="right" firstDir="desc" />
+              <SortHeader label="Margin" sortKey="margin" sort={sort} onSort={onSort} align="right" firstDir="desc" />
             </tr>
           </thead>
           <tbody>
-            {byVehicle.map((b) => (
+            {ledgerRows.map((b) => (
               <tr key={b.id}>
                 <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{b.id}</td>
                 <td style={{ textAlign: 'right' }}>{formatNum(b.trips)}</td>

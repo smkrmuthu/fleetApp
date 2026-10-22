@@ -3,7 +3,11 @@ import type { DriverMaster, ExpenseFormState, MonthlyExpense, Trip, TripDocument
 import { categoryTint } from '../data/mockData';
 import { fetchMonthlyExpenseDocumentBlobUrl, parseDisplayDate } from '../lib/api';
 import { dateInRange, formatDateRange, matchingLoadingDate, rupees, todayIso, toNumber, yearOptions } from '../utils/calc';
+import { nextSort, sortRows, type SortState } from '../utils/sortRows';
 import { MonthYearFilter } from './MonthYearFilter';
+import { SortHeader } from './SortHeader';
+
+type LogKey = 'date' | 'vehicle' | 'loading' | 'driver' | 'category' | 'remarks' | 'amount';
 
 function blankExpense(defaultVehicle: string, defaultCategory: string): ExpenseFormState {
   return { date: todayIso(), vehicle: defaultVehicle, driver: '', category: defaultCategory, amount: '0', remarks: '' };
@@ -57,13 +61,23 @@ export function MonthlyExpenses({ expenses: allExpenses, trips, vehicles, driver
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [truckFilter, setTruckFilter] = useState('all');
-  const [dateSort, setDateSort] = useState<'asc' | 'desc'>('asc');
-  const expenses = allExpenses
+  // The log is oldest-first until a heading is clicked; a third click on a heading comes back to that.
+  const defaultSort: SortState<LogKey> = { key: 'date', dir: 'asc' };
+  const [sort, setSort] = useState<SortState<LogKey>>(defaultSort);
+  const onSort = (k: LogKey) => setSort((prev) => nextSort(prev, k, k === 'amount' ? 'desc' : 'asc', defaultSort));
+  const isoOrBlank = (display: string) => (display && display !== '—' ? parseDisplayDate(display) : '');
+  const byDate = allExpenses
     .filter((e) => dateInRange(e.date, dateFrom, dateTo) && (truckFilter === 'all' || e.vehicle === truckFilter))
-    .sort((a, b) => {
-      const cmp = parseDisplayDate(a.date).localeCompare(parseDisplayDate(b.date));
-      return dateSort === 'asc' ? cmp : -cmp;
-    });
+    .sort((a, b) => parseDisplayDate(a.date).localeCompare(parseDisplayDate(b.date)));
+  // Equal rows stay in date order, so sorting by Vehicle lists each truck's entries oldest first.
+  const expenses = sortRows(byDate, sort, (e, k) => {
+    switch (k) {
+      case 'date': return isoOrBlank(e.date);
+      case 'loading': return isoOrBlank(matchingLoadingDate(trips, e.vehicle, e.date));
+      case 'amount': return e.amount;
+      default: return e[k];
+    }
+  });
 
   const set = (k: keyof ExpenseFormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setExp((f) => ({ ...f, [k]: e.target.value } as ExpenseFormState));
@@ -289,15 +303,14 @@ export function MonthlyExpenses({ expenses: allExpenses, trips, vehicles, driver
         <table className="table" style={{ minWidth: 860 }}>
           <thead>
             <tr>
-              <th aria-sort={dateSort === 'asc' ? 'ascending' : 'descending'}>
-                <button
-                  type="button" className="btn btn-ghost" onClick={() => setDateSort((d) => (d === 'asc' ? 'desc' : 'asc'))}
-                  style={{ padding: 0, font: 'inherit', letterSpacing: 'inherit', textTransform: 'inherit', color: 'inherit', display: 'inline-flex', gap: 6, alignItems: 'center' }}
-                  title={dateSort === 'asc' ? 'Oldest first — click for newest first' : 'Newest first — click for oldest first'}
-                >
-                  Date <span aria-hidden="true">{dateSort === 'asc' ? '▲' : '▼'}</span>
-                </button>
-              </th><th>Vehicle</th><th>Loading date</th><th>Driver</th><th>Description</th><th>Remarks</th><th style={{ textAlign: 'right' }}>Amount</th><th>Bills</th><th></th>
+              <SortHeader label="Date" sortKey="date" sort={sort} onSort={onSort} />
+              <SortHeader label="Vehicle" sortKey="vehicle" sort={sort} onSort={onSort} />
+              <SortHeader label="Loading date" sortKey="loading" sort={sort} onSort={onSort} />
+              <SortHeader label="Driver" sortKey="driver" sort={sort} onSort={onSort} />
+              <SortHeader label="Description" sortKey="category" sort={sort} onSort={onSort} />
+              <SortHeader label="Remarks" sortKey="remarks" sort={sort} onSort={onSort} />
+              <SortHeader label="Amount" sortKey="amount" sort={sort} onSort={onSort} align="right" firstDir="desc" />
+              <th>Bills</th><th></th>
             </tr>
           </thead>
           <tbody>
