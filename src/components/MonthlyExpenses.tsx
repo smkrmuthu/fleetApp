@@ -5,7 +5,7 @@ import { fetchMonthlyExpenseDocumentBlobUrl, parseDisplayDate } from '../lib/api
 import { dateInRange, formatDateRange, matchingLoadingDate, rupees, todayIso, toNumber, yearOptions } from '../utils/calc';
 import { nextSort, sortRows, type SortState } from '../utils/sortRows';
 import { MonthYearFilter } from './MonthYearFilter';
-import { SortHeader } from './SortHeader';
+import { SortableTh } from './SortableTh';
 
 type LogKey = 'date' | 'vehicle' | 'loading' | 'driver' | 'category' | 'remarks' | 'amount';
 
@@ -303,13 +303,13 @@ export function MonthlyExpenses({ expenses: allExpenses, trips, vehicles, driver
         <table className="table" style={{ minWidth: 860 }}>
           <thead>
             <tr>
-              <SortHeader label="Date" sortKey="date" sort={sort} onSort={onSort} />
-              <SortHeader label="Vehicle" sortKey="vehicle" sort={sort} onSort={onSort} />
-              <SortHeader label="Loading date" sortKey="loading" sort={sort} onSort={onSort} />
-              <SortHeader label="Driver" sortKey="driver" sort={sort} onSort={onSort} />
-              <SortHeader label="Description" sortKey="category" sort={sort} onSort={onSort} />
-              <SortHeader label="Remarks" sortKey="remarks" sort={sort} onSort={onSort} />
-              <SortHeader label="Amount" sortKey="amount" sort={sort} onSort={onSort} align="right" firstDir="desc" />
+              <SortableTh label="Date" active={sort?.key === 'date'} dir={sort?.dir ?? 'asc'} onSort={() => onSort('date')} />
+              <SortableTh label="Vehicle" active={sort?.key === 'vehicle'} dir={sort?.dir ?? 'asc'} onSort={() => onSort('vehicle')} />
+              <SortableTh label="Loading date" active={sort?.key === 'loading'} dir={sort?.dir ?? 'asc'} onSort={() => onSort('loading')} />
+              <SortableTh label="Driver" active={sort?.key === 'driver'} dir={sort?.dir ?? 'asc'} onSort={() => onSort('driver')} />
+              <SortableTh label="Description" active={sort?.key === 'category'} dir={sort?.dir ?? 'asc'} onSort={() => onSort('category')} />
+              <SortableTh label="Remarks" active={sort?.key === 'remarks'} dir={sort?.dir ?? 'asc'} onSort={() => onSort('remarks')} />
+              <SortableTh label="Amount" active={sort?.key === 'amount'} dir={sort?.dir ?? 'asc'} onSort={() => onSort('amount')} align="right" />
               <th>Bills</th><th></th>
             </tr>
           </thead>

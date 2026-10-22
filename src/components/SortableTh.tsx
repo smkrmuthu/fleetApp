@@ -1,4 +1,6 @@
-export type SortDir = 'asc' | 'desc';
+import type { SortDir } from '../utils/sortRows';
+
+export type { SortDir };
 
 interface Props {
   label: string;

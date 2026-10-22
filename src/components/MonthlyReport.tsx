@@ -6,7 +6,7 @@ import { MonthYearFilter } from './MonthYearFilter';
 import { exportReportExcel, exportReportPdf, type ReportData, type Stat } from '../lib/reports';
 import { useExport } from '../lib/useExport';
 import { nextSort, sortRows, type SortState } from '../utils/sortRows';
-import { SortHeader } from './SortHeader';
+import { SortableTh } from './SortableTh';
 
 interface Props {
   trips: Trip[];
@@ -154,18 +154,18 @@ export function MonthlyReport({ trips: allTrips, expenses: allExpenses, vehicles
         <table className="table" style={{ minWidth: 1100 }}>
           <thead>
             <tr>
-              <SortHeader label="Vehicle" sortKey="id" sort={sort} onSort={onSort} />
-              <SortHeader label="Trips" sortKey="trips" sort={sort} onSort={onSort} align="right" firstDir="desc" />
-              <SortHeader label="KM" sortKey="km" sort={sort} onSort={onSort} align="right" firstDir="desc" />
-              <SortHeader label="Tons" sortKey="tons" sort={sort} onSort={onSort} align="right" firstDir="desc" />
-              <SortHeader label="Diesel" sortKey="diesel" sort={sort} onSort={onSort} align="right" firstDir="desc" />
-              <SortHeader label="Toll" sortKey="toll" sort={sort} onSort={onSort} align="right" firstDir="desc" />
-              <SortHeader label="Other" sortKey="other" sort={sort} onSort={onSort} align="right" firstDir="desc" />
-              <SortHeader label="Monthly" sortKey="monthly" sort={sort} onSort={onSort} align="right" firstDir="desc" />
-              <SortHeader label="Total cost" sortKey="cost" sort={sort} onSort={onSort} align="right" firstDir="desc" />
-              <SortHeader label="Revenue" sortKey="revenue" sort={sort} onSort={onSort} align="right" firstDir="desc" />
-              <SortHeader label="Profit" sortKey="profit" sort={sort} onSort={onSort} align="right" firstDir="desc" />
-              <SortHeader label="Margin" sortKey="margin" sort={sort} onSort={onSort} align="right" firstDir="desc" />
+              <SortableTh label="Vehicle" active={sort?.key === 'id'} dir={sort?.dir ?? 'asc'} onSort={() => onSort('id')} />
+              <SortableTh label="Trips" active={sort?.key === 'trips'} dir={sort?.dir ?? 'asc'} onSort={() => onSort('trips')} align="right" />
+              <SortableTh label="KM" active={sort?.key === 'km'} dir={sort?.dir ?? 'asc'} onSort={() => onSort('km')} align="right" />
+              <SortableTh label="Tons" active={sort?.key === 'tons'} dir={sort?.dir ?? 'asc'} onSort={() => onSort('tons')} align="right" />
+              <SortableTh label="Diesel" active={sort?.key === 'diesel'} dir={sort?.dir ?? 'asc'} onSort={() => onSort('diesel')} align="right" />
+              <SortableTh label="Toll" active={sort?.key === 'toll'} dir={sort?.dir ?? 'asc'} onSort={() => onSort('toll')} align="right" />
+              <SortableTh label="Other" active={sort?.key === 'other'} dir={sort?.dir ?? 'asc'} onSort={() => onSort('other')} align="right" />
+              <SortableTh label="Monthly" active={sort?.key === 'monthly'} dir={sort?.dir ?? 'asc'} onSort={() => onSort('monthly')} align="right" />
+              <SortableTh label="Total cost" active={sort?.key === 'cost'} dir={sort?.dir ?? 'asc'} onSort={() => onSort('cost')} align="right" />
+              <SortableTh label="Revenue" active={sort?.key === 'revenue'} dir={sort?.dir ?? 'asc'} onSort={() => onSort('revenue')} align="right" />
+              <SortableTh label="Profit" active={sort?.key === 'profit'} dir={sort?.dir ?? 'asc'} onSort={() => onSort('profit')} align="right" />
+              <SortableTh label="Margin" active={sort?.key === 'margin'} dir={sort?.dir ?? 'asc'} onSort={() => onSort('margin')} align="right" />
             </tr>
           </thead>
           <tbody>
